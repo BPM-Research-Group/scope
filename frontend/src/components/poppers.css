@@ -1,0 +1,195 @@
+/* poppers.css */
+
+.xy-popper {
+    --tooltip-arrow-size: 12px;
+    --tooltip-z-index: 100;
+    --tooltip-color: white;
+    --tooltip-background: black;
+    --tooltip-border: 1px solid rgba(255, 255, 255, 0.85);
+    --tooltip-border-radius: 4px;
+    --tooltip-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1),
+        0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --tooltip-padding: 8px;
+
+    background-color: var(--tooltip-background);
+    font-size: 0.75rem;
+    color: var(--tooltip-color);
+    border: var(--tooltip-border);
+    border-radius: var(--tooltip-border-radius);
+    box-shadow: var(--tooltip-shadow);
+    pointer-events: none;
+    z-index: var(--tooltip-z-index);
+}
+
+.xy-popper-content {
+    background-color: var(--tooltip-background);
+
+    border-radius: var(--tooltip-border-radius);
+
+    padding: var(--tooltip-padding);
+}
+
+.xy-popper-arrow,
+.xy-popper-arrow:before {
+    position: absolute;
+
+    width: var(--tooltip-arrow-size);
+
+    height: var(--tooltip-arrow-size);
+
+    z-index: -1;
+}
+
+.xy-popper-arrow:before {
+    content: '';
+
+    transform: rotate(45deg);
+
+    background-color: var(--tooltip-background);
+
+    border: var(--tooltip-border);
+
+    box-shadow: var(--tooltip-shadow);
+}
+
+.xy-popper[data-popper-placement^='top'] > .xy-popper-arrow {
+    bottom: calc(-1 * var(--tooltip-arrow-size) * 0.5);
+}
+
+.xy-popper[data-popper-placement^='bottom'] > .xy-popper-arrow {
+    top: calc(-1 * var(--tooltip-arrow-size) * 0.5);
+}
+
+.xy-popper[data-popper-placement^='left'] > .xy-popper-arrow {
+    right: calc(-1 * var(--tooltip-arrow-size) * 0.5);
+}
+
+.xy-popper[data-popper-placement^='right'] > .xy-popper-arrow {
+    left: calc(-1 * var(--tooltip-arrow-size) * 0.5);
+}
+
+/* from TailwindCSS */
+
+:root {
+    /* define CSS variables for use elsewhere */
+
+    --gray-50: #f9fafb;
+
+    --gray-100: #f3f4f6;
+
+    --gray-200: #e5e7eb;
+
+    --gray-300: #d1d5db;
+
+    --gray-400: #9ca3af;
+
+    --gray-500: #6b7280;
+
+    --gray-600: #4b5563;
+
+    --gray-700: #374151;
+
+    --gray-800: #1f2937;
+
+    --gray-900: #111827;
+}
+
+.border-gray-200 {
+    --tw-border-opacity: 1;
+
+    border-color: rgba(229, 231, 235, var(--tw-border-opacity));
+}
+
+.border-opacity-20 {
+    --tw-border-opacity: 0.2;
+}
+
+.rounded {
+    border-radius: 0.25rem;
+}
+
+.border-b {
+    border-bottom-width: 1px;
+}
+
+.table {
+    display: table;
+}
+
+.grid {
+    display: grid;
+}
+
+.font-semibold {
+    font-weight: 600;
+}
+
+.font-bold {
+    font-weight: 700;
+}
+
+.text-sm {
+    font-size: 0.875rem;
+
+    line-height: 1.25rem;
+}
+
+.text-2xs {
+    font-size: 0.7rem;
+}
+
+.leading-none {
+    line-height: 1;
+}
+
+.mb-1 {
+    margin-bottom: 0.25rem;
+}
+
+.px-1 {
+    padding-left: 0.25rem;
+
+    padding-right: 0.25rem;
+}
+
+.pb-1 {
+    padding-bottom: 0.25rem;
+}
+
+.pointer-events-none {
+    pointer-events: none;
+}
+
+.absolute {
+    position: absolute;
+}
+
+.relative {
+    position: relative;
+}
+
+* {
+    --tw-shadow: 0 0 #0000;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.text-gray-400 {
+    --tw-text-opacity: 1;
+
+    color: rgba(156, 163, 175, var(--tw-text-opacity));
+}
+
+.gap-x-2 {
+    column-gap: 0.5rem;
+}
+
+.text-shadow-white-stroke {
+    text-shadow:
+        -1px -1px 1px #fff,
+        1px -1px 1px #fff,
+        1px 1px 1px #fff,
+        -1px 1px 1px #fff;
+}

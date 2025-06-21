@@ -1,0 +1,98 @@
+{
+    "ots": ["Order", "Item", "Customer", "Package"],
+    "hierarchy": {
+        "value": "sequence",
+        "children": [
+            {
+                "value": {
+                    "activity": "Request",
+                    "ots": [
+                        {
+                            "ot": "Order"
+                        },
+                        {
+                            "ot": "Customer",
+                            "exhibits": ["div"]
+                        },
+                        {
+                            "ot": "Item",
+                            "exhibits": ["con"]
+                        }
+                    ]
+                }
+            },
+            {
+                "value": "parallel",
+                "children": [
+                    {
+                        "value": {
+                            "activity": "Charge",
+                            "ots": [
+                                {
+                                    "ot": "Order"
+                                },
+                                {
+                                    "ot": "Customer",
+                                    "exhibits": ["div"]
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "value": "sequence",
+                        "children": [
+                            {
+                                "value": "xor",
+                                "children": [
+                                    {
+                                        "value": {
+                                            "activity": "Reorder",
+                                            "ots": [
+                                                {
+                                                    "ot": "Item"
+                                                },
+                                                {
+                                                    "ot": "Order",
+                                                    "exhibits": ["div", "def"]
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "value": {
+                                            "isSilent": true,
+                                            "activity": "tau",
+                                            "ots": []
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "value": {
+                                    "activity": "Send Out",
+                                    "ots": [
+                                        {
+                                            "ot": "Package"
+                                        },
+                                        {
+                                            "ot": "Item",
+                                            "exhibits": ["con"]
+                                        },
+                                        {
+                                            "ot": "Order",
+                                            "exhibits": ["cov", "div"]
+                                        },
+                                        {
+                                            "ot": "Customer",
+                                            "exhibits": ["div"]
+                                        }
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+}
