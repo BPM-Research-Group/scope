@@ -10,11 +10,11 @@ export type PlusNodeBaseProps = {
 
 export type PlusNodeType = Node<PlusNodeBaseProps>;
 
-const FlowParallelNode = memo(({ data, id }: NodeProps<PlusNodeType>) => {
+const FlowParallelNode = memo(({ data, id, height, width }: NodeProps<PlusNodeType>) => {
     const branchCount = data.branches || 1;
 
     return (
-        <div className="relative w-16 h-16 flex items-center justify-center">
+        <div className="relative flex items-center justify-center" style={{ height: height, width: width }}>
             {/* Diamond shape */}
             <div className="absolute inset-0 w-full h-full">
                 <svg className="w-full h-full" viewBox="0 0 100 50" preserveAspectRatio="none">

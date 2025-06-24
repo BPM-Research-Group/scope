@@ -47,17 +47,15 @@ export interface ExecOptionObj {
     cardinality?: string;
 }
 
-export type InterOperator =
-    | 'startEvent'
-    | 'endEvent'
-    | 'activity'
-    | 'parallelSplit'
-    | 'parallelJoin'
-    | 'xorSplit'
-    | 'xorJoin'
-    | 'divLoopStart'
-    | 'divLoopEnd'
-    | 'multi-branch-activity'
-    | 'branchingInter'
-    | 'unknown'
-    | 'none';
+export const gatewayOperators = [
+    'parallelSplit',
+    'parallelJoin',
+    'xorSplit',
+    'xorJoin',
+    'divLoopStart',
+    'divLoopEnd',
+] as const;
+
+export type GatewayOperator = (typeof gatewayOperators)[number];
+
+export type InterOperator = GatewayOperator | 'startEvent' | 'endEvent' | 'unknown' | 'none';

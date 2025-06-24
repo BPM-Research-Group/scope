@@ -9,9 +9,9 @@ type DivLoopNodeProps = {
 
 type DivLoopNodeType = Node<DivLoopNodeProps>;
 
-const FlowDivLoopNode = memo(({ data, id }: NodeProps<DivLoopNodeType>) => {
+const FlowDivLoopNode = memo(({ data, id, height, width }: NodeProps<DivLoopNodeType>) => {
     return (
-        <div className="relative w-16 h-16 flex items-center justify-center">
+        <div className="relative flex items-center justify-center" style={{ height: height, width: width }}>
             {/* Diamond shape */}
             <div className="absolute inset-0 w-full h-full">
                 <svg className="w-full h-full" viewBox="0 0 100 50" preserveAspectRatio="none">

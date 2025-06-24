@@ -2,14 +2,8 @@ import type { ActivityObj, ExecutionActivityObj, FlowElementInfo } from '~/types
 import type { Edge, Node } from '@xyflow/react';
 import type { ActivityDecisionNodeType } from '~/components/flow/nodes/FlowActivityDecisionNode';
 import type { AltFlowJson, AltFlowNode, EdgeData } from '~/types/flow/altFlow.types';
-
-// Decision Node Settings
-const decisionNodeWidth = 40;
-const decisionNodeHeight = 20;
-
-// Inter Node Settings
-const interNodeWidth = 40;
-const interNodeHeight = 40;
+import { DECISION_NODE } from '~/consts/flow/nodeConstants';
+import { OperatorSize } from '~/lib/flow/nodeOperatorSize';
 
 // Object Type Settings
 const objectTypeLaneY = 100;
@@ -35,9 +29,6 @@ const addDecisionAndEdgeNodesForActivities = (
     const sourceNodeId = `${ot}-${parentNodeId}-connector-in`;
     const targetNodeId = `${ot}-${parentNodeId}-connector-out`;
 
-    // Maybe this helps
-    yPosition = yPosition + 50;
-
     const hasOption = (optionName: 'Skip' | 'Execute' | 'Loop') =>
         activityObject.value.execOptions.some((opt) => opt.option === optionName);
 
@@ -45,10 +36,10 @@ const addDecisionAndEdgeNodesForActivities = (
         id: sourceNodeId,
         type: 'activityDecisionNode',
         data: { execOptions: activityObject.value.execOptions, isBeginningActivityDecisionNode: true },
-        position: { x: 0, y: yPosition },
+        position: { x: 0, y: yPosition - DECISION_NODE.height / 2 },
         parentId: parentNodeId,
-        width: decisionNodeWidth,
-        height: decisionNodeHeight,
+        width: DECISION_NODE.width,
+        height: DECISION_NODE.height,
         extent: 'parent',
     };
 
@@ -56,10 +47,10 @@ const addDecisionAndEdgeNodesForActivities = (
         id: targetNodeId,
         type: 'activityDecisionNode',
         data: { execOptions: activityObject.value.execOptions, isBeginningActivityDecisionNode: false },
-        position: { x: ACTIVITY_NODE_WIDTH - decisionNodeWidth, y: yPosition },
+        position: { x: ACTIVITY_NODE_WIDTH - DECISION_NODE.width, y: yPosition - DECISION_NODE.height / 2 },
         parentId: parentNodeId,
-        width: decisionNodeWidth,
-        height: decisionNodeHeight,
+        width: DECISION_NODE.width,
+        height: DECISION_NODE.height,
         extent: 'parent',
     };
 
@@ -181,6 +172,7 @@ export const visualizeFlowFromJson = (
                 currentY += object.branchInfo.depth * object.branchInfo.branchId * 150;
             }
 
+            // Go through the node types
             let activityNodeOffset = 0;
             if (object.type === 'activity') {
                 // 1. Create the activity node
@@ -193,7 +185,7 @@ export const visualizeFlowFromJson = (
                         id: activityId,
                         type: 'labeledGroupNode',
                         data: { label: activityName },
-                        position: { x: currentX, y: otYBase }, // Create the activity node only once
+                        position: { x: currentX, y: 0 }, // Create the activity node only once
                         width: ACTIVITY_NODE_WIDTH,
                         height: ACTIVITY_NODE_HEIGHT,
                     };
@@ -222,18 +214,19 @@ export const visualizeFlowFromJson = (
                 // Handle inter nodes with proper spacing
                 const operator = object.value.operator;
                 const interId = object.id;
+                const size = OperatorSize.getNodeSize(operator);
 
                 const interNode: Node = {
                     id: interId,
                     type: operator,
-                    position: { x: currentX, y: currentY },
+                    position: { x: currentX, y: currentY - size.height / 2 },
                     data: {
                         operator: operator,
                         branches: object.value.branches,
                         ot: currOt,
                     },
-                    width: interNodeWidth,
-                    height: interNodeHeight,
+                    width: size.width,
+                    height: size.height,
                 };
 
                 allNodes.push(interNode);
