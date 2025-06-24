@@ -20,8 +20,8 @@ export const ocptToFlowJson = (
     ot: string,
     verbose: boolean = false
 ) => {
-    // Instantiate a new logger.
-    const logger = new Logger(verbose);
+    // Get Logger instance.
+    const logger = Logger.getInstance();
 
     const flowJson: AltFlowJson = {
         activities: activitiesArray, // Activities here
