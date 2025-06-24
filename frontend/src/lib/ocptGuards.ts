@@ -5,7 +5,7 @@ import {
     ProcessTreeOperators,
     type SilentActivity,
     type TreeNode,
-} from '~/components/ocpt/ocpt.types';
+} from '~/types/ocpt/ocpt.types';
 
 export function isProcessTreeOperator(value: any): value is ProcessTreeOperators {
     return value === 'xor' || value === 'parallel' || value === 'sequence' || value === 'loop';

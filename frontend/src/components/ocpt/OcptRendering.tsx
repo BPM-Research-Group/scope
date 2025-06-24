@@ -3,12 +3,12 @@ import { Group } from '@visx/group';
 import { Tree } from '@visx/hierarchy';
 import { HierarchyNode, HierarchyPointLink, HierarchyPointNode } from '@visx/hierarchy/lib/types';
 import { type ScaleOrdinal } from 'd3-scale';
-import { type FilteredObjectTypes, type TreeNode } from '~/components/ocpt/ocpt.types';
+import { type FilteredObjectTypes, type TreeNode } from '~/types/ocpt/ocpt.types';
 import OcptLink from '~/components/ocpt/OcptLink';
 import OcptNode from '~/components/ocpt/OcptNode';
-import { projectTreeOntoOT, updateTreeWithExtendedOperators } from '~/components/ocpt/ocptProject';
+import { projectTreeOntoOT, updateTreeWithExtendedOperators } from '~/lib/ocpt/ocptProject';
 import { cloneDeep } from 'lodash-es';
-import { useOriginalRenderedOcpt, useRenderedOcpt } from '~/store';
+import { useOriginalRenderedOcpt, useRenderedOcpt } from '~/stores/store';
 
 interface RenderTreeProps {
     rootNode: HierarchyNode<TreeNode>;

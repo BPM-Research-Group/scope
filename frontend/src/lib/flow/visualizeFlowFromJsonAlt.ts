@@ -1,7 +1,7 @@
-import type { ActivityObj, ExecutionActivityObj, FlowElementInfo } from '~/components/flow/flow.types';
+import type { ActivityObj, ExecutionActivityObj, FlowElementInfo } from '~/types/flow/flow.types';
 import type { Edge, Node } from '@xyflow/react';
 import type { ActivityDecisionNodeType } from '~/components/flow/nodes/FlowActivityDecisionNode';
-import type { AltFlowJson, AltFlowNode, EdgeData } from '~/components/flow/altFlow.types';
+import type { AltFlowJson, AltFlowNode, EdgeData } from '~/types/flow/altFlow.types';
 
 // Decision Node Settings
 const decisionNodeWidth = 40;

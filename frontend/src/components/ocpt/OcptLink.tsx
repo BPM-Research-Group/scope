@@ -1,4 +1,4 @@
-import { type HierarchyPointLinkObjectCentric, type TreeNode } from '~/components/ocpt/ocpt.types';
+import { type HierarchyPointLinkObjectCentric, type TreeNode } from '~/types/ocpt/ocpt.types';
 import { LinkLine } from '~/components/ocpt/ocptLink.utils';
 
 interface OcptLinkProps {

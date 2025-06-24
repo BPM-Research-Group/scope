@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import type { ObjectType } from '~/components/ocpt/ocpt.types';
+import type { ObjectType } from '~/types/ocpt/ocpt.types';
 import type { ScaleOrdinal } from 'd3-scale';
 import '@xyflow/react/dist/style.css';
 

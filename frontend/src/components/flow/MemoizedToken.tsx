@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { useColorScaleStore } from '~/store';
+import { useColorScaleStore } from '~/stores/store';
 
 interface TokenProps {
     id: string;

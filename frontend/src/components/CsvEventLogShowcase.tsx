@@ -1,7 +1,7 @@
 import { Eye, FileSpreadsheet } from 'lucide-react';
-import { useObjectFlowMap, useOcel, useOcelFile } from '~/store';
+import { useObjectFlowMap, useOcel, useOcelFile } from '~/stores/store';
 import Papa from 'papaparse';
-import type { ObjectFlowMapRecord, OcelEventData } from '~/components/ocel.types';
+import type { ObjectFlowMapRecord, OcelEventData } from '~/types/ocel.types';
 import { useEffect } from 'react';
 
 interface CsvEventLogShowcaseProps {

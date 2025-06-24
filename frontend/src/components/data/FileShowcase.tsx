@@ -1,8 +1,8 @@
 import React from 'react';
 import { Eye, FileJson, FileSpreadsheet, FileX } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAcceptedFile, useJSONFile, useStoredFiles } from '~/store';
-import { JSONSchema } from '~/components/ocpt/ocpt.types';
+import { useAcceptedFile, useJSONFile, useStoredFiles } from '~/stores/store';
+import { JSONSchema } from '~/types/ocpt/ocpt.types';
 
 interface FileShowcaseProps {
     file: File;

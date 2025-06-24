@@ -1,5 +1,5 @@
 import Dropzone from '~/components/Dropzone';
-import { useStoredFiles } from '~/store';
+import { useStoredFiles } from '~/stores/store';
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 import { Separator } from '~/components/ui/separator';
 import FileList from '~/components/data/FileList';

@@ -1,8 +1,8 @@
 import { forwardRef, HTMLAttributes, ReactNode } from 'react';
 import { NodeProps, Panel, PanelPosition } from '@xyflow/react';
 import { BaseNode } from '~/components/ui/base-node';
-import { cn } from '~/lib/utils';
-import { useActivityExecutionStore, useColorScaleStore } from '~/store';
+import { cn } from '~/lib/tailwind';
+import { useActivityExecutionStore, useColorScaleStore } from '~/stores/store';
 
 /* GROUP NODE Label ------------------------------------------------------- */
 

@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { Handle, NodeProps, Position, type Node } from '@xyflow/react';
-import type { ExecOptionObj } from '~/components/flow/flow.types';
+import type { ExecOptionObj } from '~/types/flow/flow.types';
 
 type ActivityDecisionNodeProps = {
     execOptions: ExecOptionObj[];

@@ -1,10 +1,5 @@
 import type { HierarchyPointNode } from '@visx/hierarchy/lib/types';
-import {
-    ExtendedProcessTreeOperator,
-    SilentActivity,
-    type ObjectType,
-    type TreeNode,
-} from '~/components/ocpt/ocpt.types';
+import { ExtendedProcessTreeOperator, SilentActivity, type ObjectType, type TreeNode } from '~/types/ocpt/ocpt.types';
 import {
     categorizeNode,
     isActivity,

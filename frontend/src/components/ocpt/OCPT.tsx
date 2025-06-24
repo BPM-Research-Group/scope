@@ -4,10 +4,10 @@ import { Zoom } from '@visx/zoom';
 import { ScaleOrdinal } from 'd3';
 import { useEffect, useState } from 'react';
 import ZoomButtons from '~/components/ZoomButtons';
-import { type TreeNode } from '~/components/ocpt/ocpt.types';
-import HoverPointTooltip from '~/components/HoverPointTooltip';
+import { type TreeNode } from '~/types/ocpt/ocpt.types';
+import HoverPointTooltip from '~/components/ocpt/HoverPointTooltip';
 import { HierarchyNode, HierarchyPointNode } from '@visx/hierarchy/lib/types';
-import { useFilteredObjectType } from '~/store';
+import { useFilteredObjectType } from '~/stores/store';
 import { RenderTree } from '~/components/ocpt/OcptRendering';
 
 export type OCPTProps = {

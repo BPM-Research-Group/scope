@@ -1,5 +1,5 @@
 import { HierarchyPointNode } from '@visx/hierarchy/lib/types';
-import { CTreeNode, type JSONTreeNode, type TreeNode } from '~/components/ocpt/ocpt.types';
+import { CTreeNode, type JSONTreeNode, type TreeNode } from '~/types/ocpt/ocpt.types';
 
 let nodeIdCounter = 0;
 

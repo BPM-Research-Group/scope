@@ -1,5 +1,5 @@
 import FileShowcase from '~/components/data/FileShowcase';
-import { useStoredFiles } from '~/store';
+import { useStoredFiles } from '~/stores/store';
 
 const FileList: React.FC = () => {
     const { files } = useStoredFiles();

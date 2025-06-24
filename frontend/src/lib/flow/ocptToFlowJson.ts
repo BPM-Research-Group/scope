@@ -1,12 +1,6 @@
 import type { HierarchyPointNode } from '@visx/hierarchy/lib/types';
-import type {
-    AltFlowJson,
-    AltFlowNode,
-    BranchInfo,
-    ExecOptionObj,
-    InterOperator,
-} from '~/components/flow/altFlow.types';
-import type { TreeNode } from '~/components/ocpt/ocpt.types';
+import type { AltFlowJson, AltFlowNode, BranchInfo, ExecOptionObj, InterOperator } from '~/types/flow/altFlow.types';
+import type { TreeNode } from '~/types/ocpt/ocpt.types';
 import { Logger } from '~/lib/logger';
 import {
     isActivity,

@@ -1,6 +1,6 @@
 import { HierarchyPointNode } from '@visx/hierarchy/lib/types';
 import { ScaleOrdinal } from 'd3';
-import { TreeNode } from '~/components/ocpt/ocpt.types';
+import { TreeNode } from '~/types/ocpt/ocpt.types';
 import ProcessTreeOperatorNode from '~/components/ocpt/ProcessTreeOperatorNode';
 import TextNode from '~/components/ocpt/TextNode';
 import {

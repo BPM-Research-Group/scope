@@ -1,6 +1,6 @@
 import { Group } from '@visx/group';
 import { ScaleOrdinal } from 'd3';
-import { type Activity, type NodeProps } from '~/components/ocpt/ocpt.types';
+import { type Activity, type NodeProps } from '~/types/ocpt/ocpt.types';
 import LegendRect from '~/components/LegendRect';
 
 import { useEffect, useRef, useState } from 'react';

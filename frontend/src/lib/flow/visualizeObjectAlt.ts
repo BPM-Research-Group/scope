@@ -1,7 +1,7 @@
 import type { Edge, Node } from '@xyflow/react';
 import type { AnimatedSvgEdgeData, BranchOriginData } from '~/components/flow/AnimateEdge';
 import type { PlusNodeType } from '~/components/flow/nodes/FlowParallelNode';
-import type { ObjectFlowAtEdge, ObjectFlowMapRecord } from '~/components/ocel.types';
+import type { ObjectFlowAtEdge, ObjectFlowMapRecord } from '~/types/ocel.types';
 
 const getMostRecentTimestampOfActivityBeforeIndex = (
     targetActivityName: string,

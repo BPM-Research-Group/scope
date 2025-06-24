@@ -2,7 +2,7 @@ import { LegendItem, LegendLabel, LegendOrdinal } from '@visx/legend';
 import { ScaleOrdinal } from 'd3';
 import { Checkbox } from '~/components/ui/checkbox';
 import { useEffect, useState } from 'react';
-import { useFilteredObjectType } from '~/store';
+import { useFilteredObjectType } from '~/stores/store';
 
 interface ObjectTypeLegendProps {
     objectTypes: string[];

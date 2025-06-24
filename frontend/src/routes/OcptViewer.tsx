@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import OCPT from '~/components/ocpt/OCPT';
-import { type TreeNode } from '~/components/ocpt/ocpt.types';
+import { type TreeNode } from '~/types/ocpt/ocpt.types';
 import { SidebarProvider } from '~/components/ui/sidebar';
 import AppSidebar from '~/components/AppSidebar';
-import { useColorScaleStore, useIsOcptMode, useJSONFile } from '~/store';
+import { useColorScaleStore, useIsOcptMode, useJSONFile } from '~/stores/store';
 import BreadcrumbNav from '~/components/BreadcrumbNav';
-import { addIdsToTree } from '~/components/ocpt/ocptNode.utils';
+import { addIdsToTree } from '~/lib/ocpt/addIdsToOcpt';
 import Flow from '~/components/flow/Flow';
 
 const OcptViewer: React.FC = () => {

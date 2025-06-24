@@ -3,9 +3,9 @@ import { scaleOrdinal } from '@visx/scale';
 import type { ScaleOrdinal } from 'd3-scale';
 import { schemeSet1 } from 'd3-scale-chromatic';
 import { create } from 'zustand';
-import type { FlowJson } from '~/components/flow/flow.types';
-import type { ObjectFlowMapRecord, OcelEventData } from '~/components/ocel.types';
-import { type JSONSchema, type TreeNode } from '~/components/ocpt/ocpt.types';
+import type { FlowJson } from '~/types/flow/flow.types';
+import type { ObjectFlowMapRecord, OcelEventData } from '~/types/ocel.types';
+import { type JSONSchema, type TreeNode } from '~/types/ocpt/ocpt.types';
 
 // Used for Dropzone and File Management
 interface FileID {

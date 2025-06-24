@@ -1,7 +1,7 @@
 import { BaseEdge, EdgeText, getSmoothStepPath, type Edge, type EdgeProps } from '@xyflow/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ObjectFlowAtEdge } from '~/components/ocel.types';
-import { useActivityExecutionStore, useColorScaleStore, useGlobalCurrentTimeMs } from '~/store';
+import type { ObjectFlowAtEdge } from '~/types/ocel.types';
+import { useActivityExecutionStore, useColorScaleStore, useGlobalCurrentTimeMs } from '~/stores/store';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { MemoizedToken } from '~/components/flow/MemoizedToken';

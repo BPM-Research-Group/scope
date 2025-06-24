@@ -1,5 +1,5 @@
 import { DropEvent, FileRejection, useDropzone } from 'react-dropzone';
-import { useStoredFiles } from '~/store';
+import { useStoredFiles } from '~/stores/store';
 import { FileUp } from 'lucide-react';
 
 const Dropzone: React.FC = () => {

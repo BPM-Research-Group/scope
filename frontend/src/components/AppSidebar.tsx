@@ -1,7 +1,7 @@
 import { ScaleOrdinal } from 'd3';
 import { Table2 } from 'lucide-react';
 import React, { useEffect } from 'react';
-import ObjectTypeLegend from '~/components/ObjectTypeLegend';
+import ObjectTypeLegend from '~/components/ocpt/ObjectTypeLegend';
 import { Button } from '~/components/ui/button';
 
 import {
@@ -14,7 +14,7 @@ import {
     SidebarMenuItem,
 } from '~/components/ui/sidebar';
 import { Switch } from '~/components/ui/switch';
-import { useIsOcptMode, useStoredFiles } from '~/store';
+import { useIsOcptMode, useStoredFiles } from '~/stores/store';
 
 import {
     Dialog,

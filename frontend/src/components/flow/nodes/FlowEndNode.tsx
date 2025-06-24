@@ -1,6 +1,6 @@
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
 import { memo } from 'react';
-import { useColorScaleStore } from '~/store';
+import { useColorScaleStore } from '~/stores/store';
 
 type FlowEndNodeProps = {
     ot: string;

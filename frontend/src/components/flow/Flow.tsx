@@ -15,18 +15,18 @@ import {
     useOcel,
     useOriginalRenderedOcpt,
     usePlaybackStore,
-} from '~/store';
-import { visualizeFlowFromJson } from '~/components/flow/visualizeFlowFromJsonAlt';
+} from '~/stores/store';
+import { visualizeFlowFromJson } from '~/lib/flow/visualizeFlowFromJsonAlt';
 import FlowXorNode from '~/components/flow/nodes/FlowXorNode';
 import FlowActivityDecisionNode from '~/components/flow/nodes/FlowActivityDecisionNode';
 import FlowParallelNode from '~/components/flow/nodes/FlowParallelNode';
 import FlowDivLoopNode from '~/components/flow/nodes/FlowDivLoopNode';
-import { ocptToFlowJson } from '~/components/flow/ocptToFlowJson';
-import type { AltFlowJson } from '~/components/flow/altFlow.types.ts';
-import { projectTreeOntoOT } from '~/components/ocpt/ocptProject';
+import { ocptToFlowJson } from '~/lib/flow/ocptToFlowJson';
+import type { AltFlowJson } from '~/types/flow/altFlow.types';
+import { projectTreeOntoOT } from '~/lib/ocpt/ocptProject';
 import { cloneDeep } from 'lodash-es';
-import { visualizeObject } from '~/components/flow/visualizeObjectAlt';
-import type { ObjectFlowAtEdge } from '~/components/ocel.types';
+import { visualizeObject } from '~/lib/flow/visualizeObjectAlt';
+import type { ObjectFlowAtEdge } from '~/types/ocel.types';
 import TimelineControls from '~/components/flow/TimelineControls';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
