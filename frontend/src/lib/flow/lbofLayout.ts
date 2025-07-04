@@ -6,6 +6,7 @@ import { ACTIVITY_NODE_HEIGHT, ACTIVITY_NODE_WIDTH, LANE_Y_OFFSET, NODE_X_SPACIN
 import { OperatorNodeSize } from '~/lib/flow/nodeOperatorSize';
 import { Logger } from '~/lib/logger';
 import { addDecisionAndEdgeNodesForActivities, createEdge } from '~/lib/flow/lbofLayout.helper';
+import { HorizontalOverlapResolver } from '~/lib/flow/sweepLine';
 
 export const visualizeFlowFromJson = (
     jsonFlows: AltFlowJson[]
@@ -19,10 +20,6 @@ export const visualizeFlowFromJson = (
     let currentX = 0;
     const activityNodesByActivityName = new Map<string, Node>();
 
-    // This map does not include connector nodes, as connector nodes are positioned relative to their
-    // parent activity node.
-    const nodesByX = new Map<number, Node>();
-
     // Iterate over each lane.
     jsonFlows.forEach((jsonFlow, otIndex) => {
         const otYBase = LANE_Y_OFFSET + otIndex * 300;
@@ -32,7 +29,9 @@ export const visualizeFlowFromJson = (
             let currentY = otYBase;
             // When in a branch, adjust the y-Coordinate.
             if (object.branchInfo) {
-                currentY += object.branchInfo.depth * object.branchInfo.branchId * 150;
+                // The first case makes sure to use the first level height lane
+                if (object.branchInfo.depth === 1 && object.branchInfo.branchId === 0) currentY += 0;
+                else currentY += object.branchInfo.depth * (object.branchInfo.branchId + 1) * 50;
             }
 
             let activityNodeOffset = 0;
@@ -117,6 +116,13 @@ export const visualizeFlowFromJson = (
                 currentX += NODE_X_SPACING;
             }
         });
+
+        // After adding the nodes for the current object type resolve potential overlaps in x-axis
+        const resolver = new HorizontalOverlapResolver();
+
+        const nonDecisionNodes = allNodes.filter((node) => node.type != 'activityDecisionNode');
+
+        resolver.resolveHorizontalOverlaps(nonDecisionNodes);
 
         // Reset X position to iterate over the next lane.
         currentX = 0;
