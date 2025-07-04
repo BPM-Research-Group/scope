@@ -1,3 +1,4 @@
+// Logger class following the Singleton des
 export class Logger {
     private isVerbose: boolean;
     static instance: Logger;

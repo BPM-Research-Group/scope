@@ -15,7 +15,7 @@ import {
     useOriginalRenderedOcpt,
     usePlaybackStore,
 } from '~/stores/store';
-import { visualizeFlowFromJson } from '~/lib/flow/visualizeFlowFromJsonAlt';
+import { visualizeFlowFromJson } from '~/lib/flow/lbofLayout';
 import FlowXorNode from '~/components/flow/nodes/FlowXorNode';
 import FlowActivityDecisionNode from '~/components/flow/nodes/FlowActivityDecisionNode';
 import FlowParallelNode from '~/components/flow/nodes/FlowParallelNode';

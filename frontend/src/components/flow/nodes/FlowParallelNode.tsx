@@ -12,6 +12,7 @@ export type PlusNodeType = Node<PlusNodeBaseProps>;
 
 const FlowParallelNode = memo(({ data, id, height, width }: NodeProps<PlusNodeType>) => {
     const branchCount = data.branches || 1;
+    console.log("Parallel")
 
     return (
         <div className="relative flex items-center justify-center" style={{ height: height, width: width }}>

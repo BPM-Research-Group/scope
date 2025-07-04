@@ -14,13 +14,7 @@ const getChildrenIds = (children: AltFlowNode[]) => {
     return ids;
 };
 
-export const ocptToFlowJson = (
-    ocpt: HierarchyPointNode<TreeNode>,
-    activitiesArray: string[],
-    ot: string,
-    verbose: boolean = false
-) => {
-    // Get Logger instance.
+export const ocptToFlowJson = (ocpt: HierarchyPointNode<TreeNode>, activitiesArray: string[], ot: string) => {
     const logger = Logger.getInstance();
 
     const flowJson: AltFlowJson = {
