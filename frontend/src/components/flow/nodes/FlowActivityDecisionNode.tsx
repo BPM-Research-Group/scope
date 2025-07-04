@@ -11,9 +11,9 @@ type ActivityDecisionNodeProps = {
 
 export type ActivityDecisionNodeType = Node<ActivityDecisionNodeProps>;
 
-const FlowActivityDecisionNode = memo(({ data, id }: NodeProps<ActivityDecisionNodeType>) => {
+const FlowActivityDecisionNode = memo(({ data, id, height, width }: NodeProps<ActivityDecisionNodeType>) => {
     return (
-        <div className="relative w-8 h-4 border border-black bg-gray-400">
+        <div style={{ height: height, width: width }} className="relative border border-black bg-gray-400">
             {/* Always render either the Left target handle or Right source handle */}
             {data.isBeginningActivityDecisionNode ? (
                 <Handle isConnectable={false} type="target" position={Position.Left} id={`${id}-in`} />

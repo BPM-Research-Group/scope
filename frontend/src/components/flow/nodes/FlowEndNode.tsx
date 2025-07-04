@@ -8,16 +8,19 @@ type FlowEndNodeProps = {
 
 type FlowEndNodeType = Node<FlowEndNodeProps>;
 
-const FlowEndNode = memo(({ data, id }: NodeProps<FlowEndNodeType>) => {
+const FlowEndNode = memo(({ data, id, height, width }: NodeProps<FlowEndNodeType>) => {
     const { colorScale } = useColorScaleStore();
 
     return (
         <div
-            className={`w-8 h-8 rounded-full border-[3px] flex justify-center items-center`}
-            style={{ borderColor: colorScale(data.ot) }}
+            className={`rounded-full border-[3px] flex justify-center items-center`}
+            style={{ height: height, width: width, borderColor: colorScale(data.ot) }}
         >
             <Handle type="target" position={Position.Left} id={`${id}-in`} />
-            <div className={`w-6 h-6 rounded-full border-[3px]`} style={{ borderColor: colorScale(data.ot) }} />
+            <div
+                className={`rounded-full border-[3px]`}
+                style={{ height: height! - 10, width: width! - 10, borderColor: colorScale(data.ot) }}
+            />
         </div>
     );
 });

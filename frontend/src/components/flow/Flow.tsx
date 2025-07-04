@@ -2,7 +2,6 @@ import { ReactFlow, Background, useNodesState, useEdgesState, Controls, type Nod
 import '@xyflow/react/dist/style.css';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatedSVGEdge, type AnimatedSvgEdgeData } from '~/components/flow/AnimateEdge';
-import FlowActivityNode from '~/components/flow/nodes/FlowActivityNode';
 import FlowEndNode from '~/components/flow/nodes/FlowEndNode';
 import FlowStartNode from '~/components/flow/nodes/FlowStartNode';
 import LabeledGroupNodeDemo from '~/components/flow/nodes/LabeledGroupNode';
@@ -16,7 +15,7 @@ import {
     useOriginalRenderedOcpt,
     usePlaybackStore,
 } from '~/stores/store';
-import { visualizeFlowFromJson } from '~/lib/flow/visualizeFlowFromJsonAlt';
+import { visualizeFlowFromJson } from '~/lib/flow/lbofLayout';
 import FlowXorNode from '~/components/flow/nodes/FlowXorNode';
 import FlowActivityDecisionNode from '~/components/flow/nodes/FlowActivityDecisionNode';
 import FlowParallelNode from '~/components/flow/nodes/FlowParallelNode';
@@ -31,6 +30,7 @@ import TimelineControls from '~/components/flow/TimelineControls';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { MotionPathPlugin } from 'gsap/MotionPathPlugin';
+import { Logger } from '~/lib/logger';
 
 // This is required to initialize GSAP for the animations. We do this initialization in this component
 // instead of the Edge Component as this component is only rendered once.
@@ -40,6 +40,9 @@ gsap.registerPlugin(MotionPathPlugin);
 const EmptyNode = () => {
     return null;
 };
+
+const log = Logger.getInstance();
+log.setVerbose(true);
 
 interface FlowWithAnimationProps {
     objectTypes: string[];
@@ -194,12 +197,13 @@ const FlowWithAnimation: React.FC<FlowWithAnimationProps> = ({ objectTypes }) =>
                 }
             });
 
-            console.log('Flow Jsons', flowJsons);
+            log.debug('Flow Jsons', flowJsons);
             const flows = visualizeFlowFromJson(flowJsons);
             setFlowJson(flows);
             setNodes(flows.nodes);
             setEdges(flows.edges as Edge<AnimatedSvgEdgeData>[]);
-            console.log('Edges of the FLow', flows.edges);
+            log.debug('Created Nodes for the Flow JSON Files:', flows.nodes);
+            log.debug('Created Edges for the Flow JSON Files:', flows.edges);
 
             if (!objectFlowMap) return;
 
@@ -259,7 +263,6 @@ const FlowWithAnimation: React.FC<FlowWithAnimationProps> = ({ objectTypes }) =>
 
     const nodeTypes = useMemo(
         () => ({
-            activity: FlowActivityNode,
             startEvent: FlowStartNode,
             labeledGroupNode: LabeledGroupNodeDemo,
             endEvent: FlowEndNode,

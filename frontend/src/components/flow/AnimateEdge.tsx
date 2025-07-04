@@ -167,7 +167,7 @@ export const AnimatedSVGEdge = ({
             }
 
             // For each visible token, check if it needs animation
-            visibleTokens.forEach((token) => {
+            visibleTokens.forEach((token, i) => {
                 const tokenId = token.id;
                 const element = tokenRefs.current.get(tokenId);
 
@@ -182,6 +182,7 @@ export const AnimatedSVGEdge = ({
                         path: edgePath,
                         alignOrigin: [0.5, 0.5],
                     },
+                    delay: 0.5 * i,
                     immediateRender: false,
                     onComplete: () => {
                         setCompletedTokens((prev) => new Set(prev).add(token));

@@ -1,5 +1,11 @@
+import getLinkComponent from '~/components/ocpt/getLinkComponent';
 import { type HierarchyPointLinkObjectCentric, type TreeNode } from '~/types/ocpt/ocpt.types';
-import { LinkLine } from '~/components/ocpt/ocptLink.utils';
+
+const LinkLine = getLinkComponent({
+    layout: 'cartesian',
+    linkType: 'line',
+    orientation: 'vertical',
+});
 
 interface OcptLinkProps {
     link: HierarchyPointLinkObjectCentric<TreeNode>;

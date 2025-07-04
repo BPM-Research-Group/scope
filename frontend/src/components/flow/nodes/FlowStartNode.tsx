@@ -8,11 +8,14 @@ type FlowStartNodeProps = {
 
 type FlowStartNodeType = Node<FlowStartNodeProps>;
 
-const FlowStartNode = memo(({ data, id }: NodeProps<FlowStartNodeType>) => {
+const FlowStartNode = memo(({ data, id, height, width }: NodeProps<FlowStartNodeType>) => {
     const { colorScale } = useColorScaleStore();
 
     return (
-        <div className={`w-8 h-8 rounded-full border-[3px]`} style={{ borderColor: colorScale(data.ot) }}>
+        <div
+            className={`rounded-full border-[3px]`}
+            style={{ height: height, width: width, borderColor: colorScale(data.ot) }}
+        >
             <Handle type="source" position={Position.Right} id={`${id}-out`} />
         </div>
     );
