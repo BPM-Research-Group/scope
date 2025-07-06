@@ -1,1 +1,1 @@
-export type TypeOfDataVisualization = 'OCPT';
+export type TypeOfDataVisualization = 'OCPT' | 'Explore';

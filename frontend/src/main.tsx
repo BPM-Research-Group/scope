@@ -6,6 +6,7 @@ import Upload from '~/routes/Upload';
 import OcptViewer from '~/routes/OcptViewer';
 import '~/index.css';
 import View from '~/routes/View';
+import Explore from '~/routes/Explore';
 
 const router = createBrowserRouter([
     {
@@ -23,6 +24,10 @@ const router = createBrowserRouter([
     {
         path: '/data/view/ocpt',
         element: <OcptViewer />,
+    },
+    {
+        path: '/data/view/explore',
+        element: <Explore />,
     },
 ]);
 

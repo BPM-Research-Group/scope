@@ -1,5 +1,5 @@
 import { BreadcrumbItem, BreadcrumbPage, BreadcrumbSeparator } from '~/components/ui/breadcrumb';
-import { Eye, File, House, Network } from 'lucide-react';
+import { Compass, Eye, File, House, Network } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import React from 'react';
 
@@ -19,6 +19,8 @@ const BreadCrumbPath: React.FC<BreadCrumbPathProps> = ({ pathnames }) => {
                 return <Network className={className} />;
             case 'home':
                 return <House className={className} />;
+            case 'explore':
+                return <Compass className={className} />;
         }
     };
 
