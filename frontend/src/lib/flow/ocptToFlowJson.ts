@@ -334,7 +334,112 @@ const buildFlowRecursive = (
         } else if (operator === 'skip') {
             return [];
         } else if (operator === 'loop') {
-            // Will do this some time later sorry for now
+            const thirdXorSplitId = getId('xorSplit');
+
+            const thirdXorJoinId = getId('xorJoin');
+            const thirdXorJoin: AltFlowNode = {
+                id: thirdXorJoinId,
+                type: 'inter',
+                value: {
+                    operator: 'xorJoin',
+                    branches: 1,
+                },
+                next: parentNodeId,
+                branchInfo: branchInfo,
+            };
+
+            const secondXorSplitId = getId('xorSplit');
+            const secondXorSplit: AltFlowNode = {
+                id: secondXorSplitId,
+                type: 'inter',
+                value: {
+                    operator: 'xorSplit',
+                    branches: 2,
+                },
+                next: [thirdXorJoinId, thirdXorSplitId],
+                branchInfo: branchInfo,
+            };
+
+            const firstChild = node.children[0];
+
+            const firstChildResult = buildFlowRecursive(
+                firstChild,
+                getId,
+                branchInfo,
+                isArbitrarySubtree,
+                secondXorSplitId,
+                ot,
+                logger
+            );
+
+            const firstChildIds = getChildrenIds(firstChildResult);
+            const firstChildId = firstChildIds[0];
+
+            const firstXorSplitId = getId('xorSplit');
+            const firstXorSplit: AltFlowNode = {
+                id: firstXorSplitId,
+                type: 'inter',
+                value: {
+                    operator: 'xorSplit',
+                    branches: 1,
+                },
+                next: firstChildId,
+                branchInfo: branchInfo,
+            };
+
+            const otherChildrenResult: AltFlowNode[] = [];
+            const otherChildren = node.children.slice(1);
+            otherChildren.forEach((childNode) => {
+                const childResult = buildFlowRecursive(
+                    childNode,
+                    getId,
+                    branchInfo,
+                    isArbitrarySubtree,
+                    firstXorSplitId,
+                    ot,
+                    logger
+                );
+                if (childResult.length > 0) {
+                    otherChildrenResult.push(...childResult);
+                }
+            });
+            const otherChildrenIds = getChildrenIds(otherChildrenResult);
+            const otherChildrenIdsLen = otherChildrenIds.length;
+
+            const thirdXorSplit: AltFlowNode = {
+                id: thirdXorSplitId,
+                type: 'inter',
+                value: {
+                    operator: 'xorSplit',
+                    branches: otherChildrenIdsLen,
+                },
+                next: otherChildrenIds,
+                branchInfo: branchInfo,
+            };
+
+            const secondXorJoinId = getId('xorJoin');
+            const secondXorJoin: AltFlowNode = {
+                id: secondXorJoinId,
+                type: 'inter',
+                value: {
+                    operator: 'xorJoin',
+                    branches: 1,
+                },
+                next: firstXorSplitId,
+                branchInfo: branchInfo,
+            };
+
+            const firstXorJoinId = getId('xorJoin');
+            const firstXorJoin: AltFlowNode = {
+                id: firstXorJoinId,
+                type: 'inter',
+                value: {
+                    operator: 'xorSplit',
+                    branches: otherChildrenIdsLen,
+                },
+                next: secondXorJoinId,
+                branchInfo: branchInfo,
+            };
         } else {
             // unknown operator error!
             logger.error('Encountered an unknown operator!', operator, node);
