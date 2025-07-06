@@ -375,13 +375,13 @@ const buildFlowRecursive = (
             const firstChildIds = getChildrenIds(firstChildResult);
             const firstChildId = firstChildIds[0];
 
-            const firstXorSplitId = getId('xorSplit');
-            const firstXorSplit: AltFlowNode = {
-                id: firstXorSplitId,
+            const zeroXorJoinId = getId('xorJoin');
+            const zeroXorJoin: AltFlowNode = {
+                id: zeroXorJoinId,
                 type: 'inter',
                 value: {
-                    operator: 'xorSplit',
-                    branches: 1,
+                    operator: 'xorJoin',
+                    branches: 2,
                 },
                 next: firstChildId,
                 branchInfo: branchInfo,
@@ -395,7 +395,7 @@ const buildFlowRecursive = (
                     getId,
                     branchInfo,
                     isArbitrarySubtree,
-                    firstXorSplitId,
+                    zeroXorJoinId,
                     ot,
                     logger
                 );
@@ -425,7 +425,7 @@ const buildFlowRecursive = (
                     operator: 'xorJoin',
                     branches: 1,
                 },
-                next: firstXorSplitId,
+                next: zeroXorJoinId,
                 branchInfo: branchInfo,
             };
 
@@ -440,6 +440,17 @@ const buildFlowRecursive = (
                 next: secondXorJoinId,
                 branchInfo: branchInfo,
             };
+
+            return [
+                zeroXorJoin,
+                ...firstChildResult,
+                secondXorSplit,
+                thirdXorSplit,
+                ...otherChildrenResult,
+                firstXorJoin,
+                secondXorJoin,
+                thirdXorJoin,
+            ];
         } else {
             // unknown operator error!
             logger.error('Encountered an unknown operator!', operator, node);

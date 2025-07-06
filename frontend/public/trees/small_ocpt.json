@@ -1,5 +1,10 @@
 {
-    "ots": ["Order", "Item", "Customer", "Package"],
+    "ots": [
+        "Order",
+        "Item",
+        "Customer",
+        "Package"
+    ],
     "hierarchy": {
         "value": "sequence",
         "children": [
@@ -12,11 +17,15 @@
                         },
                         {
                             "ot": "Customer",
-                            "exhibits": ["div"]
+                            "exhibits": [
+                                "div"
+                            ]
                         },
                         {
                             "ot": "Item",
-                            "exhibits": ["con"]
+                            "exhibits": [
+                                "con"
+                            ]
                         }
                     ]
                 }
@@ -33,7 +42,9 @@
                                 },
                                 {
                                     "ot": "Customer",
-                                    "exhibits": ["div"]
+                                    "exhibits": [
+                                        "div"
+                                    ]
                                 }
                             ]
                         }
@@ -42,7 +53,7 @@
                         "value": "sequence",
                         "children": [
                             {
-                                "value": "xor",
+                                "value": "loop",
                                 "children": [
                                     {
                                         "value": {
@@ -53,7 +64,10 @@
                                                 },
                                                 {
                                                     "ot": "Order",
-                                                    "exhibits": ["div", "def"]
+                                                    "exhibits": [
+                                                        "div",
+                                                        "def"
+                                                    ]
                                                 }
                                             ]
                                         }
@@ -76,15 +90,22 @@
                                         },
                                         {
                                             "ot": "Item",
-                                            "exhibits": ["con"]
+                                            "exhibits": [
+                                                "con"
+                                            ]
                                         },
                                         {
                                             "ot": "Order",
-                                            "exhibits": ["cov", "div"]
+                                            "exhibits": [
+                                                "cov",
+                                                "div"
+                                            ]
                                         },
                                         {
                                             "ot": "Customer",
-                                            "exhibits": ["div"]
+                                            "exhibits": [
+                                                "div"
+                                            ]
                                         }
                                     ]
                                 }
