@@ -1,6 +1,6 @@
 import '@xyflow/react/dist/style.css';
 
-import { useCallback } from 'react';
+import { useCallback, type MouseEvent as ReactMouseEvent, DragEvent } from 'react';
 import {
     Background,
     Controls,
@@ -11,6 +11,7 @@ import {
     type Edge,
     type Node,
     type Connection,
+    useReactFlow,
 } from '@xyflow/react';
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 
@@ -18,6 +19,9 @@ import OcelFileNode from '~/components/explore/nodes/OcelFileNode';
 import OcptFileNode from '~/components/explore/nodes/OcptFileNode';
 import OcptViewerNode, { type OcptViewerNodeType } from '~/components/explore/nodes/OcptViewerNode';
 import { Logger } from '~/lib/logger';
+import ExploreSidebar from '~/components/explore/ExploreSidebar';
+import { SidebarProvider } from '~/components/ui/sidebar';
+// import { useDnD } from '~/components/explore/DnDContext';
 
 const logger = Logger.getInstance();
 
@@ -59,6 +63,45 @@ const defaultNodes: NodeTypes[] = [
 const Explore: React.FC = () => {
     const [nodes, setNodes, onNodesChange] = useNodesState(defaultNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState([] as Edge[]);
+    // const { screenToFlowPosition } = useReactFlow();
+    // const [type] = useDnD();
+
+    const onEdgeDelete = useCallback(
+        (event: ReactMouseEvent, edge: Edge) => {
+            event.stopPropagation();
+            setEdges((eds) => eds.filter((e) => e.id !== edge.id));
+        },
+        [setEdges]
+    );
+
+    // const onDrop = useCallback(
+    //     (event: DragEvent<HTMLElement>) => {
+    //         event.preventDefault();
+
+    //         // check if the dropped element is valid
+    //         if (!type) {
+    //             return;
+    //         }
+
+    //         // project was renamed to screenToFlowPosition
+    //         // and you don't need to subtract the reactFlowBounds.left/top anymore
+    //         // details: https://reactflow.dev/whats-new/2023-11-10
+    //         const position = screenToFlowPosition({
+    //             x: event.clientX,
+    //             y: event.clientY,
+    //         });
+    //         const newNode = {
+    //             id: '5',
+    //             type,
+    //             position,
+    //             data: { file: '' },
+    //         };
+
+    //         // setNodes([...nodes, newNode]);
+    //         setNodes((nds) => nds.concat(newNode));
+    //     },
+    //     [screenToFlowPosition, type]
+    // );
 
     const onConnect = useCallback(
         (params: Connection) => {
@@ -100,23 +143,27 @@ const Explore: React.FC = () => {
     );
 
     return (
-        <div className="h-screen w-screen overflow-hidden">
-            <BreadcrumbNav />
-            <div className="h-full w-full">
-                <ReactFlow
-                    nodeTypes={nodeTypes}
-                    nodes={nodes}
-                    edges={edges}
-                    onNodesChange={onNodesChange}
-                    onEdgesChange={onEdgesChange}
-                    onConnect={onConnect}
-                    fitView
-                >
-                    <Background />
-                    <Controls position="top-left" />
-                </ReactFlow>
+        <SidebarProvider>
+            <div className="h-screen w-screen overflow-hidden">
+                <BreadcrumbNav />
+                <div className="h-full w-full">
+                    <ReactFlow
+                        nodeTypes={nodeTypes}
+                        nodes={nodes}
+                        edges={edges}
+                        onNodesChange={onNodesChange}
+                        onEdgesChange={onEdgesChange}
+                        onConnect={onConnect}
+                        onEdgeClick={onEdgeDelete}
+                        // onDrop={onDrop}
+                    >
+                        <Background />
+                        <Controls position="top-left" />
+                    </ReactFlow>
+                    <ExploreSidebar />
+                </div>
             </div>
-        </div>
+        </SidebarProvider>
     );
 };
 

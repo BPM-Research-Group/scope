@@ -23,10 +23,10 @@ const OcptFileNode = memo(({ selected }: NodeProps) => {
                 </NodeHeaderIcon>
                 <NodeHeaderTitle>OCPT File</NodeHeaderTitle>
                 <NodeHeaderActions>
-                    <NodeHeaderMenuAction label="Expand account options">
+                    <NodeHeaderMenuAction label="File Settings">
                         <DropdownMenuLabel>My Account</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem>Profile</DropdownMenuItem>
+                        <DropdownMenuItem>Change File</DropdownMenuItem>
                         <DropdownMenuItem>Billing</DropdownMenuItem>
                         <DropdownMenuItem>Team</DropdownMenuItem>
                         <DropdownMenuItem>Subscription</DropdownMenuItem>
