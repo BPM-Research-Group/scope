@@ -1,4 +1,4 @@
-import { FileJson, FileSpreadsheet } from 'lucide-react';
+import { Eye, File, FileJson, FileSpreadsheet, Network } from 'lucide-react';
 import DndCard from '~/components/explore/DndCard';
 import {
     Sidebar,
@@ -17,8 +17,11 @@ const ExploreSidebar: React.FC<ExploreSidebarProps> = ({}) => {
         <Sidebar side="right">
             <SidebarContent>
                 <SidebarGroup>
-                    <SidebarGroupLabel>File Input</SidebarGroupLabel>
-                    <SidebarGroupContent>
+                    <SidebarGroupLabel>
+                        <File />
+                        <p className="ml-1">File Input</p>
+                    </SidebarGroupLabel>
+                    <SidebarGroupContent className="p-1">
                         <SidebarMenu className="flex flex-row">
                             <SidebarMenuItem className="ml-1">
                                 <DndCard title="OCPT File" Icon={FileJson} nodeType="ocptFileNode" />
@@ -30,10 +33,15 @@ const ExploreSidebar: React.FC<ExploreSidebarProps> = ({}) => {
                     </SidebarGroupContent>
                 </SidebarGroup>
                 <SidebarGroup>
-                    <SidebarGroupLabel>Visualizations</SidebarGroupLabel>
-                    <SidebarGroupContent>
+                    <SidebarGroupLabel>
+                        <Eye />
+                        <p className="ml-1">Visualizations</p>
+                    </SidebarGroupLabel>
+                    <SidebarGroupContent className="p-1">
                         <SidebarMenu>
-                            <SidebarMenuItem className="ml-1">OCPT Visualization</SidebarMenuItem>
+                            <SidebarMenuItem className="ml-1">
+                                <DndCard title="OCPT Viewer" Icon={Network} nodeType="ocptViewerNode" />
+                            </SidebarMenuItem>
                             <SidebarMenuItem className="ml-1">LBOF Visualization</SidebarMenuItem>
                         </SidebarMenu>
                     </SidebarGroupContent>
