@@ -12,6 +12,7 @@ import {
     type Node,
     type Connection,
     useReactFlow,
+    ReactFlowProvider,
 } from '@xyflow/react';
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 
@@ -21,7 +22,7 @@ import OcptViewerNode, { type OcptViewerNodeType } from '~/components/explore/no
 import { Logger } from '~/lib/logger';
 import ExploreSidebar from '~/components/explore/ExploreSidebar';
 import { SidebarProvider } from '~/components/ui/sidebar';
-// import { useDnD } from '~/components/explore/DnDContext';
+import { DnDProvider, useDnD } from '~/components/explore/DnDContext';
 
 const logger = Logger.getInstance();
 
@@ -32,6 +33,9 @@ const nodeTypes = {
 };
 
 type NodeTypes = OcptViewerNodeType;
+
+let id = 0;
+const getId = (nodeType: string) => `${nodeType}_${id++}`;
 
 const defaultNodes: NodeTypes[] = [
     {
@@ -63,8 +67,8 @@ const defaultNodes: NodeTypes[] = [
 const Explore: React.FC = () => {
     const [nodes, setNodes, onNodesChange] = useNodesState(defaultNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState([] as Edge[]);
-    // const { screenToFlowPosition } = useReactFlow();
-    // const [type] = useDnD();
+    const { screenToFlowPosition } = useReactFlow();
+    const [type] = useDnD();
 
     const onEdgeDelete = useCallback(
         (event: ReactMouseEvent, edge: Edge) => {
@@ -74,34 +78,35 @@ const Explore: React.FC = () => {
         [setEdges]
     );
 
-    // const onDrop = useCallback(
-    //     (event: DragEvent<HTMLElement>) => {
-    //         event.preventDefault();
+    const onDragOver = useCallback((event: DragEvent<HTMLElement>) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+    }, []);
 
-    //         // check if the dropped element is valid
-    //         if (!type) {
-    //             return;
-    //         }
+    const onDrop = useCallback(
+        (event: DragEvent<HTMLElement>) => {
+            event.preventDefault();
 
-    //         // project was renamed to screenToFlowPosition
-    //         // and you don't need to subtract the reactFlowBounds.left/top anymore
-    //         // details: https://reactflow.dev/whats-new/2023-11-10
-    //         const position = screenToFlowPosition({
-    //             x: event.clientX,
-    //             y: event.clientY,
-    //         });
-    //         const newNode = {
-    //             id: '5',
-    //             type,
-    //             position,
-    //             data: { file: '' },
-    //         };
+            if (!type) {
+                return;
+            }
 
-    //         // setNodes([...nodes, newNode]);
-    //         setNodes((nds) => nds.concat(newNode));
-    //     },
-    //     [screenToFlowPosition, type]
-    // );
+            const position = screenToFlowPosition({
+                x: event.clientX,
+                y: event.clientY,
+            });
+
+            const newNode = {
+                id: getId(type),
+                type,
+                position,
+                data: { file: '' },
+            };
+
+            setNodes((nds) => nds.concat(newNode));
+        },
+        [screenToFlowPosition, type]
+    );
 
     const onConnect = useCallback(
         (params: Connection) => {
@@ -155,7 +160,8 @@ const Explore: React.FC = () => {
                         onEdgesChange={onEdgesChange}
                         onConnect={onConnect}
                         onEdgeClick={onEdgeDelete}
-                        // onDrop={onDrop}
+                        onDrop={onDrop}
+                        onDragOver={onDragOver}
                     >
                         <Background />
                         <Controls position="top-left" />
@@ -167,4 +173,10 @@ const Explore: React.FC = () => {
     );
 };
 
-export default Explore;
+export default () => (
+    <ReactFlowProvider>
+        <DnDProvider>
+            <Explore />
+        </DnDProvider>
+    </ReactFlowProvider>
+);

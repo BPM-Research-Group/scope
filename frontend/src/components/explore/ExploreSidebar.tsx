@@ -1,4 +1,5 @@
-// import { useDnD } from '~/components/explore/DnDContext';
+import { FileJson, FileSpreadsheet } from 'lucide-react';
+import DndCard from '~/components/explore/DndCard';
 import {
     Sidebar,
     SidebarContent,
@@ -12,30 +13,19 @@ import {
 interface ExploreSidebarProps {}
 
 const ExploreSidebar: React.FC<ExploreSidebarProps> = ({}) => {
-    // const [_, setType] = useDnD();
-
-    // const onDragStart = (event: any, nodeType: any) => {
-    //     setType(nodeType);
-    //     event.dataTransfer.effectAllowed = 'move';
-    // };
-
     return (
         <Sidebar side="right">
             <SidebarContent>
                 <SidebarGroup>
                     <SidebarGroupLabel>File Input</SidebarGroupLabel>
                     <SidebarGroupContent>
-                        <SidebarMenu>
+                        <SidebarMenu className="flex flex-row">
                             <SidebarMenuItem className="ml-1">
-                                <div
-                                    className="w-6 h-6 bg-slate-400"
-                                    // onDragStart={(event) => onDragStart(event, 'input')}
-                                    draggable
-                                >
-                                    <p>OCPT File</p>
-                                </div>
+                                <DndCard title="OCPT File" Icon={FileJson} nodeType="ocptFileNode" />
                             </SidebarMenuItem>
-                            <SidebarMenuItem className="ml-1">OCEL File</SidebarMenuItem>
+                            <SidebarMenuItem className="ml-1">
+                                <DndCard title="OCEL File" Icon={FileSpreadsheet} nodeType="ocelFileNode" />
+                            </SidebarMenuItem>
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>
