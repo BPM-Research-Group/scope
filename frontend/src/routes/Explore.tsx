@@ -1,5 +1,3 @@
-import '@xyflow/react/dist/style.css';
-
 import { useCallback, type MouseEvent as ReactMouseEvent, DragEvent } from 'react';
 import {
     Background,
@@ -9,63 +7,31 @@ import {
     useNodesState,
     addEdge,
     type Edge,
+    type Node,
     type Connection,
     useReactFlow,
     ReactFlowProvider,
 } from '@xyflow/react';
-import BreadcrumbNav from '~/components/BreadcrumbNav';
-
-import OcelFileNode from '~/components/explore/nodes/OcelFileNode';
-import OcptFileNode from '~/components/explore/nodes/OcptFileNode';
-import ExploreNode from '~/components/explore/ExploreNode';
-import OcptViewerNode, { type OcptViewerNodeType } from '~/components/explore/nodes/OcptViewerNode';
 import { Logger } from '~/lib/logger';
-import ExploreSidebar from '~/components/explore/ExploreSidebar';
 import { SidebarProvider } from '~/components/ui/sidebar';
-import { DnDProvider, useDnD } from '~/components/explore/DnDContext';
+import { DnDProvider, useDnD } from '~/components/explore/DndContext';
 import { ExploreNodeModel } from '~/components/explore/ExploreNodeModel';
+
+import BreadcrumbNav from '~/components/BreadcrumbNav';
+import ExploreNode from '~/components/explore/ExploreNode';
+import ExploreSidebar from '~/components/explore/ExploreSidebar';
 
 const logger = Logger.getInstance();
 
 const nodeTypes = {
-    ocptFileNode: OcptFileNode,
-    ocelFileNode: OcelFileNode,
-    ocptViewerNode: OcptViewerNode,
     exploreNode: ExploreNode,
 };
 
-const defaultNodes: any[] = [
-    {
-        id: '1',
-        type: 'ocptFileNode',
-        position: { x: 200, y: 200 },
-        data: {
-            file: 'hi',
-        },
-    },
-    {
-        id: '2',
-        type: 'ocelFileNode',
-        position: { x: 600, y: 200 },
-        data: {
-            file: null,
-        },
-    },
-    {
-        id: '3',
-        type: 'ocptViewerNode',
-        position: { x: 800, y: 200 },
-        data: {
-            file: '',
-        },
-    },
-];
-
 const Explore: React.FC = () => {
-    const [nodes, setNodes, onNodesChange] = useNodesState(defaultNodes);
+    const [nodes, setNodes, onNodesChange] = useNodesState([] as Node[]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([] as Edge[]);
-    const { screenToFlowPosition } = useReactFlow();
     const [type] = useDnD();
+    const { screenToFlowPosition } = useReactFlow();
 
     const onEdgeDelete = useCallback(
         (event: ReactMouseEvent, edge: Edge) => {

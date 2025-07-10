@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Handle, NodeProps, Position, type Node } from '@xyflow/react';
+import { Handle, NodeProps, type Node } from '@xyflow/react';
 import { BaseNode } from '~/components/ui/base-node';
 import {
     NodeHeader,
@@ -16,6 +16,7 @@ type ExploreNodeProps = Node<ExploreNodeData>;
 
 const ExploreNode = memo<NodeProps<ExploreNodeProps>>(
     ({
+        id,
         selected,
         data: {
             display: { Icon, title },
@@ -23,7 +24,7 @@ const ExploreNode = memo<NodeProps<ExploreNodeProps>>(
         },
     }) => {
         return (
-            <BaseNode selected={selected} className="px-3 py-2">
+            <BaseNode key={id} selected={selected} className="px-3 py-2">
                 <NodeHeader className="-mx-3 -mt-2 border-b">
                     <NodeHeaderIcon>
                         <Icon />
@@ -42,10 +43,13 @@ const ExploreNode = memo<NodeProps<ExploreNodeProps>>(
                     </NodeHeaderActions>
                 </NodeHeader>
                 <div className="mt-2">empty</div>
-                {config.handleOptions.map((handleOption) => (
-                    <Handle position={handleOption.position} type={handleOption.type} />
+                {config.handleOptions.map((handleOption, index) => (
+                    <Handle
+                        key={`${id}-${handleOption.type}-${index}`}
+                        position={handleOption.position}
+                        type={handleOption.type}
+                    />
                 ))}
-                <Handle position={Position.Right} type="source" />
             </BaseNode>
         );
     }
