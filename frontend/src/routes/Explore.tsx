@@ -9,7 +9,6 @@ import {
     useNodesState,
     addEdge,
     type Edge,
-    type Node,
     type Connection,
     useReactFlow,
     ReactFlowProvider,
@@ -18,11 +17,13 @@ import BreadcrumbNav from '~/components/BreadcrumbNav';
 
 import OcelFileNode from '~/components/explore/nodes/OcelFileNode';
 import OcptFileNode from '~/components/explore/nodes/OcptFileNode';
+import ExploreNode from '~/components/explore/ExploreNode';
 import OcptViewerNode, { type OcptViewerNodeType } from '~/components/explore/nodes/OcptViewerNode';
 import { Logger } from '~/lib/logger';
 import ExploreSidebar from '~/components/explore/ExploreSidebar';
 import { SidebarProvider } from '~/components/ui/sidebar';
 import { DnDProvider, useDnD } from '~/components/explore/DnDContext';
+import { ExploreNodeModel } from '~/components/explore/ExploreNodeModel';
 
 const logger = Logger.getInstance();
 
@@ -30,14 +31,10 @@ const nodeTypes = {
     ocptFileNode: OcptFileNode,
     ocelFileNode: OcelFileNode,
     ocptViewerNode: OcptViewerNode,
+    exploreNode: ExploreNode,
 };
 
-type NodeTypes = OcptViewerNodeType;
-
-let id = 0;
-const getId = (nodeType: string) => `${nodeType}_${id++}`;
-
-const defaultNodes: NodeTypes[] = [
+const defaultNodes: any[] = [
     {
         id: '1',
         type: 'ocptFileNode',
@@ -96,12 +93,7 @@ const Explore: React.FC = () => {
                 y: event.clientY,
             });
 
-            const newNode = {
-                id: getId(type),
-                type,
-                position,
-                data: { file: '' },
-            };
+            const newNode = new ExploreNodeModel(position, type);
 
             setNodes((nds) => nds.concat(newNode));
         },
