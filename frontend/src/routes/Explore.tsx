@@ -1,4 +1,4 @@
-import { useCallback, type MouseEvent as ReactMouseEvent, DragEvent } from 'react';
+import { useCallback, type MouseEvent as ReactMouseEvent, DragEvent, useEffect } from 'react';
 import {
     Background,
     Controls,
@@ -15,7 +15,7 @@ import {
 import { Logger } from '~/lib/logger';
 import { SidebarProvider } from '~/components/ui/sidebar';
 import { DnDProvider, useDnD } from '~/components/explore/DndContext';
-import { ExploreNodeModel } from '~/components/explore/ExploreNodeModel';
+import { ExploreNodeModel, type ExploreNodeData } from '~/components/explore/ExploreNodeModel';
 
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 import ExploreNode from '~/components/explore/ExploreNode';
@@ -32,6 +32,14 @@ const Explore: React.FC = () => {
     const [edges, setEdges, onEdgesChange] = useEdgesState([] as Edge[]);
     const [type] = useDnD();
     const { screenToFlowPosition } = useReactFlow();
+
+    useEffect(() => {
+        console.log(nodes);
+    }, [nodes]);
+
+    const onNodeDataChange = (id: string, newData: ExploreNodeData) => {
+        setNodes((nds) => nds.map((node) => (node.id === id ? { ...node, data: { ...node.data, ...newData } } : node)));
+    };
 
     const onEdgeDelete = useCallback(
         (event: ReactMouseEvent, edge: Edge) => {
@@ -60,6 +68,7 @@ const Explore: React.FC = () => {
             });
 
             const newNode = new ExploreNodeModel(position, type);
+            newNode.data.onChange = onNodeDataChange;
 
             setNodes((nds) => nds.concat(newNode));
         },
@@ -68,22 +77,22 @@ const Explore: React.FC = () => {
 
     const onConnect = useCallback(
         (params: Connection) => {
-            const sourceNode = nodes.find((node) => node.id === params.source);
-            if (!sourceNode) {
-                logger.error('Did not find source node for connection', params);
-                return;
-            }
-            const targetNode = nodes.find((node) => node.id === params.target);
-            if (!targetNode) {
-                logger.error('Did not find target node for connection', params);
-                return;
-            }
-            console.log(sourceNode);
+            setNodes((nds) => {
+                const sourceNode = nds.find((node) => node.id === params.source);
+                if (!sourceNode) {
+                    logger.error('Did not find source node for connection', params);
+                    return nds;
+                }
 
-            // OCPT File to OCPT Viewer
-            if (sourceNode.nodeType === 'ocptFileNode' && targetNode.nodeType === 'ocptViewerNode') {
-                setNodes((nds) =>
-                    nds.map((node) => {
+                const targetNode = nds.find((node) => node.id === params.target);
+                if (!targetNode) {
+                    logger.error('Did not find target node for connection', params);
+                    return nds;
+                }
+
+                // OCPT File to OCPT Viewer
+                if (sourceNode.nodeType === 'ocptFileNode' && targetNode.nodeType === 'ocptViewerNode') {
+                    return nds.map((node) => {
                         if (node.id === params.target) {
                             return {
                                 ...node,
@@ -94,14 +103,15 @@ const Explore: React.FC = () => {
                             };
                         }
                         return node;
-                    })
-                );
-            }
-            console.log(nodes);
+                    });
+                }
+
+                return nds;
+            });
 
             setEdges((eds) => addEdge(params, eds));
         },
-        [nodes, setEdges]
+        [setNodes, setEdges]
     );
 
     return (

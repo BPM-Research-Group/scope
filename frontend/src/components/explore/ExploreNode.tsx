@@ -18,78 +18,72 @@ import type { ExtendedFile } from '~/types/fileObject.types';
 
 type ExploreNodeProps = Node<ExploreNodeData>;
 
-const ExploreNode = memo<NodeProps<ExploreNodeProps>>(
-    ({
-        id,
-        selected,
-        data: {
-            display: { Icon, title },
-            config,
-        },
-    }) => {
-        const [open, setOpen] = useState(false);
-        const { files } = useStoredFiles();
+const ExploreNode = memo<NodeProps<ExploreNodeProps>>(({ id, selected, data }) => {
+    const [open, setOpen] = useState(false);
+    const { files } = useStoredFiles();
+    const { assets, config, display, onChange } = data;
 
-        const onFileSelect = (file: ExtendedFile) => {
-            console.log(file);
-        };
+    const onFileSelect = (file: ExtendedFile) => {
+        console.log(file);
+        const newAssets = [...assets, { fileId: file.id }];
+        onChange(id, { ...data, assets: newAssets });
+    };
 
-        const DropdownMenuItemAction = (action: ExploreNodeDropdownActionType) => {
-            switch (action) {
-                case 'openFileDialog':
-                    setOpen(true);
-            }
-        };
+    const DropdownMenuItemAction = (action: ExploreNodeDropdownActionType) => {
+        switch (action) {
+            case 'openFileDialog':
+                setOpen(true);
+        }
+    };
 
-        return (
-            <BaseNode key={id} selected={selected} className="px-3 py-2">
-                <NodeHeader className="-mx-3 -mt-2 border-b">
-                    <NodeHeaderIcon>
-                        <Icon />
-                    </NodeHeaderIcon>
-                    <NodeHeaderTitle>{title}</NodeHeaderTitle>
-                    <NodeHeaderActions>
-                        <NodeHeaderMenuAction label="Expand account options">
-                            <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            {config.dropdownOptions.map((ddOpt, index) => {
-                                return (
-                                    <DropdownMenuItem
-                                        key={`${id}-${ddOpt.label}-${index}`}
-                                        onClick={() => DropdownMenuItemAction(ddOpt.action)}
-                                    >
-                                        {ddOpt.label}
-                                    </DropdownMenuItem>
-                                );
-                            })}
-                        </NodeHeaderMenuAction>
-                        <NodeHeaderDeleteAction />
-                    </NodeHeaderActions>
-                    <Dialog open={open} onOpenChange={setOpen}>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Choose Event Log From Your Data</DialogTitle>
-                                <DialogDescription>
-                                    If you want to upload a new event log please go to the data page
-                                </DialogDescription>
-                                {files.map((file) => (
-                                    <FileShowcase file={file} onFileSelect={onFileSelect} />
-                                ))}
-                            </DialogHeader>
-                        </DialogContent>
-                    </Dialog>
-                </NodeHeader>
-                <div className="mt-2">empty</div>
-                {config.handleOptions.map((handleOption, index) => (
-                    <Handle
-                        key={`${id}-${handleOption.type}-${index}`}
-                        position={handleOption.position}
-                        type={handleOption.type}
-                    />
-                ))}
-            </BaseNode>
-        );
-    }
-);
+    return (
+        <BaseNode key={id} selected={selected} className="px-3 py-2">
+            <NodeHeader className="-mx-3 -mt-2 border-b">
+                <NodeHeaderIcon>
+                    <display.Icon />
+                </NodeHeaderIcon>
+                <NodeHeaderTitle>{display.title}</NodeHeaderTitle>
+                <NodeHeaderActions>
+                    <NodeHeaderMenuAction label="Expand account options">
+                        <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {config.dropdownOptions.map((ddOpt, index) => {
+                            return (
+                                <DropdownMenuItem
+                                    key={`${id}-${ddOpt.label}-${index}`}
+                                    onClick={() => DropdownMenuItemAction(ddOpt.action)}
+                                >
+                                    {ddOpt.label}
+                                </DropdownMenuItem>
+                            );
+                        })}
+                    </NodeHeaderMenuAction>
+                    <NodeHeaderDeleteAction />
+                </NodeHeaderActions>
+                <Dialog open={open} onOpenChange={setOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Choose Event Log From Your Data</DialogTitle>
+                            <DialogDescription>
+                                If you want to upload a new event log please go to the data page
+                            </DialogDescription>
+                            {files.map((file) => (
+                                <FileShowcase file={file} onFileSelect={onFileSelect} />
+                            ))}
+                        </DialogHeader>
+                    </DialogContent>
+                </Dialog>
+            </NodeHeader>
+            <div className="mt-2">empty</div>
+            {config.handleOptions.map((handleOption, index) => (
+                <Handle
+                    key={`${id}-${handleOption.type}-${index}`}
+                    position={handleOption.position}
+                    type={handleOption.type}
+                />
+            ))}
+        </BaseNode>
+    );
+});
 
 export default ExploreNode;

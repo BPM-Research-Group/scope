@@ -1,6 +1,6 @@
 import { Position, XYPosition, Node } from '@xyflow/react';
 import { FileJson, FileSpreadsheet, Network } from 'lucide-react';
-import type { ElementType } from 'react';
+import type { ElementType, VoidFunctionComponent } from 'react';
 import { getNodeCategory, type ExploreNodeCategory, type ExploreNodeType } from '~/types/explore/node.types';
 
 export type ExploreNodeDropdownActionType = 'openFileDialog' | 'changeSourceFile';
@@ -33,6 +33,7 @@ export interface ExploreNodeData extends Record<string, unknown> {
     display: ExploreNodeDisplay;
     config: ExploreNodeConfig;
     assets: ExploreNodeAsset[];
+    onChange: (id: string, newData: ExploreNodeData) => void;
 }
 
 export class ExploreNodeModel implements Node<ExploreNodeData> {
@@ -62,6 +63,7 @@ export class ExploreNodeModel implements Node<ExploreNodeData> {
             display: ExploreNodeModel.setNodeDisplay(nodeType),
             config: ExploreNodeModel.setNodeConfig(nodeCategory),
             assets: [],
+            onChange: () => {},
         };
     }
 
