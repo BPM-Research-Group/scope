@@ -3,9 +3,11 @@ import { scaleOrdinal } from '@visx/scale';
 import type { ScaleOrdinal } from 'd3-scale';
 import { schemeSet1 } from 'd3-scale-chromatic';
 import { create } from 'zustand';
+import type { ExtendedFile } from '~/types/fileObject.types';
 import type { FlowJson } from '~/types/flow/flow.types';
 import type { ObjectFlowMapRecord, OcelEventData } from '~/types/ocel.types';
 import { type JSONSchema, type TreeNode } from '~/types/ocpt/ocpt.types';
+import { v4 as uuidv4 } from 'uuid';
 
 // Used for Dropzone and File Management
 interface FileID {
@@ -29,9 +31,9 @@ interface OcelFile {
 }
 
 interface FileStore {
-    files: File[];
+    files: ExtendedFile[];
     addFile: (file: File) => void;
-    removeFile: (file: File) => void;
+    removeFile: (file: ExtendedFile) => void;
     clearFiles: () => void;
 }
 
@@ -115,7 +117,7 @@ export const useOcelFile = create<OcelFile>((set) => ({
 
 export const useStoredFiles = create<FileStore>((set) => ({
     files: [],
-    addFile: (file) => set((state) => ({ files: [...state.files, file] })),
+    addFile: (file) => set((state) => ({ files: [...state.files, Object.assign(file, { id: uuidv4() })] })),
     removeFile: (file) => set((state) => ({ files: state.files.filter((f) => f !== file) })),
     clearFiles: () => set((state) => ({ files: [] })),
 }));

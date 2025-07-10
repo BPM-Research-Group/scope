@@ -1,6 +1,7 @@
 import { DropEvent, FileRejection, useDropzone } from 'react-dropzone';
 import { useStoredFiles } from '~/stores/store';
 import { FileUp } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid';
 
 const Dropzone: React.FC = () => {
     // const { setAcceptedFile } = useAcceptedFile();
@@ -8,8 +9,11 @@ const Dropzone: React.FC = () => {
 
     const onDropAccepted = async (acceptedFiles: File[]) => {
         //Accepted Files is always an Array in React-Dropzone even if maxFiles is set to 1
-        console.log(acceptedFiles);
-        addFile(acceptedFiles[0]);
+        const id = uuidv4();
+        addFile({
+            id,
+            file: acceptedFiles[0],
+        });
     };
 
     const onDropRejected = async (rejectedFiles: FileRejection[], event: DropEvent) => {

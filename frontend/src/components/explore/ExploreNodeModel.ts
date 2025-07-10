@@ -3,6 +3,8 @@ import { FileJson, FileSpreadsheet, Network } from 'lucide-react';
 import type { ElementType } from 'react';
 import { getNodeCategory, type ExploreNodeCategory, type ExploreNodeType } from '~/types/explore/node.types';
 
+export type ExploreNodeDropdownActionType = 'openFileDialog' | 'changeSourceFile';
+
 interface ExploreNodeHandleOption {
     position: Position;
     type: 'source' | 'target';
@@ -10,7 +12,11 @@ interface ExploreNodeHandleOption {
 
 interface ExploreNodeDropdownOption {
     label: string;
-    action: () => void;
+    action: ExploreNodeDropdownActionType;
+}
+
+interface ExploreNodeAsset {
+    fileId: string;
 }
 
 interface ExploreNodeDisplay {
@@ -26,6 +32,7 @@ interface ExploreNodeConfig {
 export interface ExploreNodeData extends Record<string, unknown> {
     display: ExploreNodeDisplay;
     config: ExploreNodeConfig;
+    assets: ExploreNodeAsset[];
 }
 
 export class ExploreNodeModel implements Node<ExploreNodeData> {
@@ -52,8 +59,9 @@ export class ExploreNodeModel implements Node<ExploreNodeData> {
         const nodeCategory = getNodeCategory(nodeType);
         this.nodeCategory = nodeCategory;
         this.data = {
-            display: this.setNodeDisplay(nodeType),
-            config: this.setNodeConfig(nodeCategory),
+            display: ExploreNodeModel.setNodeDisplay(nodeType),
+            config: ExploreNodeModel.setNodeConfig(nodeCategory),
+            assets: [],
         };
     }
 
@@ -61,7 +69,7 @@ export class ExploreNodeModel implements Node<ExploreNodeData> {
         return `${nodeType}_${this.id++}`;
     }
 
-    private setNodeDisplay(nodeType: ExploreNodeType): ExploreNodeDisplay {
+    private static setNodeDisplay(nodeType: ExploreNodeType): ExploreNodeDisplay {
         switch (nodeType) {
             case 'ocelFileNode':
                 return {
@@ -81,15 +89,12 @@ export class ExploreNodeModel implements Node<ExploreNodeData> {
         }
     }
 
-    private setNodeConfig(nodeCategory: ExploreNodeCategory): ExploreNodeConfig {
+    private static setNodeConfig(nodeCategory: ExploreNodeCategory): ExploreNodeConfig {
         switch (nodeCategory) {
             case 'file':
                 return {
                     handleOptions: [{ position: Position.Right, type: 'source' }],
-                    dropdownOptions: [
-                        { label: 'Open File', action: () => console.log('Opening file…') },
-                        { label: 'Delete', action: () => console.log('Deleting file…') },
-                    ],
+                    dropdownOptions: [{ label: 'Open File', action: 'openFileDialog' }],
                 };
             case 'visualization':
                 return {
@@ -100,24 +105,8 @@ export class ExploreNodeModel implements Node<ExploreNodeData> {
                             type: 'target',
                         },
                     ],
-                    dropdownOptions: [{ label: 'Expand', action: () => console.log('Expanding visualization…') }],
+                    dropdownOptions: [{ label: 'Change Source File', action: 'changeSourceFile' }],
                 };
         }
-    }
-
-    getConfig(): ExploreNodeConfig {
-        return this.data.config;
-    }
-
-    getDisplay(): ExploreNodeDisplay {
-        return this.data.display;
-    }
-
-    setPosition(newPosition: { x: number; y: number }): void {
-        this.position = newPosition;
-    }
-
-    setData(newData: Partial<ExploreNodeData>): void {
-        this.data = { ...this.data, ...newData };
     }
 }

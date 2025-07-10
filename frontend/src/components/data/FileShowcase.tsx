@@ -3,12 +3,14 @@ import { Eye, FileJson, FileSpreadsheet, FileX } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAcceptedFile, useJSONFile, useStoredFiles } from '~/stores/store';
 import { JSONSchema } from '~/types/ocpt/ocpt.types';
+import type { ExtendedFile } from '~/types/fileObject.types';
 
 interface FileShowcaseProps {
-    file: File;
+    file: ExtendedFile;
 }
 
 const FileShowcase: React.FC<FileShowcaseProps> = ({ file }) => {
+    console.log(file);
     const { setAcceptedFile } = useAcceptedFile();
     const { setJSONFile } = useJSONFile();
     const { removeFile } = useStoredFiles();

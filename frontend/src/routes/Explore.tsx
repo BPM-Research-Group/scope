@@ -28,7 +28,7 @@ const nodeTypes = {
 };
 
 const Explore: React.FC = () => {
-    const [nodes, setNodes, onNodesChange] = useNodesState([] as Node[]);
+    const [nodes, setNodes, onNodesChange] = useNodesState([] as ExploreNodeModel[]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([] as Edge[]);
     const [type] = useDnD();
     const { screenToFlowPosition } = useReactFlow();
@@ -78,19 +78,18 @@ const Explore: React.FC = () => {
                 logger.error('Did not find target node for connection', params);
                 return;
             }
+            console.log(sourceNode);
 
             // OCPT File to OCPT Viewer
-            if (sourceNode.type === 'ocptFileNode' && targetNode.type === 'ocptViewerNode') {
+            if (sourceNode.nodeType === 'ocptFileNode' && targetNode.nodeType === 'ocptViewerNode') {
                 setNodes((nds) =>
                     nds.map((node) => {
                         if (node.id === params.target) {
-                            console.log(node);
-
                             return {
                                 ...node,
                                 data: {
                                     ...node.data,
-                                    file: sourceNode.data.file,
+                                    assets: [...(node.data.assets || []), ...(sourceNode.data.assets || [])],
                                 },
                             };
                         }
@@ -102,7 +101,7 @@ const Explore: React.FC = () => {
 
             setEdges((eds) => addEdge(params, eds));
         },
-        [setEdges]
+        [nodes, setEdges]
     );
 
     return (
