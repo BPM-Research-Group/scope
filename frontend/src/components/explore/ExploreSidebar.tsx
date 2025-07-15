@@ -1,4 +1,4 @@
-import { Eye, File, FileJson, FileSpreadsheet, Network } from 'lucide-react';
+import { Eye, File, FileJson, FileSpreadsheet, Network, Workflow } from 'lucide-react';
 import DndCard from '~/components/explore/DndCard';
 import {
     Sidebar,
@@ -38,11 +38,13 @@ const ExploreSidebar: React.FC<ExploreSidebarProps> = ({}) => {
                         <p className="ml-1">Visualizations</p>
                     </SidebarGroupLabel>
                     <SidebarGroupContent className="p-1">
-                        <SidebarMenu>
+                        <SidebarMenu className="flex flex-row">
                             <SidebarMenuItem className="ml-1">
                                 <DndCard title="OCPT Viewer" Icon={Network} nodeType="ocptViewerNode" />
                             </SidebarMenuItem>
-                            <SidebarMenuItem className="ml-1">LBOF Visualization</SidebarMenuItem>
+                            <SidebarMenuItem className="ml-1">
+                                <DndCard title="LBOF Viewer" Icon={Workflow} nodeType="lbofViewerNode" />
+                            </SidebarMenuItem>
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>

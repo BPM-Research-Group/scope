@@ -7,7 +7,6 @@ import {
     useNodesState,
     addEdge,
     type Edge,
-    type Node,
     type Connection,
     useReactFlow,
     ReactFlowProvider,

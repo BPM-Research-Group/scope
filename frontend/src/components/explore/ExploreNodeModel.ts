@@ -1,6 +1,6 @@
 import { Position, XYPosition, Node } from '@xyflow/react';
-import { FileJson, FileSpreadsheet, Network } from 'lucide-react';
-import type { ElementType, VoidFunctionComponent } from 'react';
+import { FileJson, FileSpreadsheet, Network, Workflow } from 'lucide-react';
+import type { ElementType } from 'react';
 import { getNodeCategory, type ExploreNodeCategory, type ExploreNodeType } from '~/types/explore/node.types';
 
 export type ExploreNodeDropdownActionType = 'openFileDialog' | 'changeSourceFile';
@@ -27,6 +27,7 @@ interface ExploreNodeDisplay {
 interface ExploreNodeConfig {
     handleOptions: ExploreNodeHandleOption[];
     dropdownOptions: ExploreNodeDropdownOption[];
+    nodeCategory: ExploreNodeCategory;
 }
 
 export interface ExploreNodeData extends Record<string, unknown> {
@@ -88,6 +89,11 @@ export class ExploreNodeModel implements Node<ExploreNodeData> {
                     title: 'OCPT Viewer',
                     Icon: Network,
                 };
+            case 'lbofViewerNode':
+                return {
+                    title: 'LBOF Viewer',
+                    Icon: Workflow,
+                };
         }
     }
 
@@ -97,6 +103,7 @@ export class ExploreNodeModel implements Node<ExploreNodeData> {
                 return {
                     handleOptions: [{ position: Position.Right, type: 'source' }],
                     dropdownOptions: [{ label: 'Open File', action: 'openFileDialog' }],
+                    nodeCategory: nodeCategory,
                 };
             case 'visualization':
                 return {
@@ -108,6 +115,7 @@ export class ExploreNodeModel implements Node<ExploreNodeData> {
                         },
                     ],
                     dropdownOptions: [{ label: 'Change Source File', action: 'changeSourceFile' }],
+                    nodeCategory: nodeCategory,
                 };
         }
     }

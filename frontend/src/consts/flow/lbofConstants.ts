@@ -20,3 +20,4 @@ export const ACTIVITY_NODE_WIDTH = 300;
 export const ACTIVITY_NODE_HEIGHT = 1500;
 
 export const NODE_X_SPACING = 400; // Horizontal space between nodes
+ 

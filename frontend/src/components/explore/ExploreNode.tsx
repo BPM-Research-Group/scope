@@ -75,6 +75,7 @@ const ExploreNode = memo<NodeProps<ExploreNodeProps>>(({ id, selected, data }) =
                 </Dialog>
             </NodeHeader>
             <div className="mt-2">empty</div>
+            {assets.length > 0 && config.nodeCategory == 'visualization' ? <div>view</div> : <></>}
             {config.handleOptions.map((handleOption, index) => (
                 <Handle
                     key={`${id}-${handleOption.type}-${index}`}

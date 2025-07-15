@@ -20,7 +20,6 @@ const FlowActivityDecisionNode = memo(({ data, id, height, width }: NodeProps<Ac
             ) : (
                 <Handle isConnectable={false} type="source" position={Position.Right} id={`${id}-out`} />
             )}
-
             {data.execOptions.map((execOption) => {
                 if (data.isBeginningActivityDecisionNode) {
                     if (execOption.option === 'Skip') {
