@@ -3,6 +3,7 @@ import { FileJson, FileSpreadsheet, Network, Workflow } from 'lucide-react';
 import type { ElementType } from 'react';
 import { getNodeCategory, type ExploreNodeCategory, type ExploreNodeType } from '~/types/explore/node.types';
 
+export type NodeId = string;
 export type ExploreNodeDropdownActionType = 'openFileDialog' | 'changeSourceFile';
 
 interface ExploreNodeHandleOption {
@@ -19,9 +20,13 @@ interface ExploreNodeAsset {
     fileId: string;
 }
 
-interface ExploreNodeDisplay {
+interface ExploreNodeTypeDependentDisplay {
     title: string;
     Icon: ElementType;
+}
+
+interface ExploreNodeDisplay extends ExploreNodeTypeDependentDisplay {
+    isDialogOpen: boolean;
 }
 
 interface ExploreNodeConfig {
@@ -34,12 +39,13 @@ export interface ExploreNodeData extends Record<string, unknown> {
     display: ExploreNodeDisplay;
     config: ExploreNodeConfig;
     assets: ExploreNodeAsset[];
-    onChange: (id: string, newData: ExploreNodeData) => void;
+    onDataChange: (id: string, newData: ExploreNodeData) => void;
+    visualize?: () => void;
 }
 
 export class ExploreNodeModel implements Node<ExploreNodeData> {
     // Required to be a React Flow Node
-    readonly id: string;
+    readonly id: NodeId;
     readonly type: string;
     position: XYPosition;
     data: ExploreNodeData;
@@ -61,10 +67,13 @@ export class ExploreNodeModel implements Node<ExploreNodeData> {
         const nodeCategory = getNodeCategory(nodeType);
         this.nodeCategory = nodeCategory;
         this.data = {
-            display: ExploreNodeModel.setNodeDisplay(nodeType),
+            display: {
+                ...ExploreNodeModel.setNodeDisplay(nodeType),
+                isDialogOpen: false,
+            },
             config: ExploreNodeModel.setNodeConfig(nodeCategory),
             assets: [],
-            onChange: () => {},
+            onDataChange: () => {},
         };
     }
 
@@ -72,7 +81,7 @@ export class ExploreNodeModel implements Node<ExploreNodeData> {
         return `${nodeType}_${this.id++}`;
     }
 
-    private static setNodeDisplay(nodeType: ExploreNodeType): ExploreNodeDisplay {
+    private static setNodeDisplay(nodeType: ExploreNodeType): ExploreNodeTypeDependentDisplay {
         switch (nodeType) {
             case 'ocelFileNode':
                 return {
@@ -117,6 +126,21 @@ export class ExploreNodeModel implements Node<ExploreNodeData> {
                     dropdownOptions: [{ label: 'Change Source File', action: 'changeSourceFile' }],
                     nodeCategory: nodeCategory,
                 };
+        }
+    }
+
+    static getVisualization(nodeType: ExploreNodeType) {
+        switch (nodeType) {
+            case 'ocptViewerNode':
+                return {
+                    path: '/data/view/ocpt',
+                };
+            case 'lbofViewerNode':
+                return {
+                    path: '/data/view/lbof',
+                };
+            default:
+                return undefined;
         }
     }
 }

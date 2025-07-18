@@ -11,23 +11,13 @@ import {
 } from '~/components/ui/node-header';
 import { DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '~/components/ui/dropdown-menu';
 import type { ExploreNodeData, ExploreNodeDropdownActionType } from '~/components/explore/ExploreNodeModel';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '~/components/ui/dialog';
-import { useStoredFiles } from '~/stores/store';
-import FileShowcase from '~/components/explore/FileShowcase';
-import type { ExtendedFile } from '~/types/fileObject.types';
+import { Eye } from 'lucide-react';
 
-type ExploreNodeProps = Node<ExploreNodeData>;
+export type TExploreNode = Node<ExploreNodeData>;
 
-const ExploreNode = memo<NodeProps<ExploreNodeProps>>(({ id, selected, data }) => {
+const ExploreNode = memo<NodeProps<TExploreNode>>(({ id, selected, data }) => {
     const [open, setOpen] = useState(false);
-    const { files } = useStoredFiles();
-    const { assets, config, display, onChange } = data;
-
-    const onFileSelect = (file: ExtendedFile) => {
-        console.log(file);
-        const newAssets = [...assets, { fileId: file.id }];
-        onChange(id, { ...data, assets: newAssets });
-    };
+    const { assets, config, display, onDataChange } = data;
 
     const DropdownMenuItemAction = (action: ExploreNodeDropdownActionType) => {
         switch (action) {
@@ -44,6 +34,19 @@ const ExploreNode = memo<NodeProps<ExploreNodeProps>>(({ id, selected, data }) =
                 </NodeHeaderIcon>
                 <NodeHeaderTitle>{display.title}</NodeHeaderTitle>
                 <NodeHeaderActions>
+                    {assets.length > 0 && config.nodeCategory == 'visualization' ? (
+                        <button
+                            onClick={() => {
+                                if (data.visualize) data.visualize();
+                            }}
+                            className="flex bg-blue-300 items-center rounded-lg w-20 px-1 justify-center font-light"
+                        >
+                            <Eye className="h-4 w-4" />
+                            <p className="ml-1">View</p>
+                        </button>
+                    ) : (
+                        <></>
+                    )}
                     <NodeHeaderMenuAction label="Expand account options">
                         <DropdownMenuLabel>My Account</DropdownMenuLabel>
                         <DropdownMenuSeparator />
@@ -60,22 +63,8 @@ const ExploreNode = memo<NodeProps<ExploreNodeProps>>(({ id, selected, data }) =
                     </NodeHeaderMenuAction>
                     <NodeHeaderDeleteAction />
                 </NodeHeaderActions>
-                <Dialog open={open} onOpenChange={setOpen}>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Choose Event Log From Your Data</DialogTitle>
-                            <DialogDescription>
-                                If you want to upload a new event log please go to the data page
-                            </DialogDescription>
-                            {files.map((file) => (
-                                <FileShowcase file={file} onFileSelect={onFileSelect} />
-                            ))}
-                        </DialogHeader>
-                    </DialogContent>
-                </Dialog>
             </NodeHeader>
             <div className="mt-2">empty</div>
-            {assets.length > 0 && config.nodeCategory == 'visualization' ? <div>view</div> : <></>}
             {config.handleOptions.map((handleOption, index) => (
                 <Handle
                     key={`${id}-${handleOption.type}-${index}`}
