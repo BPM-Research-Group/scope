@@ -10,16 +10,16 @@ import {
     NodeHeaderDeleteAction,
 } from '~/components/ui/node-header';
 import { DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '~/components/ui/dropdown-menu';
-import type { ExploreNodeData, ExploreNodeDropdownActionType } from '~/components/explore/ExploreNodeModel';
 import { Eye } from 'lucide-react';
+import type { BaseExploreNodeData, BaseExploreNodeDropdownActionType } from '~/types/explore/baseNode.types';
 
-export type TExploreNode = Node<ExploreNodeData>;
+export type TExploreNode = Node<BaseExploreNodeData>;
 
 const ExploreNode = memo<NodeProps<TExploreNode>>(({ id, selected, data }) => {
     const [open, setOpen] = useState(false);
     const { assets, config, display, onDataChange } = data;
 
-    const DropdownMenuItemAction = (action: ExploreNodeDropdownActionType) => {
+    const DropdownMenuItemAction = (action: BaseExploreNodeDropdownActionType) => {
         switch (action) {
             case 'openFileDialog':
                 setOpen(true);
@@ -34,7 +34,7 @@ const ExploreNode = memo<NodeProps<TExploreNode>>(({ id, selected, data }) => {
                 </NodeHeaderIcon>
                 <NodeHeaderTitle>{display.title}</NodeHeaderTitle>
                 <NodeHeaderActions>
-                    {assets.length > 0 && config.nodeCategory == 'visualization' ? (
+                    {assets.length > 0 && data.nodeCategory == 'visualization' ? (
                         <button
                             onClick={() => {
                                 if (data.visualize) data.visualize();

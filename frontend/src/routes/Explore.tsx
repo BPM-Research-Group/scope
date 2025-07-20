@@ -14,8 +14,6 @@ import {
 import { Logger } from '~/lib/logger';
 import { SidebarProvider } from '~/components/ui/sidebar';
 import { DnDProvider, useDnD } from '~/components/explore/DndContext';
-import { ExploreNodeModel, type ExploreNodeData, type NodeId } from '~/components/explore/ExploreNodeModel';
-import type { TExploreNode } from '~/components/explore/ExploreNode';
 
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 import ExploreNode from '~/components/explore/ExploreNode';
@@ -24,6 +22,11 @@ import { isEqual } from 'lodash-es';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '~/components/ui/dialog';
 import { useStoredFiles } from '~/stores/store';
+import type { ExtendedFile } from '~/types/fileObject.types';
+import type { ExploreNodeTypes, NodeId } from '~/types/explore/node.types';
+import { createExploreNode, isFileNode, isVisualizationNode } from '~/lib/explore/exploreNodes.utils';
+import type { FileExploreNodeData } from '~/types/explore/fileNode.types';
+import type { VisualizationExploreNodeData } from '~/types/explore/visualizationNode.types';
 
 const logger = Logger.getInstance();
 
@@ -32,9 +35,9 @@ const nodeTypes = {
 };
 
 const Explore: React.FC = () => {
-    const [nodes, setNodes, onNodesChange] = useNodesState([] as ExploreNodeModel[]);
+    const [nodes, setNodes, onNodesChange] = useNodesState([] as ExploreNodeTypes[]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([] as Edge[]);
-    const [type] = useDnD();
+    const [nodeType] = useDnD();
     const { screenToFlowPosition, getNode } = useReactFlow();
     const directedNeighborMap = useRef(new Map<NodeId, NodeId[]>());
     const navigate = useNavigate();
@@ -44,50 +47,35 @@ const Explore: React.FC = () => {
         console.log(nodes);
     }, [nodes]);
 
-    const onFileSelect = (file: ExtendedFile) => {
-        const newAssets = [...assets, { fileId: file.id }];
-        onDataChange(id, { ...data, assets: newAssets });
-    };
+    // const onFileSelect = (file: ExtendedFile) => {
+    //     const newAssets = [...assets, { fileId: file.id }];
+    //     onDataChange(id, { ...data, assets: newAssets });
+    // };
+    // Separate, type-safe update functions
 
-    const onNodeDataChange = useCallback((id: string, newData: ExploreNodeData) => {
-        try {
-            const node = getNode(id) as TExploreNode | undefined;
-            if (!node) throw new Error(`Could not find node for id: ${id}`);
+    // Generic function that dispatches to the correct specific function
+    type ExploreNodeData = VisualizationExploreNodeData | FileExploreNodeData; // Add other types as needed
 
-            const currentAssets = node.data.assets;
-
-            // Only proceed if assets actually changed
-            if (!isEqual(currentAssets, newData.assets)) {
-                logger.debug(`Assets have changed for node ${node.id}`, currentAssets, newData.assets);
-                const neighbors = directedNeighborMap.current.get(id) || [];
-
-                setNodes((nds) =>
-                    nds.map((n) => {
-                        if (!neighbors.includes(n.id)) return n;
-
-                        // For the original node, apply the full new data
-                        if (n.id === id) {
-                            return { ...n, data: { ...n.data, ...newData } };
-                        }
-
-                        // For neighbors, update assets based on your logic
+    const onNodeDataChange = useCallback(
+        <T extends ExploreNodeData>(id: string, newData: Partial<T>) => {
+            setNodes((nodes: ExploreNodeTypes[]) =>
+                nodes.map((node) => {
+                    if (node.id === id) {
+                        // Create a properly typed updated node
                         return {
-                            ...n,
+                            ...node,
                             data: {
-                                ...n.data,
-                                assets: [...newData.assets], // or your transformation
+                                ...node.data,
+                                ...newData,
                             },
-                        };
-                    })
-                );
-            } else {
-                // Assets haven't changed — just update the node data
-                setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...newData } } : n)));
-            }
-        } catch (err) {
-            logger.error(err);
-        }
-    }, []);
+                        } as ExploreNodeTypes;
+                    }
+                    return node;
+                })
+            );
+        },
+        [setNodes]
+    );
 
     const onEdgeDelete = useCallback(
         (event: ReactMouseEvent, edge: Edge) => {
@@ -106,7 +94,7 @@ const Explore: React.FC = () => {
         (event: DragEvent<HTMLElement>) => {
             event.preventDefault();
 
-            if (!type) {
+            if (!nodeType) {
                 return;
             }
 
@@ -115,20 +103,13 @@ const Explore: React.FC = () => {
                 y: event.clientY,
             });
 
-            const newNode = new ExploreNodeModel(position, type);
-            newNode.data.onDataChange = onNodeDataChange;
-            if (newNode.nodeCategory === 'visualization') {
-                const viz = ExploreNodeModel.getVisualization(type);
-                if (viz) {
-                    newNode.data.visualize = () => {
-                        navigate(viz.path);
-                    };
-                }
-            }
+            const newNode = createExploreNode(position, nodeType, onNodeDataChange, {
+                navigate,
+            });
 
             setNodes((nds) => nds.concat(newNode));
         },
-        [screenToFlowPosition, type]
+        [screenToFlowPosition, nodeType]
     );
 
     const onConnect = useCallback(
@@ -154,7 +135,7 @@ const Explore: React.FC = () => {
                 }
 
                 // OCPT File to OCPT Viewer
-                if (sourceNode.nodeType === 'ocptFileNode' && targetNode.nodeType === 'ocptViewerNode') {
+                if (sourceNode.data.nodeType === 'ocptFileNode' && targetNode.data.nodeType === 'ocptViewerNode') {
                     return nds.map((node) => {
                         if (node.id === target) {
                             return {
@@ -196,7 +177,7 @@ const Explore: React.FC = () => {
                         <Background />
                         <Controls position="top-left" />
                     </ReactFlow>
-                    <Dialog open={open} onOpenChange={setOpen}>
+                    {/* <Dialog open={open} onOpenChange={setOpen}>
                         <DialogContent>
                             <DialogHeader>
                                 <DialogTitle>Choose Event Log From Your Data</DialogTitle>
@@ -208,7 +189,7 @@ const Explore: React.FC = () => {
                                 ))}
                             </DialogHeader>
                         </DialogContent>
-                    </Dialog>
+                    </Dialog> */}
                     <ExploreSidebar />
                 </div>
             </div>

@@ -6,9 +6,9 @@ type DnDContextType = [ExploreNodeType | null, React.Dispatch<React.SetStateActi
 const DnDContext = createContext<DnDContextType | undefined>(undefined);
 
 export const DnDProvider = ({ children }: { children: ReactNode }) => {
-    const [type, setType] = useState<ExploreNodeType | null>(null);
+    const [nodeType, setNodeType] = useState<ExploreNodeType | null>(null);
 
-    return <DnDContext.Provider value={[type, setType]}>{children}</DnDContext.Provider>;
+    return <DnDContext.Provider value={[nodeType, setNodeType]}>{children}</DnDContext.Provider>;
 };
 
 export const useDnD = () => {
