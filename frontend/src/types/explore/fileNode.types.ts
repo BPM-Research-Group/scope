@@ -4,6 +4,6 @@ export interface FileExploreNodeDisplay extends BaseExploreNodeDisplay {
     isFileDialogOpen?: boolean;
 }
 
-export interface FileExploreNodeData extends BaseExploreNodeData<FileExploreNodeData> {
+export interface FileExploreNodeData extends BaseExploreNodeData {
     display: FileExploreNodeDisplay;
 }

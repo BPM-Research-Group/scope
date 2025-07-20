@@ -12,8 +12,8 @@ import {
 import { DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '~/components/ui/dropdown-menu';
 import { Eye } from 'lucide-react';
 import type { BaseExploreNodeData, BaseExploreNodeDropdownActionType } from '~/types/explore/baseNode.types';
-
-export type TExploreNode = Node<BaseExploreNodeData>;
+import type { TExploreNode } from '~/types/explore/node.types';
+import { isFullVisualizationData } from '~/lib/explore/exploreNodes.utils';
 
 const ExploreNode = memo<NodeProps<TExploreNode>>(({ id, selected, data }) => {
     const [open, setOpen] = useState(false);
@@ -37,7 +37,7 @@ const ExploreNode = memo<NodeProps<TExploreNode>>(({ id, selected, data }) => {
                     {assets.length > 0 && data.nodeCategory == 'visualization' ? (
                         <button
                             onClick={() => {
-                                if (data.visualize) data.visualize();
+                                if (isFullVisualizationData(data)) data.visualize();
                             }}
                             className="flex bg-blue-300 items-center rounded-lg w-20 px-1 justify-center font-light"
                         >

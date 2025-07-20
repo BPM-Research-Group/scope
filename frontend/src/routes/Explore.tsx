@@ -6,6 +6,7 @@ import {
     useEdgesState,
     useNodesState,
     addEdge,
+    type Node,
     type Edge,
     type Connection,
     useReactFlow,
@@ -22,11 +23,11 @@ import { isEqual } from 'lodash-es';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '~/components/ui/dialog';
 import { useStoredFiles } from '~/stores/store';
-import type { ExtendedFile } from '~/types/fileObject.types';
-import type { ExploreNodeTypes, NodeId } from '~/types/explore/node.types';
-import { createExploreNode, isFileNode, isVisualizationNode } from '~/lib/explore/exploreNodes.utils';
 import type { FileExploreNodeData } from '~/types/explore/fileNode.types';
 import type { VisualizationExploreNodeData } from '~/types/explore/visualizationNode.types';
+import { BaseExploreNode } from '~/model/explore/baseNode.model';
+import type { ExploreNodeData, TExploreNode } from '~/types/explore/node.types';
+import { isVisualizationNode } from '~/lib/explore/exploreNodes.utils';
 
 const logger = Logger.getInstance();
 
@@ -34,10 +35,13 @@ const nodeTypes = {
     exploreNode: ExploreNode,
 };
 
+type NodeId = string;
+type Nodes = Node<FileExploreNodeData> | Node<VisualizationExploreNodeData>;
+
 const Explore: React.FC = () => {
-    const [nodes, setNodes, onNodesChange] = useNodesState([] as ExploreNodeTypes[]);
+    const [nodes, setNodes, onNodesChange] = useNodesState([] as Nodes[]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([] as Edge[]);
-    const [nodeType] = useDnD();
+    const [type] = useDnD();
     const { screenToFlowPosition, getNode } = useReactFlow();
     const directedNeighborMap = useRef(new Map<NodeId, NodeId[]>());
     const navigate = useNavigate();
@@ -51,31 +55,46 @@ const Explore: React.FC = () => {
     //     const newAssets = [...assets, { fileId: file.id }];
     //     onDataChange(id, { ...data, assets: newAssets });
     // };
-    // Separate, type-safe update functions
 
-    // Generic function that dispatches to the correct specific function
-    type ExploreNodeData = VisualizationExploreNodeData | FileExploreNodeData; // Add other types as needed
+    const onNodeDataChange = useCallback((id: string, newData: Partial<ExploreNodeData>) => {
+        try {
+            const node = getNode(id) as TExploreNode | undefined;
+            if (!node) throw new Error(`Could not find node for id: ${id}`);
 
-    const onNodeDataChange = useCallback(
-        <T extends ExploreNodeData>(id: string, newData: Partial<T>) => {
-            setNodes((nodes: ExploreNodeTypes[]) =>
-                nodes.map((node) => {
-                    if (node.id === id) {
-                        // Create a properly typed updated node
+            const currentAssets = node.data.assets;
+
+            // Only proceed if assets actually changed
+            if (!isEqual(currentAssets, newData.assets)) {
+                logger.debug(`Assets have changed for node ${node.id}`, currentAssets, newData.assets);
+                const neighbors = directedNeighborMap.current.get(id) || [];
+
+                setNodes((nds) =>
+                    nds.map((n) => {
+                        if (!neighbors.includes(n.id)) return n;
+
+                        // Case: Original Node
+                        if (n.id === id) {
+                            return { ...n, data: { ...n.data, ...newData } };
+                        }
+
+                        // Case: Neighbors (i.e. apply assets from original node)
                         return {
-                            ...node,
+                            ...n,
                             data: {
-                                ...node.data,
-                                ...newData,
+                                ...n.data,
+                                assets: [...(newData.assets || [])],
                             },
-                        } as ExploreNodeTypes;
-                    }
-                    return node;
-                })
-            );
-        },
-        [setNodes]
-    );
+                        };
+                    })
+                );
+            } else {
+                // Assets have not changed — just update the node data
+                setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...newData } } : n)));
+            }
+        } catch (err) {
+            logger.error(err);
+        }
+    }, []);
 
     const onEdgeDelete = useCallback(
         (event: ReactMouseEvent, edge: Edge) => {
@@ -94,7 +113,7 @@ const Explore: React.FC = () => {
         (event: DragEvent<HTMLElement>) => {
             event.preventDefault();
 
-            if (!nodeType) {
+            if (!type) {
                 return;
             }
 
@@ -103,13 +122,17 @@ const Explore: React.FC = () => {
                 y: event.clientY,
             });
 
-            const newNode = createExploreNode(position, nodeType, onNodeDataChange, {
-                navigate,
-            });
+            const newNode = new BaseExploreNode(position, type);
+            newNode.data.onDataChange = onNodeDataChange;
+            if (isVisualizationNode(newNode)) {
+                newNode.data.visualize = () => {
+                    navigate(newNode.data.visualizationPath);
+                };
+            }
 
             setNodes((nds) => nds.concat(newNode));
         },
-        [screenToFlowPosition, nodeType]
+        [screenToFlowPosition, type]
     );
 
     const onConnect = useCallback(
