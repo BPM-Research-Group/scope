@@ -1,0 +1,2 @@
+fn(axum::extract::Path<u32>) -> impl Future<Output = Json<scope::Scope>> {get_scope}
+fn(axum::extract::Path<u32>) -> impl Future<Output = Json<scope::Scope>> {get_scope}: Handler<_, _>
