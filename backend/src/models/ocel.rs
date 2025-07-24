@@ -2,7 +2,7 @@ use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use serde::Serialize;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct OcelJson {
     #[serde(rename = "ocel:global-log")]
     pub global_log: serde_json::Value,
@@ -12,7 +12,7 @@ pub struct OcelJson {
     pub objects: HashMap<String, Object>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Event {
     #[serde(rename = "ocel:activity")]
     pub activity: String,
@@ -22,7 +22,7 @@ pub struct Event {
     pub omap: Vec<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Object {
     #[serde(rename = "ocel:type")]
     pub object_type: String,
