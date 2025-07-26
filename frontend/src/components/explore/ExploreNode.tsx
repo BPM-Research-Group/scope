@@ -1,5 +1,5 @@
-import { memo, useState } from 'react';
-import { Handle, NodeProps, type Node } from '@xyflow/react';
+import { memo } from 'react';
+import { Handle, NodeProps } from '@xyflow/react';
 import { BaseNode } from '~/components/ui/base-node';
 import {
     NodeHeader,
@@ -11,24 +11,21 @@ import {
 } from '~/components/ui/node-header';
 import { DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '~/components/ui/dropdown-menu';
 import { Eye } from 'lucide-react';
-import type { BaseExploreNodeData, BaseExploreNodeDropdownActionType } from '~/types/explore/baseNode.types';
+import type { BaseExploreNodeDropdownActionType } from '~/types/explore/baseNode.types';
 import type { TExploreNode } from '~/types/explore/node.types';
 import { isFileNodeData, isFullVisualizationData } from '~/lib/explore/exploreNodes.utils';
+import { useFileDialogStore } from '~/stores/store';
 
 const ExploreNode = memo<NodeProps<TExploreNode>>(({ id, selected, data }) => {
-    const [open, setOpen] = useState(false);
     const { assets, config, display, onDataChange } = data;
+    const { openDialog } = useFileDialogStore();
 
     const DropdownMenuItemAction = (action: BaseExploreNodeDropdownActionType) => {
         switch (action) {
             case 'openFileDialog':
                 if (isFileNodeData(data)) {
-                    onDataChange(id, {
-                        display: {
-                            ...data.display,
-                            isFileDialogOpen: true,
-                        },
-                    });
+                    console.warn('Opening dialog for', id);
+                    openDialog(id);
                 }
         }
     };

@@ -1,4 +1,12 @@
-import { useCallback, useState, type MouseEvent as ReactMouseEvent, DragEvent, useRef, useMemo } from 'react';
+import {
+    useCallback,
+    useState,
+    useEffect,
+    type MouseEvent as ReactMouseEvent,
+    DragEvent,
+    useRef,
+    useMemo,
+} from 'react';
 import {
     Background,
     Controls,
@@ -22,8 +30,8 @@ import ExploreSidebar from '~/components/explore/ExploreSidebar';
 import FileShowcase from '~/components/explore/FileShowcase';
 import { isEqual } from 'lodash-es';
 import { useNavigate } from 'react-router-dom';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '~/components/ui/dialog';
-import { useStoredFiles } from '~/stores/store';
+import { X } from 'lucide-react';
+import { useStoredFiles, useFileDialogStore } from '~/stores/store';
 import type { FileExploreNodeData } from '~/types/explore/fileNode.types';
 import type { VisualizationExploreNodeData } from '~/types/explore/visualizationNode.types';
 import type { ExtendedFile } from '~/types/fileObject.types';
@@ -47,99 +55,54 @@ const Explore: React.FC = () => {
     const { screenToFlowPosition, getNode } = useReactFlow();
     const directedNeighborMap = useRef(new Map<NodeId, NodeId[]>());
     const navigate = useNavigate();
-    const { files } = useStoredFiles();
-
-    const [dialogNodeId, setDialogNodeId] = useState<string | null>(null);
-    const isDialogOpen = Boolean(dialogNodeId);
 
     useMemo(() => {
         console.log(nodes);
     }, [nodes]);
 
-    const onNodeDataChange = useCallback(
-        (id: string, newData: Partial<ExploreNodeData>) => {
-            try {
-                const node = getNode(id) as TExploreNode | undefined;
-                if (!node) throw new Error(`Could not find node for id: ${id}`);
+    const onNodeDataChange = useCallback((id: string, newData: Partial<ExploreNodeData>) => {
+        try {
+            const node = getNode(id) as TExploreNode | undefined;
+            if (!node) throw new Error(`Could not find node for id: ${id}`);
 
-                // Handle file dialog state changes
-                if (isFileNode(node)) {
-                    setDialogNodeId(id);
-                }
+            // Dialog state is now handled by the store directly
 
-                const currentAssets = node.data.assets;
+            const currentAssets = node.data.assets;
 
-                // Only proceed if assets actually changed
-                if (!isEqual(currentAssets, newData.assets)) {
-                    logger.debug(`Assets have changed for node ${node.id}`, currentAssets, newData.assets);
-                    const neighbors = directedNeighborMap.current.get(id) || [];
+            // Only proceed if assets actually changed
+            if (!isEqual(currentAssets, newData.assets)) {
+                logger.debug(`Assets have changed for node ${node.id}`, currentAssets, newData.assets);
+                const neighbors = directedNeighborMap.current.get(id) || [];
 
-                    setNodes((nds) =>
-                        nds.map((n) => {
-                            if (!neighbors.includes(n.id)) return n;
+                setNodes((nds) =>
+                    nds.map((n) => {
+                        if (!neighbors.includes(n.id)) return n;
 
-                            // Case: Original Node
-                            if (n.id === id) {
-                                return { ...n, data: { ...n.data, ...newData } };
-                            }
+                        // Case: Original Node
+                        if (n.id === id) {
+                            return { ...n, data: { ...n.data, ...newData } };
+                        }
 
-                            // Case: Neighbors (i.e. apply assets from original node)
-                            return {
-                                ...n,
-                                data: {
-                                    ...n.data,
-                                    assets: [...(newData.assets || [])],
-                                },
-                            };
-                        })
-                    );
-                } else {
-                    // Assets have not changed — just update the node data
-                    setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...newData } } : n)));
-                }
-            } catch (err) {
-                logger.error(err);
+                        // Case: Neighbors (i.e. apply assets from original node)
+                        return {
+                            ...n,
+                            data: {
+                                ...n.data,
+                                assets: [...(newData.assets || [])],
+                            },
+                        };
+                    })
+                );
+            } else {
+                // Assets have not changed — just update the node data
+                setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...newData } } : n)));
             }
-        },
-        [dialogNodeId]
-    );
+        } catch (err) {
+            logger.error(err);
+        }
+    }, []);
 
-    const onFileSelect = useCallback(
-        (file: ExtendedFile) => {
-            if (!dialogNodeId) return;
-
-            const node = getNode(dialogNodeId) as TExploreNode | undefined;
-            if (!node) return;
-
-            const newAssets = [...node.data.assets, { fileId: file.id }];
-            const newData = {
-                assets: newAssets,
-                display: {
-                    ...node.data.display,
-                    isFileDialogOpen: false,
-                },
-            };
-
-            onNodeDataChange(dialogNodeId, newData);
-            setDialogNodeId(null);
-        },
-        [dialogNodeId, getNode, onNodeDataChange]
-    );
-
-    const closeDialog = useCallback(() => {
-        if (!dialogNodeId) return;
-
-        const node = getNode(dialogNodeId) as TExploreNode | undefined;
-        if (!node) return;
-
-        onNodeDataChange(dialogNodeId, {
-            display: {
-                ...node.data.display,
-                isFileDialogOpen: false,
-            },
-        });
-        setDialogNodeId(null);
-    }, [dialogNodeId, getNode, onNodeDataChange]);
+    // File selection is now handled in ExploreApp component
 
     const onEdgeDelete = useCallback(
         (event: ReactMouseEvent, edge: Edge) => {
@@ -227,48 +190,84 @@ const Explore: React.FC = () => {
     );
 
     return (
-        <SidebarProvider>
-            <div className="h-screen w-screen overflow-hidden">
-                <BreadcrumbNav />
-                <div className="h-full w-full">
-                    <ReactFlow
-                        nodeTypes={nodeTypes}
-                        nodes={nodes}
-                        edges={edges}
-                        onNodesChange={onNodesChange}
-                        onEdgesChange={onEdgesChange}
-                        onConnect={onConnect}
-                        onEdgeClick={onEdgeDelete}
-                        onDrop={onDrop}
-                        onDragOver={onDragOver}
-                    >
-                        <Background />
-                        <Controls position="top-left" />
-                    </ReactFlow>
-                    <Dialog open={isDialogOpen} onOpenChange={closeDialog}>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Choose Event Log From Your Data</DialogTitle>
-                                <DialogDescription>
-                                    If you want to upload a new event log please go to the data page
-                                </DialogDescription>
-                                {files.map((file) => (
-                                    <FileShowcase key={file.id} file={file} onFileSelect={onFileSelect} />
-                                ))}
-                            </DialogHeader>
-                        </DialogContent>
-                    </Dialog>
+        <>
+            <SidebarProvider>
+                <div className="h-screen w-screen overflow-hidden">
+                    <BreadcrumbNav />
+                    <div className="h-full w-full">
+                        <ReactFlow
+                            nodeTypes={nodeTypes}
+                            nodes={nodes}
+                            edges={edges}
+                            onNodesChange={onNodesChange}
+                            onEdgesChange={onEdgesChange}
+                            onConnect={onConnect}
+                            onEdgeClick={onEdgeDelete}
+                            onDrop={onDrop}
+                            onDragOver={onDragOver}
+                        >
+                            <Background />
+                            <Controls position="top-left" />
+                        </ReactFlow>
+                    </div>
                     <ExploreSidebar />
                 </div>
-            </div>
-        </SidebarProvider>
+            </SidebarProvider>
+        </>
     );
 };
 
-export default () => (
-    <ReactFlowProvider>
-        <DnDProvider>
-            <Explore />
-        </DnDProvider>
-    </ReactFlowProvider>
-);
+const ExploreApp = () => {
+    const { dialogNodeId, closeDialog } = useFileDialogStore();
+    const { files } = useStoredFiles();
+
+    // Handle Escape key for custom dialog
+    useEffect(() => {
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && dialogNodeId) {
+                closeDialog();
+            }
+        };
+
+        if (dialogNodeId) {
+            document.addEventListener('keydown', handleEscape);
+            return () => document.removeEventListener('keydown', handleEscape);
+        }
+    }, [dialogNodeId, closeDialog]);
+
+    return (
+        <>
+            <ReactFlowProvider>
+                <DnDProvider>
+                    <Explore />
+                </DnDProvider>
+            </ReactFlowProvider>
+            {Boolean(dialogNodeId) && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+                    <div className="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 sm:rounded-lg pointer-events-auto">
+                        <button
+                            onClick={closeDialog}
+                            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                        >
+                            <X className="h-4 w-4" />
+                            <span className="sr-only">Close</span>
+                        </button>
+                        <div className="flex flex-col space-y-1.5 text-center sm:text-left">
+                            <h2 className="text-lg font-semibold leading-none tracking-tight">
+                                Choose Event Log From Your Data
+                            </h2>
+                            <p className="text-sm text-muted-foreground">
+                                If you want to upload a new event log please go to the data page
+                            </p>
+                            {files.map((file) => (
+                                <FileShowcase key={file.id} file={file} onFileSelect={() => closeDialog()} />
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
+    );
+};
+
+export default ExploreApp;

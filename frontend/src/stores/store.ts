@@ -241,3 +241,21 @@ export const useActivityExecutionStore = create<ActivityExecutionStore>((set, ge
 
     clearActivityExecutions: () => set({ activityExecutions: new Map() }),
 }));
+
+interface FileDialogStore {
+    dialogNodeId: string | null;
+    openDialog: (nodeId: string) => void;
+    closeDialog: () => void;
+}
+
+export const useFileDialogStore = create<FileDialogStore>((set) => ({
+    dialogNodeId: null,
+    
+    openDialog: (nodeId: string) => {
+        set({ dialogNodeId: nodeId });
+    },
+    
+    closeDialog: () => {
+        set({ dialogNodeId: null });
+    },
+}));
