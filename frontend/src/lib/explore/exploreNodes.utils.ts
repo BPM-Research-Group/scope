@@ -26,6 +26,10 @@ export function isFileNode(node: TExploreNode): node is FileNode {
     return node.data.nodeCategory === 'file';
 }
 
+export function isFileNodeData(data: ExploreNodeData): data is FileExploreNodeData {
+    return data.nodeCategory === 'file';
+}
+
 export function isVisualizationNode(node: TExploreNode): node is FullVisualizationNode {
     return node.data.nodeCategory === 'visualization';
 }

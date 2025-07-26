@@ -13,7 +13,7 @@ import { DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '~/co
 import { Eye } from 'lucide-react';
 import type { BaseExploreNodeData, BaseExploreNodeDropdownActionType } from '~/types/explore/baseNode.types';
 import type { TExploreNode } from '~/types/explore/node.types';
-import { isFullVisualizationData } from '~/lib/explore/exploreNodes.utils';
+import { isFileNodeData, isFullVisualizationData } from '~/lib/explore/exploreNodes.utils';
 
 const ExploreNode = memo<NodeProps<TExploreNode>>(({ id, selected, data }) => {
     const [open, setOpen] = useState(false);
@@ -22,7 +22,14 @@ const ExploreNode = memo<NodeProps<TExploreNode>>(({ id, selected, data }) => {
     const DropdownMenuItemAction = (action: BaseExploreNodeDropdownActionType) => {
         switch (action) {
             case 'openFileDialog':
-                setOpen(true);
+                if (isFileNodeData(data)) {
+                    onDataChange(id, {
+                        display: {
+                            ...data.display,
+                            isFileDialogOpen: true,
+                        },
+                    });
+                }
         }
     };
 

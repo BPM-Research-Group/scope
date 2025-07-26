@@ -1,10 +1,10 @@
-// import { BaseExploreNode } from './baseNode.model';
+// import { ExploreNode } from './baseNode.model';
 // import type { VisualizationExploreNodeData } from '~/types/explore/visualizationNode.types';
 // import { Position, type XYPosition } from '@xyflow/react';
 // import { Network, Workflow } from 'lucide-react';
 // import type { BaseExploreNodeConfig, BaseExploreNodeDisplay } from '~/types/explore/baseNode.types';
 
-// export class VisualizationExploreNode extends BaseExploreNode<VisualizationExploreNodeData> {
+// export class VisualizationExploreNode extends ExploreNode<VisualizationExploreNodeData> {
 //     constructor(position: XYPosition, nodeType: VisualizationNodeType) {
 //         super(position, nodeType, {
 //             visualize: () => this.visualize(),

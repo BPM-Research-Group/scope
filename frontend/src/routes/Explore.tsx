@@ -1,4 +1,4 @@
-import { useCallback, type MouseEvent as ReactMouseEvent, DragEvent, useRef, useMemo } from 'react';
+import { useCallback, useState, type MouseEvent as ReactMouseEvent, DragEvent, useRef, useMemo } from 'react';
 import {
     Background,
     Controls,
@@ -19,15 +19,17 @@ import { DnDProvider, useDnD } from '~/components/explore/DndContext';
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 import ExploreNode from '~/components/explore/ExploreNode';
 import ExploreSidebar from '~/components/explore/ExploreSidebar';
+import FileShowcase from '~/components/explore/FileShowcase';
 import { isEqual } from 'lodash-es';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '~/components/ui/dialog';
 import { useStoredFiles } from '~/stores/store';
 import type { FileExploreNodeData } from '~/types/explore/fileNode.types';
 import type { VisualizationExploreNodeData } from '~/types/explore/visualizationNode.types';
+import type { ExtendedFile } from '~/types/fileObject.types';
 import { BaseExploreNode } from '~/model/explore/baseNode.model';
 import type { ExploreNodeData, TExploreNode } from '~/types/explore/node.types';
-import { isVisualizationNode } from '~/lib/explore/exploreNodes.utils';
+import { isFileNode, isVisualizationNode } from '~/lib/explore/exploreNodes.utils';
 
 const logger = Logger.getInstance();
 
@@ -47,54 +49,97 @@ const Explore: React.FC = () => {
     const navigate = useNavigate();
     const { files } = useStoredFiles();
 
+    const [dialogNodeId, setDialogNodeId] = useState<string | null>(null);
+    const isDialogOpen = Boolean(dialogNodeId);
+
     useMemo(() => {
         console.log(nodes);
     }, [nodes]);
 
-    // const onFileSelect = (file: ExtendedFile) => {
-    //     const newAssets = [...assets, { fileId: file.id }];
-    //     onDataChange(id, { ...data, assets: newAssets });
-    // };
+    const onNodeDataChange = useCallback(
+        (id: string, newData: Partial<ExploreNodeData>) => {
+            try {
+                const node = getNode(id) as TExploreNode | undefined;
+                if (!node) throw new Error(`Could not find node for id: ${id}`);
 
-    const onNodeDataChange = useCallback((id: string, newData: Partial<ExploreNodeData>) => {
-        try {
-            const node = getNode(id) as TExploreNode | undefined;
-            if (!node) throw new Error(`Could not find node for id: ${id}`);
+                // Handle file dialog state changes
+                if (isFileNode(node)) {
+                    setDialogNodeId(id);
+                }
 
-            const currentAssets = node.data.assets;
+                const currentAssets = node.data.assets;
 
-            // Only proceed if assets actually changed
-            if (!isEqual(currentAssets, newData.assets)) {
-                logger.debug(`Assets have changed for node ${node.id}`, currentAssets, newData.assets);
-                const neighbors = directedNeighborMap.current.get(id) || [];
+                // Only proceed if assets actually changed
+                if (!isEqual(currentAssets, newData.assets)) {
+                    logger.debug(`Assets have changed for node ${node.id}`, currentAssets, newData.assets);
+                    const neighbors = directedNeighborMap.current.get(id) || [];
 
-                setNodes((nds) =>
-                    nds.map((n) => {
-                        if (!neighbors.includes(n.id)) return n;
+                    setNodes((nds) =>
+                        nds.map((n) => {
+                            if (!neighbors.includes(n.id)) return n;
 
-                        // Case: Original Node
-                        if (n.id === id) {
-                            return { ...n, data: { ...n.data, ...newData } };
-                        }
+                            // Case: Original Node
+                            if (n.id === id) {
+                                return { ...n, data: { ...n.data, ...newData } };
+                            }
 
-                        // Case: Neighbors (i.e. apply assets from original node)
-                        return {
-                            ...n,
-                            data: {
-                                ...n.data,
-                                assets: [...(newData.assets || [])],
-                            },
-                        };
-                    })
-                );
-            } else {
-                // Assets have not changed — just update the node data
-                setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...newData } } : n)));
+                            // Case: Neighbors (i.e. apply assets from original node)
+                            return {
+                                ...n,
+                                data: {
+                                    ...n.data,
+                                    assets: [...(newData.assets || [])],
+                                },
+                            };
+                        })
+                    );
+                } else {
+                    // Assets have not changed — just update the node data
+                    setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...newData } } : n)));
+                }
+            } catch (err) {
+                logger.error(err);
             }
-        } catch (err) {
-            logger.error(err);
-        }
-    }, []);
+        },
+        [dialogNodeId]
+    );
+
+    const onFileSelect = useCallback(
+        (file: ExtendedFile) => {
+            if (!dialogNodeId) return;
+
+            const node = getNode(dialogNodeId) as TExploreNode | undefined;
+            if (!node) return;
+
+            const newAssets = [...node.data.assets, { fileId: file.id }];
+            const newData = {
+                assets: newAssets,
+                display: {
+                    ...node.data.display,
+                    isFileDialogOpen: false,
+                },
+            };
+
+            onNodeDataChange(dialogNodeId, newData);
+            setDialogNodeId(null);
+        },
+        [dialogNodeId, getNode, onNodeDataChange]
+    );
+
+    const closeDialog = useCallback(() => {
+        if (!dialogNodeId) return;
+
+        const node = getNode(dialogNodeId) as TExploreNode | undefined;
+        if (!node) return;
+
+        onNodeDataChange(dialogNodeId, {
+            display: {
+                ...node.data.display,
+                isFileDialogOpen: false,
+            },
+        });
+        setDialogNodeId(null);
+    }, [dialogNodeId, getNode, onNodeDataChange]);
 
     const onEdgeDelete = useCallback(
         (event: ReactMouseEvent, edge: Edge) => {
@@ -200,7 +245,7 @@ const Explore: React.FC = () => {
                         <Background />
                         <Controls position="top-left" />
                     </ReactFlow>
-                    {/* <Dialog open={open} onOpenChange={setOpen}>
+                    <Dialog open={isDialogOpen} onOpenChange={closeDialog}>
                         <DialogContent>
                             <DialogHeader>
                                 <DialogTitle>Choose Event Log From Your Data</DialogTitle>
@@ -208,11 +253,11 @@ const Explore: React.FC = () => {
                                     If you want to upload a new event log please go to the data page
                                 </DialogDescription>
                                 {files.map((file) => (
-                                    <FileShowcase file={file} onFileSelect={onFileSelect} />
+                                    <FileShowcase key={file.id} file={file} onFileSelect={onFileSelect} />
                                 ))}
                             </DialogHeader>
                         </DialogContent>
-                    </Dialog> */}
+                    </Dialog>
                     <ExploreSidebar />
                 </div>
             </div>
