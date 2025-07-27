@@ -17,7 +17,8 @@ import { SidebarProvider } from '~/components/ui/sidebar';
 import { DnDProvider, useDnD } from '~/components/explore/DndContext';
 
 import BreadcrumbNav from '~/components/BreadcrumbNav';
-import ExploreNode from '~/components/explore/ExploreNode';
+import FileExploreNode from '~/components/explore/FileExploreNode';
+import VisualizationExploreNode from '~/components/explore/VisualizationExploreNode';
 import ExploreSidebar from '~/components/explore/ExploreSidebar';
 import FileShowcase from '~/components/explore/FileShowcase';
 import { isEqual } from 'lodash-es';
@@ -29,12 +30,14 @@ import type { VisualizationExploreNodeData } from '~/types/explore/visualization
 import type { ExtendedFile } from '~/types/fileObject.types';
 import { BaseExploreNode } from '~/model/explore/baseNode.model';
 import type { ExploreNodeData, TExploreNode } from '~/types/explore/node.types';
-import { isVisualizationNode } from '~/lib/explore/exploreNodes.utils';
+import { isFileNode, isVisualizationNode } from '~/lib/explore/exploreNodes.utils';
+import { useExploreFlow } from '~/hooks/useExploreFlow';
 
 const logger = Logger.getInstance();
 
 const nodeTypes = {
-    exploreNode: ExploreNode,
+    fileNode: FileExploreNode,
+    visualizationNode: VisualizationExploreNode,
 };
 
 type NodeId = string;
@@ -44,7 +47,8 @@ const Explore: React.FC = () => {
     const [nodes, setNodes, onNodesChange] = useNodesState([] as Nodes[]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([] as Edge[]);
     const [type] = useDnD();
-    const { screenToFlowPosition, getNode } = useReactFlow();
+    const { screenToFlowPosition } = useReactFlow();
+    const { getNode } = useExploreFlow();
     const directedNeighborMap = useRef(new Map<NodeId, NodeId[]>());
     const navigate = useNavigate();
     const { dialogNodeId, closeDialog } = useFileDialogStore();
@@ -57,7 +61,7 @@ const Explore: React.FC = () => {
     const onNodeDataChange = useCallback(
         (id: string, newData: Partial<ExploreNodeData>) => {
             try {
-                const node = getNode(id) as TExploreNode | undefined;
+                const node = getNode(id);
                 if (!node) throw new Error(`Could not find node for id: ${id}`);
 
                 const currentAssets = node.data.assets;
@@ -105,11 +109,11 @@ const Explore: React.FC = () => {
     const handleFileSelect = useCallback(
         (file: ExtendedFile) => {
             if (dialogNodeId) {
-                const node = getNode(dialogNodeId) as TExploreNode | undefined;
+                const node = getNode(dialogNodeId);
                 if (node && node.data.onDataChange) {
                     console.warn(node, file);
                     // Add the selected file as an asset to the node
-                    const newAsset = { fileId: file.id };
+                    const newAsset = { fileName: file.name, fileId: file.id };
                     const updatedAssets = [...node.data.assets, newAsset];
                     node.data.onDataChange(dialogNodeId, { assets: updatedAssets });
                 }
@@ -136,9 +140,54 @@ const Explore: React.FC = () => {
     const onEdgeDelete = useCallback(
         (event: ReactMouseEvent, edge: Edge) => {
             event.stopPropagation();
+
+            // Find source and target nodes
+            const sourceNode = getNode(edge.source);
+            const targetNode = getNode(edge.target);
+
+            if (sourceNode && targetNode) {
+                // Check if this is a file -> visualization connection
+                const isFileToVisualization = isFileNode(sourceNode) && isVisualizationNode(targetNode);
+
+                if (isFileToVisualization) {
+                    // Remove assets from target node that came from source node
+                    setNodes((nds) =>
+                        nds.map((node) => {
+                            if (node.id === edge.target) {
+                                // Filter out assets that match the source node's assets
+                                const filteredAssets = node.data.assets.filter(
+                                    (asset) =>
+                                        !sourceNode.data.assets.some(
+                                            (sourceAsset) => sourceAsset.fileId === asset.fileId
+                                        )
+                                );
+
+                                return {
+                                    ...node,
+                                    data: {
+                                        ...node.data,
+                                        assets: filteredAssets,
+                                    },
+                                };
+                            }
+                            return node;
+                        })
+                    );
+                }
+
+                const neighbors = directedNeighborMap.current.get(edge.source) || [];
+                const updatedNeighbors = neighbors.filter((id) => id !== edge.target);
+                if (updatedNeighbors.length > 0) {
+                    directedNeighborMap.current.set(edge.source, updatedNeighbors);
+                } else {
+                    directedNeighborMap.current.delete(edge.source);
+                }
+            }
+
+            // Remove the edge
             setEdges((eds) => eds.filter((e) => e.id !== edge.id));
         },
-        [setEdges]
+        [setEdges, setNodes, getNode]
     );
 
     const onDragOver = useCallback((event: DragEvent<HTMLElement>) => {

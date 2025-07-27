@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, ReactNode } from 'react';
 import { Handle, NodeProps } from '@xyflow/react';
 import { BaseNode } from '~/components/ui/base-node';
 import {
@@ -10,23 +10,30 @@ import {
     NodeHeaderDeleteAction,
 } from '~/components/ui/node-header';
 import { DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '~/components/ui/dropdown-menu';
-import { Eye } from 'lucide-react';
 import type { BaseExploreNodeDropdownActionType } from '~/types/explore/baseNode.types';
 import type { TExploreNode } from '~/types/explore/node.types';
-import { isFileNodeData, isFullVisualizationData } from '~/lib/explore/exploreNodes.utils';
-import { useFileDialogStore } from '~/stores/store';
 
-const ExploreNode = memo<NodeProps<TExploreNode>>(({ id, selected, data }) => {
-    const { assets, config, display, onDataChange } = data;
-    const { openDialog } = useFileDialogStore();
+interface BaseExploreNodeProps extends NodeProps<TExploreNode> {
+    children?: ReactNode;
+    customActions?: ReactNode;
+    customContent?: ReactNode;
+    onDropdownAction?: (action: BaseExploreNodeDropdownActionType) => void;
+}
 
-    const DropdownMenuItemAction = (action: BaseExploreNodeDropdownActionType) => {
-        switch (action) {
-            case 'openFileDialog':
-                if (isFileNodeData(data)) {
-                    console.warn('Opening dialog for', id);
-                    openDialog(id);
-                }
+const BaseExploreNode = memo<BaseExploreNodeProps>(({ 
+    id, 
+    selected, 
+    data, 
+    children, 
+    customActions, 
+    customContent,
+    onDropdownAction 
+}) => {
+    const { assets, config, display } = data;
+
+    const handleDropdownAction = (action: BaseExploreNodeDropdownActionType) => {
+        if (onDropdownAction) {
+            onDropdownAction(action);
         }
     };
 
@@ -38,19 +45,7 @@ const ExploreNode = memo<NodeProps<TExploreNode>>(({ id, selected, data }) => {
                 </NodeHeaderIcon>
                 <NodeHeaderTitle>{display.title}</NodeHeaderTitle>
                 <NodeHeaderActions>
-                    {assets.length > 0 && data.nodeCategory == 'visualization' ? (
-                        <button
-                            onClick={() => {
-                                if (isFullVisualizationData(data)) data.visualize();
-                            }}
-                            className="flex bg-blue-300 items-center rounded-lg w-20 px-1 justify-center font-light"
-                        >
-                            <Eye className="h-4 w-4" />
-                            <p className="ml-1">View</p>
-                        </button>
-                    ) : (
-                        <></>
-                    )}
+                    {customActions}
                     <NodeHeaderMenuAction label="Expand account options">
                         <DropdownMenuLabel>My Account</DropdownMenuLabel>
                         <DropdownMenuSeparator />
@@ -58,7 +53,7 @@ const ExploreNode = memo<NodeProps<TExploreNode>>(({ id, selected, data }) => {
                             return (
                                 <DropdownMenuItem
                                     key={`${id}-${ddOpt.label}-${index}`}
-                                    onClick={() => DropdownMenuItemAction(ddOpt.action)}
+                                    onClick={() => handleDropdownAction(ddOpt.action)}
                                 >
                                     {ddOpt.label}
                                 </DropdownMenuItem>
@@ -68,7 +63,9 @@ const ExploreNode = memo<NodeProps<TExploreNode>>(({ id, selected, data }) => {
                     <NodeHeaderDeleteAction />
                 </NodeHeaderActions>
             </NodeHeader>
-            <div className="mt-2">empty</div>
+            <div className="mt-2">
+                {customContent || <p>empty</p>}
+            </div>
             {config.handleOptions.map((handleOption, index) => (
                 <Handle
                     key={`${id}-${handleOption.type}-${index}`}
@@ -76,8 +73,9 @@ const ExploreNode = memo<NodeProps<TExploreNode>>(({ id, selected, data }) => {
                     type={handleOption.type}
                 />
             ))}
+            {children}
         </BaseNode>
     );
 });
 
-export default ExploreNode;
+export default BaseExploreNode;
