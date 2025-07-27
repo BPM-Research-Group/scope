@@ -1,12 +1,4 @@
-import {
-    useCallback,
-    useState,
-    useEffect,
-    type MouseEvent as ReactMouseEvent,
-    DragEvent,
-    useRef,
-    useMemo,
-} from 'react';
+import { useCallback, useEffect, type MouseEvent as ReactMouseEvent, DragEvent, useRef, useMemo } from 'react';
 import {
     Background,
     Controls,
@@ -37,7 +29,7 @@ import type { VisualizationExploreNodeData } from '~/types/explore/visualization
 import type { ExtendedFile } from '~/types/fileObject.types';
 import { BaseExploreNode } from '~/model/explore/baseNode.model';
 import type { ExploreNodeData, TExploreNode } from '~/types/explore/node.types';
-import { isFileNode, isVisualizationNode } from '~/lib/explore/exploreNodes.utils';
+import { isVisualizationNode } from '~/lib/explore/exploreNodes.utils';
 
 const logger = Logger.getInstance();
 
@@ -55,54 +47,91 @@ const Explore: React.FC = () => {
     const { screenToFlowPosition, getNode } = useReactFlow();
     const directedNeighborMap = useRef(new Map<NodeId, NodeId[]>());
     const navigate = useNavigate();
+    const { dialogNodeId, closeDialog } = useFileDialogStore();
+    const { files } = useStoredFiles();
 
     useMemo(() => {
         console.log(nodes);
     }, [nodes]);
 
-    const onNodeDataChange = useCallback((id: string, newData: Partial<ExploreNodeData>) => {
-        try {
-            const node = getNode(id) as TExploreNode | undefined;
-            if (!node) throw new Error(`Could not find node for id: ${id}`);
+    const onNodeDataChange = useCallback(
+        (id: string, newData: Partial<ExploreNodeData>) => {
+            try {
+                const node = getNode(id) as TExploreNode | undefined;
+                if (!node) throw new Error(`Could not find node for id: ${id}`);
 
-            // Dialog state is now handled by the store directly
+                const currentAssets = node.data.assets;
 
-            const currentAssets = node.data.assets;
+                // Only proceed if assets actually changed
+                if (!isEqual(currentAssets, newData.assets)) {
+                    logger.debug(`Assets have changed for node ${node.id}`, currentAssets, newData.assets);
+                    const neighbors = directedNeighborMap.current.get(id) || [];
 
-            // Only proceed if assets actually changed
-            if (!isEqual(currentAssets, newData.assets)) {
-                logger.debug(`Assets have changed for node ${node.id}`, currentAssets, newData.assets);
-                const neighbors = directedNeighborMap.current.get(id) || [];
-
-                setNodes((nds) =>
-                    nds.map((n) => {
-                        if (!neighbors.includes(n.id)) return n;
-
-                        // Case: Original Node
-                        if (n.id === id) {
-                            return { ...n, data: { ...n.data, ...newData } };
-                        }
-
-                        // Case: Neighbors (i.e. apply assets from original node)
-                        return {
-                            ...n,
-                            data: {
-                                ...n.data,
-                                assets: [...(newData.assets || [])],
-                            },
-                        };
-                    })
-                );
-            } else {
-                // Assets have not changed — just update the node data
-                setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...newData } } : n)));
+                    setNodes((nds) =>
+                        nds.map((n) => {
+                            // Case: Original Node
+                            if (n.id === id) {
+                                console.log('Reached the node!');
+                                return {
+                                    ...n,
+                                    data: {
+                                        ...n.data,
+                                        assets: [...(newData.assets || [])],
+                                    },
+                                };
+                            } else if (!neighbors.includes(n.id)) return n;
+                            // Case: Neighbors (i.e. apply assets from original node)
+                            else
+                                return {
+                                    ...n,
+                                    data: {
+                                        ...n.data,
+                                        assets: [...(newData.assets || [])],
+                                    },
+                                };
+                        })
+                    );
+                } else {
+                    // Assets have not changed — just update the node data
+                    setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...newData } } : n)));
+                }
+            } catch (err) {
+                logger.error(err);
             }
-        } catch (err) {
-            logger.error(err);
-        }
-    }, []);
+        },
+        [getNode, setNodes]
+    );
 
-    // File selection is now handled in ExploreApp component
+    const handleFileSelect = useCallback(
+        (file: ExtendedFile) => {
+            if (dialogNodeId) {
+                const node = getNode(dialogNodeId) as TExploreNode | undefined;
+                if (node && node.data.onDataChange) {
+                    console.warn(node, file);
+                    // Add the selected file as an asset to the node
+                    const newAsset = { fileId: file.id };
+                    const updatedAssets = [...node.data.assets, newAsset];
+                    node.data.onDataChange(dialogNodeId, { assets: updatedAssets });
+                }
+            }
+            closeDialog();
+        },
+        [dialogNodeId, getNode, closeDialog]
+    );
+
+    // Handle Escape key for custom dialog
+    useEffect(() => {
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && dialogNodeId) {
+                closeDialog();
+            }
+        };
+
+        if (dialogNodeId) {
+            document.addEventListener('keydown', handleEscape);
+            return () => document.removeEventListener('keydown', handleEscape);
+        }
+    }, [dialogNodeId, closeDialog]);
 
     const onEdgeDelete = useCallback(
         (event: ReactMouseEvent, edge: Edge) => {
@@ -213,35 +242,6 @@ const Explore: React.FC = () => {
                     <ExploreSidebar />
                 </div>
             </SidebarProvider>
-        </>
-    );
-};
-
-const ExploreApp = () => {
-    const { dialogNodeId, closeDialog } = useFileDialogStore();
-    const { files } = useStoredFiles();
-
-    // Handle Escape key for custom dialog
-    useEffect(() => {
-        const handleEscape = (e: KeyboardEvent) => {
-            if (e.key === 'Escape' && dialogNodeId) {
-                closeDialog();
-            }
-        };
-
-        if (dialogNodeId) {
-            document.addEventListener('keydown', handleEscape);
-            return () => document.removeEventListener('keydown', handleEscape);
-        }
-    }, [dialogNodeId, closeDialog]);
-
-    return (
-        <>
-            <ReactFlowProvider>
-                <DnDProvider>
-                    <Explore />
-                </DnDProvider>
-            </ReactFlowProvider>
             {Boolean(dialogNodeId) && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
                     <div className="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 sm:rounded-lg pointer-events-auto">
@@ -260,13 +260,23 @@ const ExploreApp = () => {
                                 If you want to upload a new event log please go to the data page
                             </p>
                             {files.map((file) => (
-                                <FileShowcase key={file.id} file={file} onFileSelect={() => closeDialog()} />
+                                <FileShowcase key={file.id} file={file} onFileSelect={handleFileSelect} />
                             ))}
                         </div>
                     </div>
                 </div>
             )}
         </>
+    );
+};
+
+const ExploreApp = () => {
+    return (
+        <ReactFlowProvider>
+            <DnDProvider>
+                <Explore />
+            </DnDProvider>
+        </ReactFlowProvider>
     );
 };
 
