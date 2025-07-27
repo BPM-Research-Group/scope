@@ -1,6 +1,12 @@
-import axios from 'axios';
+import axios, { type AxiosResponse } from 'axios';
+import type { ExtendedFile } from '~/types/fileObject.types';
 
 const api = axios.create({
-    baseURL: 'http://localhost:8000/api/v1',
+    baseURL: import.meta.env.VITE_BACKEND_BASE_URL,
     withCredentials: true,
 });
+
+export const uploadFile = async (file: ExtendedFile) => {
+    const response = await api.post<any, AxiosResponse<any, any>, any>('/upload', file);
+    return response.data;
+};
