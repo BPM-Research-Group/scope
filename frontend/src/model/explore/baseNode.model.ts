@@ -14,7 +14,7 @@ import { FileJson, FileSpreadsheet, Network, Workflow } from 'lucide-react';
 
 export class BaseExploreNode {
     readonly id: NodeId;
-    readonly type = 'exploreNode';
+    readonly type: string;
     position: XYPosition;
     data: ExploreNodeData;
 
@@ -25,6 +25,8 @@ export class BaseExploreNode {
         this.position = position;
 
         const nodeCategory = exploreNodeTypeCategoryMap[nodeType];
+
+        this.type = nodeCategory === 'file' ? 'fileNode' : 'visualizationNode';
 
         this.data = BaseExploreNode.getBaseData(nodeType, nodeCategory);
     }
@@ -116,9 +118,9 @@ export class BaseExploreNode {
     private static getVisualizationPath(nodeType: VisualizationNodeType) {
         switch (nodeType) {
             case 'lbofViewerNode':
-                return 'data/view/lbof';
+                return '/data/view/lbof';
             case 'ocptViewerNode':
-                return 'data/view/ocpt';
+                return '/data/view/ocpt';
         }
     }
 }
