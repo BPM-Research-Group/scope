@@ -22,7 +22,7 @@ const VisualizationExploreNode = memo<NodeProps<VisualizationNode>>((props) => {
     };
 
     const renderVisualizationActions = () => {
-        if (assets.length > 0 && isFullVisualizationData(data)) {
+        if (assets.length === 1 && isFullVisualizationData(data)) {
             return (
                 <button
                     onClick={() => data.visualize()}
