@@ -1,6 +1,5 @@
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
-use crate::types::{TreeNode, ProcessForest};
 use itertools::Itertools;
 use log::info;
 
@@ -36,3 +35,12 @@ struct ObjectType {
     #[serde(skip_serializing_if = "Option::is_none")]
     exhibits: Option<Vec<String>>,
 }
+
+////////// sid
+#[derive(Debug)]
+pub struct TreeNode {
+    pub label: String,
+    pub children: Vec<TreeNode>,
+}
+
+pub type ProcessForest = Vec<TreeNode>;
