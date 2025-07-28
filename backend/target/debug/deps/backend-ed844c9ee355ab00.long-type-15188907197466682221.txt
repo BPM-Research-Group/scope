@@ -1,1 +1,0 @@
-fn(axum::extract::Path<String>) -> impl Future<Output = {type error}> {delete_file}: Handler<_, _>

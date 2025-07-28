@@ -1,1 +1,0 @@
-cargo:rustc-env=MIME_TYPES_GENERATED_PATH=C:\Users\Postb\Documents\GitHub\scope\backend\target\debug\build\mime_guess-e69cb4d9bcb147ec\out\mime_types_generated.rs
