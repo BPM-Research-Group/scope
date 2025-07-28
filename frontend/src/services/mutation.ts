@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { uploadFile } from '~/services/api';
 import type { ExtendedFile } from '~/types/fileObject.types';
 
-export const useUploadFile = () => {
+export const useUploadFileMutation = () => {
     const queryClient = useQueryClient();
 
     return useMutation({

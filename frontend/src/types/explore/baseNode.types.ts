@@ -15,6 +15,7 @@ export interface BaseExploreNodeDropdownOption {
 }
 
 export interface BaseExploreNodeAsset {
+    fileName: string;
     fileId: string;
 }
 

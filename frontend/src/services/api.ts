@@ -7,6 +7,13 @@ const api = axios.create({
 });
 
 export const uploadFile = async (file: ExtendedFile) => {
-    const response = await api.post<any, AxiosResponse<any, any>, any>('/upload', file);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('fileId', file.id);
+
+    console.log(formData);
+    const response = await api.post<any, AxiosResponse<any, any>, any>('/upload', formData);
     return response.data;
 };
+
+export const getOcpt = async () => {};
