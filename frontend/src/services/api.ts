@@ -3,7 +3,7 @@ import type { ExtendedFile } from '~/types/fileObject.types';
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_BACKEND_BASE_URL,
-    withCredentials: true,
+    withCredentials: false,
 });
 
 export const uploadFile = async (file: ExtendedFile) => {
@@ -11,7 +11,7 @@ export const uploadFile = async (file: ExtendedFile) => {
     formData.append('file', file);
     formData.append('fileId', file.id);
 
-    console.log(formData);
+    console.log('FormData entries:', Array.from(formData.entries()));
     const response = await api.post<any, AxiosResponse<any, any>, any>('/upload', formData);
     return response.data;
 };

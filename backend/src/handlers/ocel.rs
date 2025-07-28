@@ -137,17 +137,17 @@ pub async fn test_get_handler() -> impl IntoResponse {
 
 
 pub async fn upload_handler(mut multipart: Multipart) -> impl IntoResponse {
-    let mut field_id: Option<String> = None;
+    let mut file_id: Option<String> = None;
     let mut file_bytes: Option<Bytes> = None;
 
     while let Some(field) = multipart.next_field().await.unwrap() {
         let name = field.name().unwrap_or("").to_string();
 
         match name.as_str() {
-            "fieldId" => {
+            "fileId" => {
                 let value = field.text().await.unwrap_or_default();
-                println!("Received fieldId: {}", value);
-                field_id = Some(value);
+                println!("Received fileId: {}", value);
+                file_id = Some(value);
             }
             "file" => {
                 let data = field.bytes().await.unwrap_or_default();
@@ -175,7 +175,7 @@ pub async fn upload_handler(mut multipart: Multipart) -> impl IntoResponse {
         }
     }
 
-    if let (Some(id), Some(_)) = (field_id, file_bytes) {
+    if let (Some(id), Some(_)) = (file_id, file_bytes) {
         (StatusCode::OK, format!("Received file with id: {}", id))
     } else {
         (StatusCode::BAD_REQUEST, "Missing file or fieldId".into())
