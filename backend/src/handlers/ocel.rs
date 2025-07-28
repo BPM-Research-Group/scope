@@ -144,7 +144,11 @@ pub async fn upload_handler(mut multipart: Multipart) -> impl IntoResponse {
         let name = field.name().unwrap_or("").to_string();
 
         match name.as_str() {
+<<<<<<< HEAD
             "fileId" => {
+=======
+            "filedId" => {
+>>>>>>> refs/remotes/origin/main
                 let value = field.text().await.unwrap_or_default();
                 println!("Received fileId: {}", value);
                 file_id = Some(value);

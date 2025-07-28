@@ -10,6 +10,8 @@ bytes = "1.10.1"
 chrono = "0.4.41"
 cors = "0.1.0"
 futures-util = "0.3.31"
+itertools = "0.14.0"
+log = "0.4.27"
 multipart = "0.18.0"
 process_mining = "0.3.25"
 serde = { version = "1.0.219", features = ["derive"] }
