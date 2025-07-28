@@ -1,8 +1,16 @@
-use axum::{Router, routing::{get, post}, Json};
-use crate::handlers::ocel::{post_ocel, get_ocel};
+use axum::{
+    Router,
+    routing::{get, post},
+
+};
+use crate::handlers::ocel::{get_ocel, post_ocel_binary,test_post_handler,test_get_handler, upload_handler};
 
 pub fn router() -> Router {
     Router::new()
-        .route("/upload", post(post_ocel))
-        .route("/upload", get(get_ocel))
+        //.route("/", post(post_ocel_binary))
+        //.route("/", get(get_ocel))
+        .route("/", post(test_post_handler))
+        .route("/test", post(upload_handler))
+        .route("/", get(test_get_handler))
+        
 }
