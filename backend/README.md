@@ -37,5 +37,6 @@ It receives a Form which contains a file (binary) and a fileID
 ### 1. Create a test binary file containing a sentence
 
 ```bash
-echo -n "Hello from ChatGPT binary test file!" > test.bin && curl -X POST http://localhost:3000/upload/test -F "fieldId=test123" -F "file=@test.bin"
+echo -n "Hello from ChatGPT binary test file!" > test.bin && curl -X POST http://localhost:3000/upload/test -F "fileId=test123" -F "file=@test.bin"
 ```
+
