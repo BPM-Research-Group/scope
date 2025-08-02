@@ -12,7 +12,7 @@ export const uploadFile = async (file: ExtendedFile) => {
     formData.append('fileId', file.id);
 
     console.log('FormData entries:', Array.from(formData.entries()));
-    const response = await api.post<any, AxiosResponse<any, any>, any>('/upload', formData);
+    const response = await api.post<any, AxiosResponse<any, any>, any>('/upload/test', formData);
     return response.data;
 };
 
