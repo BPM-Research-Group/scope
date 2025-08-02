@@ -1,8 +1,9 @@
-pub mod upload;
 use axum::Router;
 use tower_http::cors::{CorsLayer, Any};
 use axum::http::Method;
 use axum::http::HeaderValue;
+pub mod v1;
+
 
 pub fn create_routes() -> Router {
     let cors = CorsLayer::new()
@@ -11,6 +12,6 @@ pub fn create_routes() -> Router {
         .allow_headers(Any);
 
     Router::new()
-        .nest("/upload", upload::router())
+        .nest("/v1", v1::router())
         .layer(cors)
 }

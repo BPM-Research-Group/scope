@@ -3,7 +3,7 @@ use axum::{
     routing::{get, post},
 
 };
-use crate::handlers::ocel::{get_ocel, post_ocel_binary,test_post_handler,test_get_handler, upload_handler};
+use crate::handlers::ocel::{post_ocel_binary,test_post_handler,test_get_handler, upload_handler};
 
 pub fn router() -> Router {
     Router::new()
