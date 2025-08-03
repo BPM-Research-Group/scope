@@ -34,7 +34,7 @@ pub async fn post_ocel_json(Json(ocel): Json<OcelJson>) {
     };
 
     // Make sure the target folder exists
-    let folder_path = FsPath::new("backend/temp/");
+    let folder_path = FsPath::new("./temp/");
     if let Err(e) = fs::create_dir_all(&folder_path).await {
         eprintln!("Failed to create folder: {:?}", e);
         return;
@@ -83,13 +83,11 @@ pub async fn post_ocel_binary(mut multipart: Multipart) -> impl IntoResponse {
         }
     }
 
-    // Validate presence
     let (id, bytes) = match (file_id, file_bytes) {
         (Some(i), Some(b)) => (i, b),
         _ => return (StatusCode::BAD_REQUEST, "Missing file or fileId").into_response(),
     };
 
-    // Try to decode file
     let text = match str::from_utf8(&bytes) {
         Ok(t) => t,
         Err(e) => {
@@ -98,22 +96,32 @@ pub async fn post_ocel_binary(mut multipart: Multipart) -> impl IntoResponse {
         }
     };
 
-    // Try to parse JSON
-    match serde_json::from_str::<Value>(text) {
-        Ok(_) => {
-            let filename = format!("backend/temp/{}.json", id);
-            if let Err(e) = fs::write(&filename, text).await {
-                println!("❌ Failed to save file: {}", e);
-                return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to save file").into_response();
-            }
-            println!("✅ File saved as {}", filename);
-            (StatusCode::OK, format!("Saved OCEL to: {}", filename)).into_response()
-        }
+    let json: Value = match serde_json::from_str(text) {
+        Ok(v) => v,
         Err(e) => {
             println!("❌ Invalid JSON: {}", e);
-            (StatusCode::BAD_REQUEST, "Invalid JSON format").into_response()
+            return (StatusCode::BAD_REQUEST, "Invalid JSON format").into_response();
         }
+    };
+
+    // Detect OCEL version based on actual keys
+    let version = if json.get("ocel:events").is_some() && json.get("ocel:global-log").is_some() {
+        "v1"
+    } else if json.get("objectTypes").is_some() && json.get("eventTypes").is_some() {
+        "v2"
+    } else {
+        println!("❌ Could not detect OCEL version for fileId: {}", id);
+        return (StatusCode::BAD_REQUEST, "Unknown OCEL structure").into_response();
+    };
+
+    let filename = format!("./temp/ocel_{}_{}.json", version, id);
+    if let Err(e) = fs::write(&filename, text).await {
+        println!("❌ Failed to save file: {}", e);
+        return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to save file").into_response();
     }
+
+    println!("✅ OCEL {} file saved as {}", version.to_uppercase(), filename);
+    (StatusCode::OK, format!("Saved OCEL {} to: {}", version.to_uppercase(), filename)).into_response()
 }
 
 pub async fn get_ocel(Path(file_id): Path<String>) -> impl IntoResponse {
