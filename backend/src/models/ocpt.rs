@@ -37,7 +37,7 @@ struct ObjectType {
 }
 
 ////////// sid
-#[derive(Debug)]
+#[derive(serde::Serialize)]
 pub struct TreeNode {
     pub label: String,
     pub children: Vec<TreeNode>,

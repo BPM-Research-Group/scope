@@ -5,18 +5,13 @@ use std::fs as stdfs;
 use std::fs::File;
 use simplelog::*;
 use std::io::Write;
-use crate::models::{OcelJson, Event, Object, ProcessForest, TreeNode};
+use crate::types::{OcelJson, Event, Object, ProcessForest, TreeNode};
 mod build_relations_fns;
 mod types;
 mod interaction_patterns;
 mod divergence_free_dfg;
 mod start_cuts;
 mod start_cuts_opti;
-mod fallthrough_cuts;
-mod convert_to_json_tree;
-mod export_json;
-use export_json::save_json_to_file;
-use convert_to_json_tree::build_output;
 use log::info;
 
 
@@ -31,7 +26,7 @@ fn main() {
         WriteLogger::new(LevelFilter::Info, Config::default(), File::create("process.log").unwrap()),
     ]).unwrap();
 
-    let file_path = "data/ContainerLogistics_ocel_2.json";
+    let file_path = "data/ContainerLogistics.json";
 
     let file_content = stdfs::read_to_string(&file_path).unwrap();
     let ocel: OcelJson = serde_json::from_str(&file_content).unwrap();
@@ -54,29 +49,17 @@ fn main() {
     let (dfg, start_acts, end_acts) =
         divergence_free_dfg::get_divergence_free_graph_v2(&relations, &div);
 
-    //println!("created DFG!");
+    println!("created DFG!");
 
-    //print_dfg(&dfg);
+    print_dfg(&dfg);
 
-    let mut sorted_dfg: Vec<_> = dfg.iter().collect();
-    sorted_dfg.sort_by(|a, b| b.1.cmp(a.1)); // Sort descending by frequency
-
-    println!("Sorted DFG:");
-    for ((src, tgt), freq) in sorted_dfg {
-        println!("{} -> {}: {}", src, tgt, freq);
-    }
-
-    let remove_list = vec![];
-    //let remove_list = vec!["failed delivery".to_string(),"payment reminder".to_string()];
+    // let remove_list = vec![];
+    let remove_list = vec!["failed delivery".to_string(),"payment reminder".to_string()];
     let filtered_dfg = filter_dfg(&dfg, &remove_list);
     let filtered_activities = filter_activities(&all_activities, &remove_list);
-    
-    //let filtered_activities: HashSet<String> = all_activities.into_iter().collect();
-
-    //println!("{:?}", filtered_activities);
 
     //// The function in starts_cuts file implements the exact mathematical formula of Inductive miner, so it can be very slow if there are a large number of activities.
-    //let process_forest = start_cuts::find_cuts(&dfg, &dfg, filtered_activities, &start_acts, &end_acts);
+    // let process_forest = start_cuts::find_cuts(&filtered_dfg, &filtered_dfg, filtered_activities, &start_acts, &end_acts);
 
     //// The function in starts_cuts_opti file implements optimised algorithms for finding cuts in Inductive miner, so it is very fast.
     let process_forest = start_cuts_opti::find_cuts_start(&filtered_dfg, &filtered_activities, &start_acts, &end_acts);
@@ -86,28 +69,7 @@ fn main() {
 
     println!("\n=== Process Forest ===");
     print_process_forest(&process_forest);
-    println!("\n=== Convergence ===");
-    println!("{:#?}", con);
-    println!("\n=== Deficiency ===");
-    println!("{:#?}", defi);
-    println!("\n=== Divergency ===");
-    println!("{:#?}", div);
-    println!("\n=== Relations ===");
-    println!("{:#?}", rel);
 
-    let output = build_output(&process_forest, &con, &defi, &div);
-    let json = serde_json::to_string_pretty(&output).unwrap();
-    println!("\n=== JSON ===");
-    println!("{}", json);
-
-    let json_string = serde_json::to_string_pretty(&output).unwrap();
-
-    // Save to file
-    if let Err(e) = save_json_to_file(&json_string, "output.json") {
-        eprintln!("Error writing JSON to file: {}", e);
-    } else {
-        println!("✅ JSON exported to output.json");
-    }
     
 }
 
