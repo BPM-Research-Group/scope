@@ -1,30 +1,33 @@
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
-use crate::models::ocel::{Event, Object};
+use crate::models::ocel_sid::{Event, Object};
 
 
 
 pub fn build_relations(
-    events: &HashMap<String, Event>,
-    objects: &HashMap<String, Object>,
+    events: &Vec<Event>,
+    objects: &Vec<Object>,
 ) -> Vec<(String, String, String, String, String)> {
     let mut relations = Vec::new();
 
-    for (event_id, event) in events {
-        for object_id in &event.omap {
-            if let Some(object) = objects.get(object_id) {
+    // Create a HashMap for quick object lookup
+    let object_map: HashMap<String, &Object> = objects.iter()
+        .map(|obj| (obj.id.clone(), obj))
+        .collect();
+
+    for event in events {
+        for relationship in &event.relationships {
+            if let Some(object) = object_map.get(&relationship.object_id) {
                 relations.push((
-                    event_id.clone(),
+                    event.id.clone(),
                     event.activity.clone(),
-                    event.timestamp.clone(),
-                    object_id.clone(),
+                    event.time.clone(),
+                    relationship.object_id.clone(),
                     object.object_type.clone(),
                 ));
             }
         }
     }
-
-    // After building your Vec<YourType> called `relations`
     // relations.sort(); 
 
     // First sorting by event id, then by timestamp

@@ -145,7 +145,7 @@ fn filter_keep_dfg(
 }
 
 
-fn is_sequence_cut_possible(
+pub fn is_sequence_cut_possible(
     dfg: &HashMap<(String, String), usize>,
     set_1_activities: &HashSet<String>,
     set_2_activities: &HashSet<String>,
@@ -172,7 +172,7 @@ fn is_sequence_cut_possible(
     true
 }
 
-fn is_exclusive_choice_cut_possible(
+pub fn is_exclusive_choice_cut_possible(
     dfg: &HashMap<(String, String), usize>,
     set_1_activities: &HashSet<String>,
     set_2_activities: &HashSet<String>,

@@ -1,8 +1,8 @@
-use crate::core::df2_miner::{start_cuts::is_reachable};
-use crate::models::ocpt::{TreeNode, ProcessForest};
+use crate::{core::df2_miner::start_cuts::is_reachable, models::ocpt::{ProcessForest, TreeNode}};
+use itertools::Itertools;
 use log::info;
 use std::collections::{HashMap, HashSet, VecDeque};
-use crate::core::df2_miner::fallthrough_cuts::{self, FallthroughStrategy};
+use crate::core::df2_miner::start_cuts::{is_exclusive_choice_cut_possible, is_sequence_cut_possible};
 
 pub fn find_cuts_start(
     dfg: &HashMap<(String, String), usize>,
@@ -31,70 +31,34 @@ pub fn find_cuts_start(
 
     // ----- perform cuts--------
 
-    info!("Attempting to find exclusive choice cut...");
-    info!("All activities: {:?}", all_activities);
-    info!("DFG edges: {:?}", dfg.keys().collect::<Vec<_>>());
-    
     let (excl_set1, excl_set2) = find_exclusive_choice_cut(&filtered_dfg, &all_activities);
-    info!("Found potential exclusive cut sets: set1={:?}, set2={:?}", excl_set1, excl_set2);
-    
-    if !excl_set1.is_empty() && !excl_set2.is_empty() {
-        info!("Checking if sets are valid for exclusive cut...");
-        // Check if there are any edges between the two sets in the directed graph
-        let mut has_edges_between = false;
-        let mut found_edges = Vec::new();
-        
-        for (from, to) in dfg.keys() {
-            if (excl_set1.contains(from) && excl_set2.contains(to)) || 
-               (excl_set2.contains(from) && excl_set1.contains(to)) {
-                has_edges_between = true;
-                found_edges.push((from.clone(), to.clone()));
-            }
-        }
-        
-        if !has_edges_between {
-            info!("Exclusive cut valid - no edges between sets");
-            info!("Exclusive cut found: {:?} X {:?}", excl_set1, excl_set2);
-            let mut node = TreeNode {
-                label: "X".to_string(),
-                children: Vec::new(),
-            };
-            
-            info!("Processing first child set: {:?}", excl_set1);
-            let child1 = find_cuts_start(
-                &dfg,
-                &excl_set1,
-                &start_activities,
-                &end_activities,
-            );
-            info!("First child result: {:?}", child1);
-            node.children.extend(child1);
-            
-            info!("Processing second child set: {:?}", excl_set2);
-            let child2 = find_cuts_start(
-                &dfg,
-                &excl_set2,
-                &start_activities,
-                &end_activities,
-            );
-            info!("Second child result: {:?}", child2);
-            node.children.extend(child2);
-            
-            forest.push(node);
-            info!("Returning forest with X node: {:?}", forest);
-            return forest;
-        } else {
-            info!("Exclusive cut invalid - found edges between sets: {:?}", found_edges);
-        }
-    } else {
-        info!("No valid exclusive cut found - one or both sets are empty");
+    if (!excl_set1.is_empty() && !excl_set2.is_empty() && is_exclusive_choice_cut_possible(&filtered_dfg, &excl_set1, &excl_set2)) {
+        info!("Exclusive cut found: {:?} (X) {:?}", excl_set1, excl_set2);
+        let mut node = TreeNode {
+            label: "excl".to_string(),
+            children: Vec::new(),
+        };
+        node.children.extend(find_cuts_start(
+            &dfg,
+            &excl_set1,
+            &start_activities,
+            &end_activities,
+        ));
+        node.children.extend(find_cuts_start(
+            &dfg,
+            &excl_set2,
+            &start_activities,
+            &end_activities,
+        ));
+        forest.push(node);
+        return forest;
     }
 
     let (set1, set2) = find_sequence_cut(&filtered_dfg, &all_activities);
-    if !set1.is_empty() && !set2.is_empty() {
-        info!("Sequence cut found: {:?} -> {:?}", set1, set2);
+    if (!set1.is_empty() && !set2.is_empty() && is_sequence_cut_possible(&filtered_dfg, &set1, &set2)) {
+        info!("Sequence cut found: {:?} (->) {:?}", set1, set2);
         let mut node = TreeNode {
-            label: "->".to_string(),  // Changed from "seq" to "->"
+            label: "seq".to_string(),
             children: Vec::new(),
         };
         node.children.extend(find_cuts_start(
@@ -114,14 +78,14 @@ pub fn find_cuts_start(
     }
 
     let (is_parallel, para_set1, para_set2) = find_parallel_cut(&filtered_dfg, &all_activities);
-    if is_parallel
+    if (is_parallel
         && !para_set1.is_empty()
         && !para_set2.is_empty()
-        && parallel_cut_condition_check(&para_set1, &para_set2, &start_activities, &end_activities)
+        && parallel_cut_condition_check(&para_set1, &para_set2, &start_activities, &end_activities))
     {
-        info!("Parallel cut found: {:?} + {:?}", para_set1, para_set2);
+        info!("Parallel cut found: {:?} (||) {:?}", para_set1, para_set2);
         let mut node = TreeNode {
-            label: "+".to_string(),  // Changed from "para" to "+"
+            label: "para".to_string(),
             children: Vec::new(),
         };
         node.children.extend(find_cuts_start(
@@ -146,7 +110,7 @@ pub fn find_cuts_start(
         &start_activities,
         &end_activities,
     );
-    if is_redo
+    if (is_redo
         && !redo_set2.is_empty()
         && !redo_set1.is_empty()
         && redo_cut_condition_check(
@@ -155,11 +119,11 @@ pub fn find_cuts_start(
             &redo_set2,
             &start_activities,
             &end_activities,
-        )
+        ))
     {
-        info!("Redo cut found: {:?} * {:?}", redo_set1, redo_set2);
+        info!("Redo cut found: {:?} (R) {:?}", redo_set1, redo_set2);
         let mut node = TreeNode {
-            label: "*".to_string(),  // Changed from "redo" to "*"
+            label: "redo".to_string(),
             children: Vec::new(),
         };
         node.children.extend(find_cuts_start(
@@ -182,44 +146,27 @@ pub fn find_cuts_start(
         "No further cuts found for the current set of activities: {:?}",
         all_activities
     );
-    
-    // Apply fallthrough strategy when no cuts are found
-    info!("Applying fallthrough strategy...");
-    fallthrough_cuts::find_fallthrough_cut(
-        dfg,
-        all_activities,
-        &start_activities,
-        &end_activities,
-        FallthroughStrategy::Flower,  // Using Flower model as default fallthrough
-    )
-    
-    // Uncomment the following block to revert to the original behavior
-    // that returns individual activities as separate trees
-    /*
-    let mut forest = Vec::new();
-    for activity in all_activities {
+    // If no valid cuts are found, return disjoint trees
+    for activity in activities {
         let node = TreeNode {
-            label: activity.clone(),
+            label: activity,
             children: Vec::new(),
         };
         forest.push(node);
     }
+
     forest
-    */
 }
 
-// Exclusive cut and --------------
+// Exclusive cut and helpers --------------
 fn find_exclusive_choice_cut(
     dfg: &HashMap<(String, String), usize>,
     all_activities: &HashSet<String>,
 ) -> (HashSet<String>, HashSet<String>) {
     // Step 1: Convert to undirected adjacency list
     let mut undirected_graph: HashMap<String, HashSet<String>> = HashMap::new();
-    let mut directed_graph: HashMap<String, HashSet<String>> = HashMap::new();
 
-    // Build both directed and undirected graphs
     for ((from, to), _) in dfg {
-        // Undirected graph (for connected components)
         undirected_graph
             .entry(from.clone())
             .or_default()
@@ -228,21 +175,13 @@ fn find_exclusive_choice_cut(
             .entry(to.clone())
             .or_default()
             .insert(from.clone());
-            
-        // Directed graph (for validation)
-        directed_graph
-            .entry(from.clone())
-            .or_default()
-            .insert(to.clone());
     }
 
-    // Ensure all activities are in the graphs, even if isolated
     for activity in all_activities {
-        undirected_graph.entry(activity.clone()).or_default();
-        directed_graph.entry(activity.clone()).or_default();
+        undirected_graph.entry(activity.clone()).or_default(); // ensure isolated nodes are included
     }
 
-    // Step 2: Find connected components in the undirected graph using BFS
+    // Step 2: Find connected components using BFS
     let mut visited: HashSet<String> = HashSet::new();
     let mut components: Vec<HashSet<String>> = Vec::new();
 
@@ -267,81 +206,13 @@ fn find_exclusive_choice_cut(
         }
     }
 
-    info!("Found {} connected components: {:?}", components.len(), components);
-    
-    // If there's only one component, no exclusive cut is possible
-    if components.len() <= 1 {
-        info!("Only one connected component found, no exclusive cut possible");
-        return (HashSet::new(), HashSet::new());
-    }
+    // // Step 3: Print disjoint components
+    // info!("Disjoint components:");
+    // for (i, comp) in components.iter().enumerate() {
+    //     info!("Component {}: {:?}", i + 1, comp);
+    // }
 
-    // Step 3: Check all possible combinations of components to find a valid cut
-    let n = components.len();
-    for i in 0..n {
-        // Try combining component i with other components to form set1
-        let mut set1 = components[i].clone();
-        let mut set2 = HashSet::new();
-        
-        // First, try with just component i as set1
-        for j in 0..n {
-            if i != j {
-                set2.extend(components[j].iter().cloned());
-            }
-        }
-        
-        info!("Trying component {} as set1: {:?} vs set2: {:?}", i, set1, set2);
-        
-        // Check if there are any edges between set1 and set2 in the directed graph
-        let mut has_edges_between = false;
-        'outer: for from in &set1 {
-            for to in &set2 {
-                if directed_graph.get(from).map_or(false, |neighbors| neighbors.contains(to)) ||
-                   directed_graph.get(to).map_or(false, |neighbors| neighbors.contains(from)) {
-                    has_edges_between = true;
-                    break 'outer;
-                }
-            }
-        }
-        
-        if !has_edges_between {
-            info!("Found valid exclusive cut with {} components: set1={:?}, set2={:?}", 
-                  n, set1, set2);
-            return (set1, set2);
-        }
-        
-        // If that didn't work, try combining with other components
-        for j in (i+1)..n {
-            let mut combined_set = components[i].clone();
-            combined_set.extend(components[j].iter().cloned());
-            
-            let mut other_set = HashSet::new();
-            for k in 0..n {
-                if k != i && k != j {
-                    other_set.extend(components[k].iter().cloned());
-                }
-            }
-            
-            // Check if there are any edges between the combined set and other set
-            let mut has_edges_between = false;
-            'inner: for from in &combined_set {
-                for to in &other_set {
-                    if directed_graph.get(from).map_or(false, |neighbors| neighbors.contains(to)) ||
-                       directed_graph.get(to).map_or(false, |neighbors| neighbors.contains(from)) {
-                        has_edges_between = true;
-                        break 'inner;
-                    }
-                }
-            }
-            
-            if !has_edges_between {
-                info!("Found valid exclusive cut by combining components: set1={:?}, set2={:?}", 
-                      combined_set, other_set);
-                return (combined_set, other_set);
-            }
-        }
-    }
-
-    // If no valid cut found with the above strategy, try the original approach as fallback
+    // Step 4: Assign first component to set1, rest to set2
     let mut set1 = HashSet::new();
     let mut set2 = HashSet::new();
 
@@ -352,7 +223,9 @@ fn find_exclusive_choice_cut(
         }
     }
 
-    info!("Using fallback exclusive cut: set1={:?}, set2={:?}", set1, set2);
+    // Step 5: Print the final sets
+    // info!("\nSet 1: {:?}", set1);
+    // info!("Set 2: {:?}", set2);
     (set1, set2)
 }
 
@@ -366,7 +239,7 @@ fn exclusive_cut_condition_check(
         for b in set2 {
             let r1 = is_reachable(dfg, a, b);
             let r2 = is_reachable(dfg, b, a);
-            if r1 || r2 {
+            if (r1 || r2) {
                 failures.push((a.clone(), b.clone(), r1, r2));
             }
         }
@@ -694,7 +567,7 @@ fn find_redo_cut(
 
         if is_s1_redo && !is_s2_redo {
             set1.insert(x.clone());
-        } else if !is_s1_redo && is_s2_redo {
+        } else if (!is_s1_redo && is_s2_redo) {
             set2.insert(x.clone());
         } else {
             return (false, set1, set2);
