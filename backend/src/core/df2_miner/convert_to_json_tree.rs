@@ -43,14 +43,14 @@ pub fn convert_tree(
     defi: &HashMap<String, Vec<String>>,
     div: &HashMap<String, Vec<String>>,
 ) -> HierarchyNode {
-    let is_operator = matches!(node.label.as_str(), "X" | "->" | "+" | "*");
+    let is_operator = matches!(node.label.as_str(), "excl" | "seq" | "para" | "redo");
 
     if is_operator {
         let op = match node.label.as_str() {
-            "X" => "xor",
-            "->" => "sequence",
-            "+" => "parallel",
-            "*" => "redo",
+            "excl" => "xor",
+            "seq" => "sequence",
+            "para" => "parallel",
+            "redo" => "redo",
             _ => panic!("Unknown operator"),
         };
         HierarchyNode::Operator {
