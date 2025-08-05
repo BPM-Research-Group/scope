@@ -23,9 +23,9 @@ pub async fn get_ocpt(Path(file_id): Path<String>) -> impl IntoResponse {
     println!("📥 GET /v1/objects/ocpt/{}", file_id);
 
     let ocpt_path = format!("./temp/ocpt_{}.json", file_id);
-    let v2_path = format!("data/ocel_v2_{}.json", file_id);
-    let v1_path = format!("data/ocel_v1_{}.json", file_id);
-
+    let v2_path = format!("./temp/ocel_v2_{}.json", file_id);
+    let v1_path = format!("./temp/ocel_v1_{}.json", file_id);
+    println!("{}", v2_path);
     // 1. If ocpt already exists, serve it
     if FsPath::new(&ocpt_path).exists() {
         return serve_file_as_json(&ocpt_path, &file_id).await;
