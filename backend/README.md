@@ -40,10 +40,14 @@ It receives a Form which contains a file (binary) and a fileID
 echo -n "Hello from ChatGPT binary test file!" > test.bin && curl -X POST http://localhost:3000/v1/upload/test -F "fileId=test123" -F "file=@test.bin"
 ```
 
-### Testing GET ocel and GET ocpt
+### Testing GET/DELETE ocel and GET/DELETE ocpt
 
 ```bash
 curl -i -X GET http://localhost:3000/v1/objects/ocel/123
 
 curl -i -X GET http://localhost:3000/v1/objects/ocpt/123
+
+curl -X DELETE http://localhost:3000/v1/objects/ocpt/123
+
+curl -X DELETE http://localhost:3000/v1/objects/ocpt/123
 ```
