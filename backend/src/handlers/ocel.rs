@@ -173,6 +173,43 @@ pub async fn get_ocel(Path(file_id): Path<String>) -> impl IntoResponse {
 }
 
 
+pub async fn delete_ocel(Path(file_id): Path<String>) -> impl IntoResponse {
+    println!("🗑️ DELETE /v1/objects/ocel/{}", file_id);
+
+    let base_path = PathBuf::from("./temp");
+
+    // All allowed filename variants
+    let candidates = vec![
+        base_path.join(format!("ocel_v1_{}.json", file_id)),
+        base_path.join(format!("ocel_v1_{}.jsonocel", file_id)),
+        base_path.join(format!("ocel_v2_{}.json", file_id)),
+        base_path.join(format!("ocel_v2_{}.jsonocel", file_id)),
+    ];
+
+    // Filter which ones exist
+    let existing: Vec<PathBuf> = candidates
+        .into_iter()
+        .filter(|p| p.exists())
+        .collect();
+
+    if existing.len() > 1 {
+        eprintln!("❌ Conflict: Multiple OCEL versions found for fileId '{}'", file_id);
+        return (StatusCode::CONFLICT, "Conflict: multiple versions found").into_response();
+    } else if existing.is_empty() {
+        eprintln!("❌ No OCEL file found for fileId '{}'", file_id);
+        return (StatusCode::NOT_FOUND, format!("No OCEL file found for fileId: {}", file_id)).into_response();
+    }
+
+    match fs::remove_file(&existing[0]).await {
+        Ok(_) => (StatusCode::NO_CONTENT, "Deleted file").into_response(),
+        Err(e) => {
+            eprintln!("❌ Failed to delete file: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to delete file").into_response()
+        }
+    }
+}
+
+
 pub async fn test_post_handler() -> impl IntoResponse {
     println!("POST /upload called");
     (StatusCode::OK, "POST received: test response")

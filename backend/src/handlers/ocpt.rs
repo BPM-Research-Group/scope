@@ -67,3 +67,15 @@ async fn serve_file_as_json(path: &str, file_id: &str) -> Response {
         }
     }
 }
+
+pub async fn delete_ocpt(Path(file_id): Path<String>) -> impl IntoResponse {
+    println!("🗑️ DELETE /v1/objects/ocpt/{}", file_id);
+    let ocpt_path = format!("./temp/ocpt_{}.json", file_id);
+    match fs::remove_file(&ocpt_path).await {
+        Ok(_) => (StatusCode::NO_CONTENT, "Deleted file").into_response(),
+        Err(e) => {
+            eprintln!("❌ Failed to delete file {}: {}", ocpt_path, e);
+            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to delete file").into_response()
+        }
+    }
+}
