@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { getOcpt } from '~/services/api';
 import type { VisualizationExploreNodeData } from '~/types/explore/visualizationNode.types';
+import { useJSONFile } from '~/stores/store';
 
 export const useVisualization = () => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+    const { setJSONFile } = useJSONFile();
 
     const createVisualizationHandler = useCallback(
         (getNodeData: () => VisualizationExploreNodeData) => {
@@ -30,8 +32,8 @@ export const useVisualization = () => {
 
                         console.log(ocptData);
                         // Set visualization data if available
-                        if (nodeData.setVisualizationData && ocptData) {
-                            nodeData.setVisualizationData(ocptData);
+                        if (ocptData) {
+                            setJSONFile(ocptData);
                         }
                     } catch (error) {
                         console.error('Failed to fetch OCPT data:', error);
@@ -41,7 +43,7 @@ export const useVisualization = () => {
                 // Navigate to visualization
                 if (nodeData.visualizationPath) {
                     console.log('Here we would navigate');
-                    // navigate(nodeData.visualizationPath);
+                    navigate(nodeData.visualizationPath);
                 }
             };
         },
