@@ -1,4 +1,12 @@
-import { useCallback, useEffect, type MouseEvent as ReactMouseEvent, DragEvent, useRef, useMemo } from 'react';
+import {
+    useCallback,
+    useEffect,
+    type MouseEvent as ReactMouseEvent,
+    DragEvent,
+    useRef,
+    useMemo,
+    useState,
+} from 'react';
 import {
     Background,
     Controls,
@@ -32,6 +40,7 @@ import { BaseExploreNode } from '~/model/explore/baseNode.model';
 import type { ExploreNodeData, TExploreNode } from '~/types/explore/node.types';
 import { isFileNode, isVisualizationNode } from '~/lib/explore/exploreNodes.utils';
 import { useExploreFlow } from '~/hooks/useExploreFlow';
+import { useVisualization } from '~/hooks/useVisualization';
 
 const logger = Logger.getInstance();
 
@@ -53,6 +62,7 @@ const Explore: React.FC = () => {
     const navigate = useNavigate();
     const { dialogNodeId, closeDialog } = useFileDialogStore();
     const { files } = useStoredFiles();
+    const { createVisualizationHandler } = useVisualization();
 
     useMemo(() => {
         console.log(nodes);
@@ -211,14 +221,16 @@ const Explore: React.FC = () => {
             const newNode = new BaseExploreNode(position, type);
             newNode.data.onDataChange = onNodeDataChange;
             if (isVisualizationNode(newNode)) {
-                newNode.data.visualize = () => {
-                    navigate(newNode.data.visualizationPath);
-                };
+                newNode.data.visualize = createVisualizationHandler(() => {
+                    // Use getNode to get the current node data
+                    const currentNode = getNode(newNode.id);
+                    return currentNode?.data as VisualizationExploreNodeData || newNode.data;
+                });
             }
 
             setNodes((nds) => nds.concat(newNode));
         },
-        [screenToFlowPosition, type]
+        [screenToFlowPosition, type, createVisualizationHandler, getNode]
     );
 
     const onConnect = useCallback(

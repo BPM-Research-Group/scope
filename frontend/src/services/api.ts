@@ -16,4 +16,8 @@ export const uploadFile = async (file: ExtendedFile) => {
     return response.data;
 };
 
-export const getOcpt = async () => {};
+export const getOcpt = async (fileId: string) => {
+    const response = await api.get(`/v1/objects/ocpt/${fileId}`);
+    console.log(response);
+    return response.data;
+};
