@@ -1,33 +1,34 @@
 {
-  "compilerOptions": {
-    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
-    "target": "ES2022",
-    "lib": ["ES2023"],
-    "module": "ESNext",
-    "skipLibCheck": true,
+    "compilerOptions": {
+        "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+        "target": "ES2022",
+        "lib": ["ES2023"],
+        "module": "ESNext",
+        "skipLibCheck": true,
+        "types": ["node"],
 
-    /* Bundler mode */
-    "moduleResolution": "Bundler",
-    "allowImportingTsExtensions": true,
-    "esModuleInterop": true,
-    "isolatedModules": true,
-    "moduleDetection": "force",
-    "noEmit": true,
+        /* Bundler mode */
+        "moduleResolution": "Bundler",
+        "allowImportingTsExtensions": true,
+        "esModuleInterop": true,
+        "isolatedModules": true,
+        "moduleDetection": "force",
+        "noEmit": true,
 
-    /* Linting */
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true,
+        /* Linting */
+        "strict": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noFallthroughCasesInSwitch": true,
+        "noUncheckedSideEffectImports": true,
 
-    "baseUrl": ".", // Set the base URL to the root of your project
-    "paths": {
-      "~/*": ["src/*"]
+        "baseUrl": ".", // Set the base URL to the root of your project
+        "paths": {
+            "~/*": ["src/*"]
+        }
     },
-  },
-  "ts-node": {
-    "esm": true
-  },
-  "include": ["vite.config.ts", "jest.config.ts", "src/benchmark/**/*.ts"]
+    "ts-node": {
+        "esm": true
+    },
+    "include": ["vite.config.ts", "jest.config.ts", "src/benchmark/**/*.ts", "syncEnv.ts"]
 }
