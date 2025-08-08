@@ -1,12 +1,13 @@
 import { memo, useEffect } from 'react';
 import { NodeProps } from '@xyflow/react';
-import { Eye } from 'lucide-react';
+import { Eye, Loader2 } from 'lucide-react';
 import BaseExploreNode from './BaseExploreNode';
 import type { BaseExploreNodeDropdownActionType } from '~/types/explore/baseNode.types';
 import type { VisualizationNode } from '~/types/explore/node.types';
 import { isFullVisualizationData } from '~/lib/explore/exploreNodes.utils';
 import { useGetOcpt } from '~/services/queries';
 import { useJSONFile } from '~/stores/store';
+import { Button } from '~/components/ui/button';
 
 const VisualizationExploreNode = memo<NodeProps<VisualizationNode>>((props) => {
     const { id, selected, data } = props;
@@ -36,14 +37,23 @@ const VisualizationExploreNode = memo<NodeProps<VisualizationNode>>((props) => {
     const renderVisualizationActions = () => {
         if (assets.length === 1 && isFullVisualizationData(data)) {
             return (
-                <button
+                <Button
                     onClick={() => data.visualize()}
                     disabled={isLoading}
-                    className="flex bg-blue-300 items-center rounded-lg w-20 px-1 justify-center font-light disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex bg-blue-500 items-around rounded-lg w-20 h-8 px-1 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    <Eye className="h-4 w-4" />
-                    <p className="ml-1">{isLoading ? 'Loading...' : 'View'}</p>
-                </button>
+                    {isLoading ? (
+                        <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span>Loading</span>
+                        </>
+                    ) : (
+                        <>
+                            <Eye className="h-4 w-4" />
+                            <span>View</span>
+                        </>
+                    )}
+                </Button>
             );
         }
         return null;
