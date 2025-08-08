@@ -118,9 +118,9 @@ export class BaseExploreNode {
     private static getVisualizationPath(nodeType: VisualizationNodeType) {
         switch (nodeType) {
             case 'lbofViewerNode':
-                return '/data/view/lbof';
+                return '/data/explore/lbof';
             case 'ocptViewerNode':
-                return '/data/view/ocpt';
+                return '/data/explore/ocpt';
         }
     }
 }
