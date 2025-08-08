@@ -64,10 +64,6 @@ const Explore: React.FC = () => {
     const { files } = useStoredFiles();
     const { createVisualizationHandler } = useVisualization();
 
-    useMemo(() => {
-        console.log(nodes);
-    }, [nodes]);
-
     const onNodeDataChange = useCallback(
         (id: string, newData: Partial<ExploreNodeData>) => {
             try {
@@ -224,7 +220,7 @@ const Explore: React.FC = () => {
                 newNode.data.visualize = createVisualizationHandler(() => {
                     // Use getNode to get the current node data
                     const currentNode = getNode(newNode.id);
-                    return currentNode?.data as VisualizationExploreNodeData || newNode.data;
+                    return (currentNode?.data as VisualizationExploreNodeData) || newNode.data;
                 });
             }
 
