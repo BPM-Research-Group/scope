@@ -1,20 +1,8 @@
-import {
-    useCallback,
-    useEffect,
-    type MouseEvent as ReactMouseEvent,
-    DragEvent,
-    useRef,
-    useMemo,
-    useState,
-} from 'react';
+import { useCallback, useEffect, type MouseEvent as ReactMouseEvent, DragEvent, useRef } from 'react';
 import {
     Background,
     Controls,
     ReactFlow,
-    useEdgesState,
-    useNodesState,
-    addEdge,
-    type Node,
     type Edge,
     type Connection,
     useReactFlow,
@@ -30,14 +18,13 @@ import VisualizationExploreNode from '~/components/explore/VisualizationExploreN
 import ExploreSidebar from '~/components/explore/ExploreSidebar';
 import FileShowcase from '~/components/explore/FileShowcase';
 import { isEqual } from 'lodash-es';
-import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { useStoredFiles, useFileDialogStore } from '~/stores/store';
-import type { FileExploreNodeData } from '~/types/explore/fileNode.types';
+import { useExploreFlowStore } from '~/stores/exploreStore';
 import type { VisualizationExploreNodeData } from '~/types/explore/visualizationNode.types';
 import type { ExtendedFile } from '~/types/fileObject.types';
 import { BaseExploreNode } from '~/model/explore/baseNode.model';
-import type { ExploreNodeData, TExploreNode } from '~/types/explore/node.types';
+import type { ExploreNodeData } from '~/types/explore/node.types';
 import { isFileNode, isVisualizationNode } from '~/lib/explore/exploreNodes.utils';
 import { useExploreFlow } from '~/hooks/useExploreFlow';
 import { useVisualization } from '~/hooks/useVisualization';
@@ -50,16 +37,24 @@ const nodeTypes = {
 };
 
 type NodeId = string;
-type Nodes = Node<FileExploreNodeData> | Node<VisualizationExploreNodeData>;
 
 const Explore: React.FC = () => {
-    const [nodes, setNodes, onNodesChange] = useNodesState([] as Nodes[]);
-    const [edges, setEdges, onEdgesChange] = useEdgesState([] as Edge[]);
+    const {
+        nodes,
+        edges,
+        onNodesChange,
+        onEdgesChange,
+        onConnect,
+        setNodes,
+        setEdges,
+        updateNodeData,
+        addNode,
+        removeEdge: removeStoreEdge,
+    } = useExploreFlowStore();
     const [type] = useDnD();
     const { screenToFlowPosition } = useReactFlow();
     const { getNode } = useExploreFlow();
     const directedNeighborMap = useRef(new Map<NodeId, NodeId[]>());
-    const navigate = useNavigate();
     const { dialogNodeId, closeDialog } = useFileDialogStore();
     const { files } = useStoredFiles();
     const { createVisualizationHandler } = useVisualization();
@@ -77,39 +72,22 @@ const Explore: React.FC = () => {
                     logger.debug(`Assets have changed for node ${node.id}`, currentAssets, newData.assets);
                     const neighbors = directedNeighborMap.current.get(id) || [];
 
-                    setNodes((nds) =>
-                        nds.map((n) => {
-                            // Case: Original Node
-                            if (n.id === id) {
-                                console.log('Reached the node!');
-                                return {
-                                    ...n,
-                                    data: {
-                                        ...n.data,
-                                        assets: [...(newData.assets || [])],
-                                    },
-                                };
-                            } else if (!neighbors.includes(n.id)) return n;
-                            // Case: Neighbors (i.e. apply assets from original node)
-                            else
-                                return {
-                                    ...n,
-                                    data: {
-                                        ...n.data,
-                                        assets: [...(newData.assets || [])],
-                                    },
-                                };
-                        })
-                    );
+                    // Update the original node
+                    updateNodeData(id, { assets: [...(newData.assets || [])] });
+
+                    // Update neighbor nodes
+                    neighbors.forEach((neighborId) => {
+                        updateNodeData(neighborId, { assets: [...(newData.assets || [])] });
+                    });
                 } else {
                     // Assets have not changed — just update the node data
-                    setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...newData } } : n)));
+                    updateNodeData(id, newData);
                 }
             } catch (err) {
                 logger.error(err);
             }
         },
-        [getNode, setNodes]
+        [getNode, updateNodeData]
     );
 
     const handleFileSelect = useCallback(
@@ -157,28 +135,25 @@ const Explore: React.FC = () => {
 
                 if (isFileToVisualization) {
                     // Remove assets from target node that came from source node
-                    setNodes((nds) =>
-                        nds.map((node) => {
-                            if (node.id === edge.target) {
-                                // Filter out assets that match the source node's assets
-                                const filteredAssets = node.data.assets.filter(
-                                    (asset) =>
-                                        !sourceNode.data.assets.some(
-                                            (sourceAsset) => sourceAsset.fileId === asset.fileId
-                                        )
-                                );
+                    const updatedNodes = nodes.map((node) => {
+                        if (node.id === edge.target) {
+                            // Filter out assets that match the source node's assets
+                            const filteredAssets = node.data.assets.filter(
+                                (asset) =>
+                                    !sourceNode.data.assets.some((sourceAsset) => sourceAsset.fileId === asset.fileId)
+                            );
 
-                                return {
-                                    ...node,
-                                    data: {
-                                        ...node.data,
-                                        assets: filteredAssets,
-                                    },
-                                };
-                            }
-                            return node;
-                        })
-                    );
+                            return {
+                                ...node,
+                                data: {
+                                    ...node.data,
+                                    assets: filteredAssets,
+                                },
+                            };
+                        }
+                        return node;
+                    });
+                    setNodes(updatedNodes);
                 }
 
                 const neighbors = directedNeighborMap.current.get(edge.source) || [];
@@ -191,9 +166,9 @@ const Explore: React.FC = () => {
             }
 
             // Remove the edge
-            setEdges((eds) => eds.filter((e) => e.id !== edge.id));
+            removeStoreEdge(edge.id);
         },
-        [setEdges, setNodes, getNode]
+        [removeStoreEdge, setNodes, getNode, nodes]
     );
 
     const onDragOver = useCallback((event: DragEvent<HTMLElement>) => {
@@ -224,55 +199,53 @@ const Explore: React.FC = () => {
                 });
             }
 
-            setNodes((nds) => nds.concat(newNode));
+            addNode(newNode);
         },
-        [screenToFlowPosition, type, createVisualizationHandler, getNode]
+        [screenToFlowPosition, type, createVisualizationHandler, getNode, addNode]
     );
 
-    const onConnect = useCallback(
+    const handleConnect = useCallback(
         (params: Connection) => {
-            setNodes((nds) => {
-                const { source, target } = params;
-                const sourceNode = nds.find((node) => node.id === source);
-                if (!sourceNode) {
-                    logger.error('Did not find source node for connection', params);
-                    return nds;
-                }
+            const { source, target } = params;
+            const sourceNode = nodes.find((node) => node.id === source);
+            if (!sourceNode) {
+                logger.error('Did not find source node for connection', params);
+                return;
+            }
 
-                const targetNode = nds.find((node) => node.id === target);
-                if (!targetNode) {
-                    logger.error('Did not find target node for connection', params);
-                    return nds;
-                }
+            const targetNode = nodes.find((node) => node.id === target);
+            if (!targetNode) {
+                logger.error('Did not find target node for connection', params);
+                return;
+            }
 
-                const neighbors = directedNeighborMap.current.get(source) || [];
+            const neighbors = directedNeighborMap.current.get(source) || [];
 
-                if (!neighbors.includes(target)) {
-                    directedNeighborMap.current.set(source, [...neighbors, target]);
-                }
+            if (!neighbors.includes(target)) {
+                directedNeighborMap.current.set(source, [...neighbors, target]);
+            }
 
-                // OCPT File to OCPT Viewer
-                if (sourceNode.data.nodeType === 'ocptFileNode' && targetNode.data.nodeType === 'ocptViewerNode') {
-                    return nds.map((node) => {
-                        if (node.id === target) {
-                            return {
-                                ...node,
-                                data: {
-                                    ...node.data,
-                                    assets: [...(node.data.assets || []), ...(sourceNode.data.assets || [])],
-                                },
-                            };
-                        }
-                        return node;
-                    });
-                }
+            // OCPT File to OCPT Viewer
+            if (sourceNode.data.nodeType === 'ocptFileNode' && targetNode.data.nodeType === 'ocptViewerNode') {
+                const updatedNodes = nodes.map((node) => {
+                    if (node.id === target) {
+                        return {
+                            ...node,
+                            data: {
+                                ...node.data,
+                                assets: [...(node.data.assets || []), ...(sourceNode.data.assets || [])],
+                            },
+                        };
+                    }
+                    return node;
+                });
+                setNodes(updatedNodes);
+            }
 
-                return nds;
-            });
-
-            setEdges((eds) => addEdge(params, eds));
+            // Use the store's onConnect to handle the edge creation
+            onConnect(params);
         },
-        [setNodes, setEdges]
+        [setNodes, nodes, onConnect]
     );
 
     return (
@@ -287,7 +260,7 @@ const Explore: React.FC = () => {
                             edges={edges}
                             onNodesChange={onNodesChange}
                             onEdgesChange={onEdgesChange}
-                            onConnect={onConnect}
+                            onConnect={handleConnect}
                             onEdgeClick={onEdgeDelete}
                             onDrop={onDrop}
                             onDragOver={onDragOver}
