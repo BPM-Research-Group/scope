@@ -17,10 +17,10 @@ const nodeTypes = {
 };
 
 const Explore: React.FC = () => {
-    const { nodes, edges, onNodesChange, onEdgesChange } = useExploreFlowStore();
+    const { nodes, edges, onEdgesChange } = useExploreFlowStore();
     const [type] = useDnD();
     const { dialogNodeId } = useFileDialogStore();
-    const { onEdgeDelete, onDragOver, onDrop, handleConnect } = useExploreEventHandlers();
+    const { onNodesChange, onEdgeDelete, onDragOver, onDrop, handleConnect } = useExploreEventHandlers();
 
     const handleDrop = useCallback((event: DragEvent<HTMLElement>) => onDrop(event, type), [onDrop, type]);
 

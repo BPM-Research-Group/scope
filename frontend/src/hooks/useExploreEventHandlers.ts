@@ -1,5 +1,5 @@
 import { DragEvent, type MouseEvent as ReactMouseEvent, useCallback, useRef } from 'react';
-import { addEdge, type Connection, type Edge, useReactFlow } from '@xyflow/react';
+import { addEdge, type Connection, type Edge, type NodeChange, useReactFlow } from '@xyflow/react';
 import { isEqual } from 'lodash-es';
 import { useExploreFlow } from '~/hooks/useExploreFlow';
 import { useVisualization } from '~/hooks/useVisualization';
@@ -19,10 +19,12 @@ export const useExploreEventHandlers = () => {
         nodes,
         edges,
         onConnect,
+        onNodesChange: storeOnNodesChange,
         setNodes,
         updateNodeData,
         addNode,
         removeEdge: removeStoreEdge,
+        removeNode: removeStoreNode,
     } = useExploreFlowStore();
 
     const { screenToFlowPosition } = useReactFlow();
@@ -111,6 +113,76 @@ export const useExploreEventHandlers = () => {
         [removeStoreEdge, setNodes, getNode, nodes]
     );
 
+    const onNodeDelete = useCallback(
+        (nodeId: string) => {
+            const nodeToDelete = getNode(nodeId);
+            if (!nodeToDelete) return;
+
+            // If it's a file node, remove its assets from connected visualization nodes
+            if (isFileNode(nodeToDelete)) {
+                // Find all edges where this node is the source
+                const outgoingEdges = edges.filter((edge) => edge.source === nodeId);
+                
+                // Update connected visualization nodes
+                outgoingEdges.forEach((edge) => {
+                    const targetNode = getNode(edge.target);
+                    if (targetNode && isVisualizationNode(targetNode)) {
+                        // Filter out assets that came from the deleted file node
+                        const filteredAssets = targetNode.data.assets.filter(
+                            (asset) =>
+                                !nodeToDelete.data.assets.some(
+                                    (sourceAsset) => sourceAsset.fileId === asset.fileId
+                                )
+                        );
+                        
+                        updateNodeData(edge.target, { assets: filteredAssets });
+                    }
+                });
+
+                // Remove from neighbor map
+                directedNeighborMap.current.delete(nodeId);
+                
+                // Remove this node from other nodes' neighbor maps
+                for (const [sourceId, neighbors] of directedNeighborMap.current.entries()) {
+                    if (neighbors.includes(nodeId)) {
+                        const updatedNeighbors = neighbors.filter(id => id !== nodeId);
+                        if (updatedNeighbors.length > 0) {
+                            directedNeighborMap.current.set(sourceId, updatedNeighbors);
+                        } else {
+                            directedNeighborMap.current.delete(sourceId);
+                        }
+                    }
+                }
+            }
+
+            // Remove the node (this also removes connected edges)
+            removeStoreNode(nodeId);
+        },
+        [getNode, edges, updateNodeData, removeStoreNode]
+    );
+
+    // Custom onNodesChange that handles node deletion with asset cleanup
+    const onNodesChange = useCallback(
+        (changes: NodeChange[]) => {
+            // Check for remove changes and handle them specially
+            const removeChanges = changes.filter((change) => change.type === 'remove');
+            
+            // Handle node deletions with asset cleanup
+            removeChanges.forEach((change) => {
+                if (change.type === 'remove') {
+                    onNodeDelete(change.id);
+                }
+            });
+            
+            // Apply all other changes normally
+            const otherChanges = changes.filter((change) => change.type !== 'remove');
+            if (otherChanges.length > 0) {
+                storeOnNodesChange(otherChanges);
+            }
+        },
+        [onNodeDelete, storeOnNodesChange]
+    );
+
     const onDragOver = useCallback((event: DragEvent<HTMLElement>) => {
         event.preventDefault();
         event.dataTransfer.dropEffect = 'move';
@@ -190,7 +262,9 @@ export const useExploreEventHandlers = () => {
 
     return {
         onNodeDataChange,
+        onNodesChange,
         onEdgeDelete,
+        onNodeDelete,
         onDragOver,
         onDrop,
         handleConnect,

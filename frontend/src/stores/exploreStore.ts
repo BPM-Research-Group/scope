@@ -15,6 +15,7 @@ interface ExploreFlowStore {
     setEdges: (edges: Edge[]) => void;
     updateNodeData: (nodeId: string, newData: Partial<ExploreNode['data']>) => void;
     addNode: (node: ExploreNode) => void;
+    removeNode: (nodeId: string) => void;
     removeEdge: (edgeId: string) => void;
     clearFlow: () => void;
 }
@@ -55,6 +56,11 @@ export const useExploreFlowStore = create<ExploreFlowStore>((set, get) => ({
     
     addNode: (node) => set((state) => ({
         nodes: [...state.nodes, node],
+    })),
+    
+    removeNode: (nodeId) => set((state) => ({
+        nodes: state.nodes.filter((node) => node.id !== nodeId),
+        edges: state.edges.filter((edge) => edge.source !== nodeId && edge.target !== nodeId),
     })),
     
     removeEdge: (edgeId) => set((state) => ({
