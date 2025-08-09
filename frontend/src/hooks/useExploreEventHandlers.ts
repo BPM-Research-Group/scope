@@ -8,7 +8,6 @@ import {
     useReactFlow,
 } from '@xyflow/react';
 import { isEqual } from 'lodash-es';
-import { useExploreFlow } from '~/hooks/useExploreFlow';
 import { useVisualization } from '~/hooks/useVisualization';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { isFileNode, isVisualizationNode } from '~/lib/explore/exploreNodes.utils';
@@ -33,10 +32,10 @@ export const useExploreEventHandlers = () => {
         addNode,
         removeEdge: removeStoreEdge,
         removeNode: removeStoreNode,
+        getNode,
     } = useExploreFlowStore();
 
     const { screenToFlowPosition } = useReactFlow();
-    const { getNode } = useExploreFlow();
     const { createVisualizationHandler } = useVisualization();
     const directedNeighborMap = useRef(new Map<NodeId, NodeId[]>());
 

@@ -17,6 +17,7 @@ interface ExploreFlowStore {
     addNode: (node: ExploreNode) => void;
     removeNode: (nodeId: string) => void;
     removeEdge: (edgeId: string) => void;
+    getNode: (nodeId: string) => ExploreNode | undefined;
     clearFlow: () => void;
 }
 
@@ -66,6 +67,10 @@ export const useExploreFlowStore = create<ExploreFlowStore>((set, get) => ({
     removeEdge: (edgeId) => set((state) => ({
         edges: state.edges.filter((edge) => edge.id !== edgeId),
     })),
+    
+    getNode: (nodeId) => {
+        return get().nodes.find((node) => node.id === nodeId);
+    },
     
     clearFlow: () => set({ nodes: [], edges: [] }),
 }));
