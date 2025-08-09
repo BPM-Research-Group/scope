@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { useExploreFlow } from '~/hooks/useExploreFlow';
 import { useFileDialogStore, useStoredFiles } from '~/stores/store';
+import { useExploreFlowStore } from '~/stores/exploreStore';
 import type { ExtendedFile } from '~/types/fileObject.types';
 import type { FileType } from '~/types/files.types';
 import FileShowcase from './FileShowcase';
@@ -13,7 +13,7 @@ interface FileSelectionDialogProps {
 const FileSelectionDialog: React.FC<FileSelectionDialogProps> = ({ isOpen }) => {
     const { dialogNodeId, closeDialog } = useFileDialogStore();
     const { files } = useStoredFiles();
-    const { getNode } = useExploreFlow();
+    const { getNode } = useExploreFlowStore();
 
     const handleFileSelect = useCallback(
         (file: ExtendedFile) => {

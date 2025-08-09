@@ -2,7 +2,7 @@ import { memo, useEffect } from 'react';
 import { NodeProps } from '@xyflow/react';
 import { Eye, Loader2 } from 'lucide-react';
 import { Button } from '~/components/ui/button';
-import { useJSONFile } from '~/stores/store';
+import { useJSONFile, useStoredFiles } from '~/stores/store';
 import { useGetOcpt } from '~/services/queries';
 import { isFullVisualizationData } from '~/lib/explore/exploreNodes.utils';
 import type { BaseExploreNodeDropdownActionType } from '~/types/explore/baseNode.types';
@@ -13,7 +13,8 @@ const VisualizationExploreNode = memo<NodeProps<VisualizationNode>>((props) => {
     const { id, selected, data } = props;
     const { assets } = data;
     const { setJSONFile } = useJSONFile();
-    
+    const { files } = useStoredFiles();
+
     // Only make API call if we have exactly one asset and it's an OCEL file
     const shouldFetchOcpt = assets.length === 1 && assets[0]?.fileType === 'ocelFile';
     const { data: ocptData, isLoading } = useGetOcpt(shouldFetchOcpt ? assets[0]?.fileId : null);
@@ -30,11 +31,27 @@ const VisualizationExploreNode = memo<NodeProps<VisualizationNode>>((props) => {
     useEffect(() => {
         if (assets.length === 1 && assets[0]?.fileType === 'ocptFile') {
             // For OCPT files, we assume the file data is already in OCPT format
-            // We could potentially fetch the file directly or use cached data
             console.log('OCPT file connected directly, no API transformation needed:', assets[0]);
-            // TODO: Set JSON data directly from OCPT file if available
+            const targetFile = files.find((file) => file.id === assets[0].fileId);
+            if (!targetFile) {
+                console.error('Could not find file in the store', assets[0]);
+                return;
+            }
+
+            // Read the file content and parse it as JSON
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const fileContent = event.target?.result as string;
+                    const ocptData = JSON.parse(fileContent);
+                    setJSONFile(ocptData);
+                } catch (error) {
+                    console.error('Error parsing OCPT file as JSON:', error);
+                }
+            };
+            reader.readAsText(targetFile);
         }
-    }, [assets, setJSONFile]);
+    }, [assets, setJSONFile, files]);
 
     const handleDropdownAction = (action: BaseExploreNodeDropdownActionType) => {
         switch (action) {
