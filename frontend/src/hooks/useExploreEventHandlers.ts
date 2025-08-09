@@ -1,10 +1,18 @@
 import { DragEvent, type MouseEvent as ReactMouseEvent, useCallback, useRef } from 'react';
-import { addEdge, type Connection, type Edge, type NodeChange, useReactFlow } from '@xyflow/react';
+import {
+    addEdge,
+    type Connection,
+    type Edge,
+    type IsValidConnection,
+    type NodeChange,
+    useReactFlow,
+} from '@xyflow/react';
 import { isEqual } from 'lodash-es';
 import { useExploreFlow } from '~/hooks/useExploreFlow';
 import { useVisualization } from '~/hooks/useVisualization';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { isFileNode, isVisualizationNode } from '~/lib/explore/exploreNodes.utils';
+import { isTwoFileNodes, isTwoVisualizationNodes } from '~/lib/explore/guardNodeConnections';
 import { Logger } from '~/lib/logger';
 import type { ExploreNodeData } from '~/types/explore/node.types';
 import type { VisualizationExploreNodeData } from '~/types/explore/visualizationNode.types';
@@ -122,7 +130,7 @@ export const useExploreEventHandlers = () => {
             if (isFileNode(nodeToDelete)) {
                 // Find all edges where this node is the source
                 const outgoingEdges = edges.filter((edge) => edge.source === nodeId);
-                
+
                 // Update connected visualization nodes
                 outgoingEdges.forEach((edge) => {
                     const targetNode = getNode(edge.target);
@@ -130,22 +138,20 @@ export const useExploreEventHandlers = () => {
                         // Filter out assets that came from the deleted file node
                         const filteredAssets = targetNode.data.assets.filter(
                             (asset) =>
-                                !nodeToDelete.data.assets.some(
-                                    (sourceAsset) => sourceAsset.fileId === asset.fileId
-                                )
+                                !nodeToDelete.data.assets.some((sourceAsset) => sourceAsset.fileId === asset.fileId)
                         );
-                        
+
                         updateNodeData(edge.target, { assets: filteredAssets });
                     }
                 });
 
                 // Remove from neighbor map
                 directedNeighborMap.current.delete(nodeId);
-                
+
                 // Remove this node from other nodes' neighbor maps
                 for (const [sourceId, neighbors] of directedNeighborMap.current.entries()) {
                     if (neighbors.includes(nodeId)) {
-                        const updatedNeighbors = neighbors.filter(id => id !== nodeId);
+                        const updatedNeighbors = neighbors.filter((id) => id !== nodeId);
                         if (updatedNeighbors.length > 0) {
                             directedNeighborMap.current.set(sourceId, updatedNeighbors);
                         } else {
@@ -166,14 +172,14 @@ export const useExploreEventHandlers = () => {
         (changes: NodeChange[]) => {
             // Check for remove changes and handle them specially
             const removeChanges = changes.filter((change) => change.type === 'remove');
-            
+
             // Handle node deletions with asset cleanup
             removeChanges.forEach((change) => {
                 if (change.type === 'remove') {
                     onNodeDelete(change.id);
                 }
             });
-            
+
             // Apply all other changes normally
             const otherChanges = changes.filter((change) => change.type !== 'remove');
             if (otherChanges.length > 0) {
@@ -181,6 +187,33 @@ export const useExploreEventHandlers = () => {
             }
         },
         [onNodeDelete, storeOnNodesChange]
+    );
+
+    // Connection validation for React Flow
+    const isValidConnection: IsValidConnection = useCallback(
+        (connection: Edge | Connection) => {
+            // Convert Edge to Connection format if needed
+            const connectionToValidate: Connection = {
+                source: connection.source,
+                target: connection.target,
+                sourceHandle: connection.sourceHandle || null,
+                targetHandle: connection.targetHandle || null,
+            };
+
+            // Prevent connecting two file nodes
+            if (isTwoFileNodes(connectionToValidate, nodes)) {
+                return false;
+            }
+
+            // Prevent connecting two visualization nodes
+            if (isTwoVisualizationNodes(connectionToValidate, nodes)) {
+                return false;
+            }
+
+            // Add more validation rules here as needed
+            return true;
+        },
+        [nodes]
     );
 
     const onDragOver = useCallback((event: DragEvent<HTMLElement>) => {
@@ -268,5 +301,6 @@ export const useExploreEventHandlers = () => {
         onDragOver,
         onDrop,
         handleConnect,
+        isValidConnection,
     };
 };

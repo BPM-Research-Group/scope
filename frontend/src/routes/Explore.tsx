@@ -20,7 +20,7 @@ const Explore: React.FC = () => {
     const { nodes, edges, onEdgesChange } = useExploreFlowStore();
     const [type] = useDnD();
     const { dialogNodeId } = useFileDialogStore();
-    const { onNodesChange, onEdgeDelete, onDragOver, onDrop, handleConnect } = useExploreEventHandlers();
+    const { onNodesChange, onEdgeDelete, onDragOver, onDrop, handleConnect, isValidConnection } = useExploreEventHandlers();
 
     const handleDrop = useCallback((event: DragEvent<HTMLElement>) => onDrop(event, type), [onDrop, type]);
 
@@ -37,6 +37,7 @@ const Explore: React.FC = () => {
                             onNodesChange={onNodesChange}
                             onEdgesChange={onEdgesChange}
                             onConnect={handleConnect}
+                            isValidConnection={isValidConnection}
                             onEdgeClick={onEdgeDelete}
                             onDrop={handleDrop}
                             onDragOver={onDragOver}
