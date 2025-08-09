@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { useExploreFlow } from '~/hooks/useExploreFlow';
 import { useFileDialogStore, useStoredFiles } from '~/stores/store';
 import type { ExtendedFile } from '~/types/fileObject.types';
+import type { FileType } from '~/types/files.types';
 import FileShowcase from './FileShowcase';
 
 interface FileSelectionDialogProps {
@@ -19,8 +20,11 @@ const FileSelectionDialog: React.FC<FileSelectionDialogProps> = ({ isOpen }) => 
             if (dialogNodeId) {
                 const node = getNode(dialogNodeId);
                 if (node && node.data.onDataChange) {
+                    // Determine file type based on node type
+                    const fileType: FileType = node.data.nodeType === 'ocptFileNode' ? 'ocptFile' : 'ocelFile';
+
                     // Add the selected file as an asset to the node
-                    const newAsset = { fileName: file.name, fileId: file.id };
+                    const newAsset = { fileName: file.name, fileId: file.id, fileType };
                     const updatedAssets = [...node.data.assets, newAsset];
                     node.data.onDataChange(dialogNodeId, { assets: updatedAssets });
                 }

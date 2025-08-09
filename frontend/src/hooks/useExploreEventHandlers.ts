@@ -270,8 +270,9 @@ export const useExploreEventHandlers = () => {
                 directedNeighborMap.current.set(source, [...neighbors, target]);
             }
 
-            // OCPT File to OCPT Viewer
-            if (sourceNode.data.nodeType === 'ocptFileNode' && targetNode.data.nodeType === 'ocptViewerNode') {
+            // OCPT File or OCEL File to OCPT Viewer
+            if ((sourceNode.data.nodeType === 'ocptFileNode' || sourceNode.data.nodeType === 'ocelFileNode') && 
+                targetNode.data.nodeType === 'ocptViewerNode') {
                 const updatedNodes = nodes.map((node) => {
                     if (node.id === target) {
                         return {
