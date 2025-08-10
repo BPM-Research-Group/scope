@@ -13,8 +13,6 @@ const BreadCrumbPath: React.FC<BreadCrumbPathProps> = ({ pathnames }) => {
         switch (name) {
             case 'data':
                 return <File className={className} />;
-            case 'view':
-                return <Eye className={className} />;
             case 'ocpt':
                 return <Network className={className} />;
             case 'home':

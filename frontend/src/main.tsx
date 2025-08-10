@@ -6,7 +6,6 @@ import Home from '~/routes/Home';
 import Upload from '~/routes/Upload';
 import OcptViewer from '~/routes/OcptViewer';
 import '~/index.css';
-import View from '~/routes/View';
 import Explore from '~/routes/Explore';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
@@ -23,16 +22,12 @@ const router = createBrowserRouter([
         element: <Upload />,
     },
     {
-        path: '/data/view/',
-        element: <View />,
-    },
-    {
-        path: '/data/view/ocpt',
-        element: <OcptViewer />,
-    },
-    {
-        path: '/data/view/explore',
+        path: '/data/explore/',
         element: <Explore />,
+    },
+    {
+        path: '/data/explore/ocpt',
+        element: <OcptViewer />,
     },
 ]);
 

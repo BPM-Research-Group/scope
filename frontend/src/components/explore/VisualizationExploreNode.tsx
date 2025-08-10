@@ -1,14 +1,57 @@
-import { memo } from 'react';
+import { memo, useEffect } from 'react';
 import { NodeProps } from '@xyflow/react';
-import { Eye } from 'lucide-react';
-import BaseExploreNode from './BaseExploreNode';
+import { Eye, Loader2 } from 'lucide-react';
+import { Button } from '~/components/ui/button';
+import { useJSONFile, useStoredFiles } from '~/stores/store';
+import { useGetOcpt } from '~/services/queries';
+import { isFullVisualizationData } from '~/lib/explore/exploreNodes.utils';
 import type { BaseExploreNodeDropdownActionType } from '~/types/explore/baseNode.types';
 import type { VisualizationNode } from '~/types/explore/node.types';
-import { isFullVisualizationData } from '~/lib/explore/exploreNodes.utils';
+import BaseExploreNode from './BaseExploreNode';
 
 const VisualizationExploreNode = memo<NodeProps<VisualizationNode>>((props) => {
     const { id, selected, data } = props;
     const { assets } = data;
+    const { setJSONFile } = useJSONFile();
+    const { files } = useStoredFiles();
+
+    // Only make API call if we have exactly one asset and it's an OCEL file
+    const shouldFetchOcpt = assets.length === 1 && assets[0]?.fileType === 'ocelFile';
+    const { data: ocptData, isLoading } = useGetOcpt(shouldFetchOcpt ? assets[0]?.fileId : null);
+
+    // Set JSON data when it becomes available (from API for OCEL files)
+    useEffect(() => {
+        if (ocptData) {
+            console.log('OCPT data received from API for OCEL file:', ocptData);
+            setJSONFile(ocptData);
+        }
+    }, [ocptData, setJSONFile]);
+
+    // Handle OCPT files directly (no API call needed)
+    useEffect(() => {
+        if (assets.length === 1 && assets[0]?.fileType === 'ocptFile') {
+            // For OCPT files, we assume the file data is already in OCPT format
+            console.log('OCPT file connected directly, no API transformation needed:', assets[0]);
+            const targetFile = files.find((file) => file.id === assets[0].fileId);
+            if (!targetFile) {
+                console.error('Could not find file in the store', assets[0]);
+                return;
+            }
+
+            // Read the file content and parse it as JSON
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const fileContent = event.target?.result as string;
+                    const ocptData = JSON.parse(fileContent);
+                    setJSONFile(ocptData);
+                } catch (error) {
+                    console.error('Error parsing OCPT file as JSON:', error);
+                }
+            };
+            reader.readAsText(targetFile);
+        }
+    }, [assets, setJSONFile, files]);
 
     const handleDropdownAction = (action: BaseExploreNodeDropdownActionType) => {
         switch (action) {
@@ -24,13 +67,23 @@ const VisualizationExploreNode = memo<NodeProps<VisualizationNode>>((props) => {
     const renderVisualizationActions = () => {
         if (assets.length === 1 && isFullVisualizationData(data)) {
             return (
-                <button
+                <Button
                     onClick={() => data.visualize()}
-                    className="flex bg-blue-300 items-center rounded-lg w-20 px-1 justify-center font-light"
+                    disabled={isLoading}
+                    className="flex bg-blue-500 items-around rounded-lg w-20 h-8 px-1 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    <Eye className="h-4 w-4" />
-                    <p className="ml-1">View</p>
-                </button>
+                    {isLoading ? (
+                        <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span>Loading</span>
+                        </>
+                    ) : (
+                        <>
+                            <Eye className="h-4 w-4" />
+                            <span>View</span>
+                        </>
+                    )}
+                </Button>
             );
         }
         return null;
