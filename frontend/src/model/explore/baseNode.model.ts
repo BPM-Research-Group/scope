@@ -1,16 +1,18 @@
-import type { BaseExploreNodeConfig } from '~/types/explore/baseNode.types';
-import {
-    type ExploreNodeType,
-    type ExploreNodeCategory,
-    type NodeId,
-    exploreNodeTypeCategoryMap,
-    type ExploreNodeData,
-    type VisualizationNodeType,
-} from '~/types/explore/node.types';
 import { Position, type XYPosition } from '@xyflow/react';
-import type { FileExploreNodeData } from '~/types/explore/fileNode.types';
-import type { VisualizationExploreNodeData } from '~/types/explore/visualizationNode.types';
 import { FileJson, FileSpreadsheet, Network, Workflow } from 'lucide-react';
+import { isExploreFileNodeType } from '~/lib/explore/exploreNodes.utils';
+import type { BaseExploreNodeConfig } from '~/types/explore/baseNode.types';
+import type { FileExploreNodeData } from '~/types/explore/fileNode.types';
+import {
+    type ExploreNodeCategory,
+    type ExploreNodeData,
+    type ExploreNodeType,
+    exploreNodeTypeCategoryMap,
+    type ExploreVisualizationNodeType,
+    type NodeId,
+} from '~/types/explore/node.types';
+import type { VisualizationExploreNodeData } from '~/types/explore/visualizationNode.types';
+import { assetTypes } from '~/types/files.types';
 
 export class BaseExploreNode {
     readonly id: NodeId;
@@ -41,12 +43,12 @@ export class BaseExploreNode {
             nodeCategory,
             assets: [],
             display: BaseExploreNode.getDefaultDisplay(nodeType, nodeCategory),
-            config: BaseExploreNode.getDefaultConfig(nodeCategory),
+            config: BaseExploreNode.getDefaultConfig(nodeType, nodeCategory),
             onDataChange: () => {},
         };
 
         if (nodeCategory === 'visualization') {
-            const path = BaseExploreNode.getVisualizationPath(nodeType as VisualizationNodeType);
+            const path = BaseExploreNode.getVisualizationPath(nodeType as ExploreVisualizationNodeType);
             const visualizationData: VisualizationExploreNodeData = {
                 ...baseData,
                 visualize: () => {},
@@ -65,8 +67,10 @@ export class BaseExploreNode {
                 base = {
                     isFileDialogOpen: false,
                 };
+                break;
             case 'visualization':
                 base = {};
+                break;
         }
 
         switch (nodeType) {
@@ -97,25 +101,62 @@ export class BaseExploreNode {
         }
     }
 
-    private static getDefaultConfig(nodeCategory: ExploreNodeCategory): BaseExploreNodeConfig {
+    private static getDefaultConfig(
+        nodeType: ExploreNodeType,
+        nodeCategory: ExploreNodeCategory
+    ): BaseExploreNodeConfig {
+        const defaults: BaseExploreNodeConfig = {
+            handleOptions: [],
+            dropdownOptions: [],
+            allowedAssetTypes: [],
+        };
+
+        let categoryConfig: Partial<BaseExploreNodeConfig> = {};
+
         switch (nodeCategory) {
             case 'file':
-                return {
+                categoryConfig = {
                     handleOptions: [{ position: Position.Right, type: 'source' }],
                     dropdownOptions: [{ label: 'Open File', action: 'openFileDialog' }],
                 };
+                break;
             case 'visualization':
-                return {
+                categoryConfig = {
                     handleOptions: [
                         { position: Position.Left, type: 'target' },
                         { position: Position.Right, type: 'source' },
                     ],
                     dropdownOptions: [{ label: 'Change Source', action: 'changeSourceFile' }],
+                    allowedAssetTypes: assetTypes,
                 };
+                break;
         }
+
+        let nodeSpecificConfig: Partial<BaseExploreNodeConfig> = {};
+
+        if (nodeCategory === 'file' && isExploreFileNodeType(nodeType)) {
+            switch (nodeType) {
+                case 'ocelFileNode':
+                    nodeSpecificConfig = {
+                        allowedAssetTypes: ['ocelFile'],
+                    };
+                    break;
+                case 'ocptFileNode':
+                    nodeSpecificConfig = {
+                        allowedAssetTypes: ['ocptFile'],
+                    };
+                    break;
+            }
+        }
+
+        return {
+            ...defaults,
+            ...categoryConfig,
+            ...nodeSpecificConfig,
+        };
     }
 
-    private static getVisualizationPath(nodeType: VisualizationNodeType) {
+    private static getVisualizationPath(nodeType: ExploreVisualizationNodeType) {
         switch (nodeType) {
             case 'lbofViewerNode':
                 return '/data/explore/lbof';

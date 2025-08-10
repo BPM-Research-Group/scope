@@ -1,30 +1,36 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
-import { useFileDialogStore, useStoredFiles } from '~/stores/store';
+import FileShowcase from '~/components/explore/FileShowcase';
 import { useExploreFlowStore } from '~/stores/exploreStore';
+import { useFileDialogStore, useStoredFiles } from '~/stores/store';
 import type { ExtendedFile } from '~/types/fileObject.types';
-import type { FileType } from '~/types/files.types';
-import FileShowcase from './FileShowcase';
 
 interface FileSelectionDialogProps {
     isOpen: boolean;
 }
 
 const FileSelectionDialog: React.FC<FileSelectionDialogProps> = ({ isOpen }) => {
+    const [filteredFiles, setFilteredFiles] = useState<ExtendedFile[]>([]);
     const { dialogNodeId, closeDialog } = useFileDialogStore();
     const { files } = useStoredFiles();
     const { getNode } = useExploreFlowStore();
+
+    useMemo(() => {
+        if (!dialogNodeId) return;
+
+        const node = getNode(dialogNodeId);
+        if (!node) return;
+
+        const validFiles = files.filter((file) => node.data.config.allowedAssetTypes.includes(file.fileType));
+        setFilteredFiles(validFiles);
+    }, [files, dialogNodeId, getNode]);
 
     const handleFileSelect = useCallback(
         (file: ExtendedFile) => {
             if (dialogNodeId) {
                 const node = getNode(dialogNodeId);
                 if (node && node.data.onDataChange) {
-                    // Determine file type based on node type
-                    const fileType: FileType = node.data.nodeType === 'ocptFileNode' ? 'ocptFile' : 'ocelFile';
-
-                    // Add the selected file as an asset to the node
-                    const newAsset = { fileName: file.name, fileId: file.id, fileType };
+                    const newAsset = { fileName: file.name, fileId: file.id, fileType: file.fileType };
                     const updatedAssets = [...node.data.assets, newAsset];
                     node.data.onDataChange(dialogNodeId, { assets: updatedAssets });
                 }
@@ -70,7 +76,7 @@ const FileSelectionDialog: React.FC<FileSelectionDialogProps> = ({ isOpen }) => 
                     <p className="text-sm text-muted-foreground">
                         If you want to upload a new event log please go to the data page
                     </p>
-                    {files.map((file) => (
+                    {filteredFiles.map((file) => (
                         <FileShowcase key={file.id} file={file} onFileSelect={handleFileSelect} />
                     ))}
                 </div>

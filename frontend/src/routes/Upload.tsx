@@ -1,44 +1,13 @@
-import Dropzone from '~/components/Dropzone';
-import { useStoredFiles } from '~/stores/store';
-import BreadcrumbNav from '~/components/BreadcrumbNav';
-import { Separator } from '~/components/ui/separator';
-import FileList from '~/components/data/FileList';
-import { useEffect } from 'react';
-import { Button } from '~/components/ui/button';
 import { CircleArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Button } from '~/components/ui/button';
+import { Separator } from '~/components/ui/separator';
+import BreadcrumbNav from '~/components/BreadcrumbNav';
+import FileList from '~/components/data/FileList';
+import Dropzone from '~/components/Dropzone';
 
 const Upload: React.FC = () => {
-    const { addFile } = useStoredFiles();
     const navigate = useNavigate();
-
-    useEffect(() => {
-        // So that the user can have an idea on how to use the application
-        const fetchPublicFiles = async () => {
-            const response = await fetch('trees/order_management_tree.json');
-            const data = await response.json();
-            const file = new File([JSON.stringify(data)], 'order_management_tree.json', { type: 'application/json' });
-            addFile(file);
-            const response2 = await fetch('logs/oml_filter_wo_i1_i3.csv');
-            const csvData2 = await response2.text();
-            const file2 = new File([csvData2], 'oml_filter_wo_i1_i3.csv', {
-                type: 'text/csv',
-            });
-            addFile(file2);
-            const response3 = await fetch('trees/small_ocpt.json');
-            const data3 = await response3.json();
-            const file3 = new File([JSON.stringify(data3)], 'small_ocpt.json', { type: 'application/json' });
-            addFile(file3);
-            const response4 = await fetch('logs/small_ocpt_log.csv');
-            const csvData4 = await response4.text();
-            const file4 = new File([csvData4], 'small_ocpt_log.csv', {
-                type: 'text/csv',
-            });
-            addFile(file4);
-        };
-        // Disabled the example files
-        // fetchPublicFiles();
-    }, []);
 
     return (
         <div className="flex flex-col items-center min-h-screen pb-8">

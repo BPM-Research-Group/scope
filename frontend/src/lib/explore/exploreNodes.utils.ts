@@ -1,22 +1,18 @@
-import type { Node, XYPosition } from '@xyflow/react';
-import type { BaseExploreNodeData } from '~/types/explore/baseNode.types';
 import type { FileExploreNodeData } from '~/types/explore/fileNode.types';
 import {
-    exploreNodeTypeCategoryMap,
+    type ExploreFileNodeType,
     type ExploreNodeCategory,
     type ExploreNodeData,
     type ExploreNodeType,
+    exploreNodeTypeCategoryMap,
+    type ExploreVisualizationNodeType,
     type FileNode,
-    type FileNodeType,
+    fileNodeTypes,
     type FullVisualizationNode,
     type TExploreNode,
-    type VisualizationNode,
-    type VisualizationNodeType,
+    visualizationNodeTypes,
 } from '~/types/explore/node.types';
-import type {
-    FullVisualizationExploreNodeData,
-    VisualizationExploreNodeData,
-} from '~/types/explore/visualizationNode.types';
+import type { FullVisualizationExploreNodeData } from '~/types/explore/visualizationNode.types';
 
 export const getNodeCategory = (type: ExploreNodeType): ExploreNodeCategory => {
     return exploreNodeTypeCategoryMap[type];
@@ -36,4 +32,12 @@ export function isVisualizationNode(node: TExploreNode): node is FullVisualizati
 
 export function isFullVisualizationData(data: ExploreNodeData): data is FullVisualizationExploreNodeData {
     return data.nodeCategory === 'visualization';
+}
+
+export function isExploreFileNodeType(nodeType: ExploreNodeType): nodeType is ExploreFileNodeType {
+    return fileNodeTypes.includes(nodeType as ExploreFileNodeType);
+}
+
+export function isExploreVisualizationNodeType(nodeType: ExploreNodeType): nodeType is ExploreVisualizationNodeType {
+    return visualizationNodeTypes.includes(nodeType as ExploreVisualizationNodeType);
 }

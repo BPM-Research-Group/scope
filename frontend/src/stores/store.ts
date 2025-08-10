@@ -7,7 +7,6 @@ import type { ExtendedFile } from '~/types/fileObject.types';
 import type { FlowJson } from '~/types/flow/flow.types';
 import type { ObjectFlowMapRecord, OcelEventData } from '~/types/ocel.types';
 import { type JSONSchema, type TreeNode } from '~/types/ocpt/ocpt.types';
-import { v4 as uuidv4 } from 'uuid';
 
 // Used for Dropzone and File Management
 interface FileID {
@@ -32,7 +31,7 @@ interface OcelFile {
 
 interface FileStore {
     files: ExtendedFile[];
-    addFile: (file: File) => void;
+    addFile: (file: ExtendedFile) => void;
     removeFile: (file: ExtendedFile) => void;
     clearFiles: () => void;
 }
@@ -117,7 +116,7 @@ export const useOcelFile = create<OcelFile>((set) => ({
 
 export const useStoredFiles = create<FileStore>((set) => ({
     files: [],
-    addFile: (file) => set((state) => ({ files: [...state.files, Object.assign(file, { id: uuidv4() })] })),
+    addFile: (file) => set((state) => ({ files: [...state.files, file] })),
     removeFile: (file) => set((state) => ({ files: state.files.filter((f) => f !== file) })),
     clearFiles: () => set((state) => ({ files: [] })),
 }));
@@ -250,11 +249,11 @@ interface FileDialogStore {
 
 export const useFileDialogStore = create<FileDialogStore>((set) => ({
     dialogNodeId: null,
-    
+
     openDialog: (nodeId: string) => {
         set({ dialogNodeId: nodeId });
     },
-    
+
     closeDialog: () => {
         set({ dialogNodeId: null });
     },

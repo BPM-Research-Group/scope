@@ -53,7 +53,7 @@ const Dropzone: React.FC = () => {
         onDropAccepted,
         accept: {
             'text/csv': ['.csv'],
-            'application/json': ['.json'],
+            'application/json': ['.json', '.jsonocel'],
         },
         maxFiles: 1,
     });
