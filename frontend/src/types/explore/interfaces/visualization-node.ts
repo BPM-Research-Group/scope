@@ -7,12 +7,6 @@ export interface VisualizationExploreNodeConfig extends BaseExploreNodeConfig {
 export interface VisualizationExploreNodeData extends BaseExploreNodeData {
     config: VisualizationExploreNodeConfig;
     visualizationPath?: string;
-    visualize?: () => void;
-    setVisualizationData?: (data: any) => void;
-}
-
-export interface FullVisualizationExploreNodeData extends VisualizationExploreNodeData {
-    visualizationPath: string;
     visualize: () => void;
-    setVisualizationData: (data: any) => void;
+    setVisualizationData?: (data: any) => void;
 }

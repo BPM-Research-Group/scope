@@ -3,16 +3,16 @@ import {
     type ExploreNodeCategory,
     type ExploreNodeData,
     type ExploreNodeType,
-    getNodeCategory,
     type ExploreVisualizationNodeType,
+    type FileExploreNodeData,
     type FileNode,
     fileNodeTypes,
-    type FullVisualizationNode,
+    getNodeCategory,
     type TExploreNode,
+    type VisualizationExploreNodeData,
     visualizationNodeTypes,
-    type FileExploreNodeData,
-    type FullVisualizationExploreNodeData,
 } from '~/types/explore';
+import type { VisualizationExploreNode } from '~/model/explore/visualization-node.model';
 
 export const getNodeCategoryByType = (type: ExploreNodeType): ExploreNodeCategory => {
     return getNodeCategory[type];
@@ -26,11 +26,11 @@ export function isFileNodeData(data: ExploreNodeData): data is FileExploreNodeDa
     return data.nodeCategory === 'file';
 }
 
-export function isVisualizationNode(node: TExploreNode): node is FullVisualizationNode {
+export function isVisualizationNode(node: TExploreNode): node is VisualizationExploreNode {
     return node.data.nodeCategory === 'visualization';
 }
 
-export function isFullVisualizationData(data: ExploreNodeData): data is FullVisualizationExploreNodeData {
+export function isFullVisualizationData(data: ExploreNodeData): data is VisualizationExploreNodeData {
     return data.nodeCategory === 'visualization';
 }
 

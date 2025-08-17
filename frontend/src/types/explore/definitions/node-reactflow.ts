@@ -1,10 +1,12 @@
 import type { Node } from '@xyflow/react';
-import type { FileExploreNodeData } from '~/types/explore/interfaces/file-node';
-import type { ExploreFileNodeType, ExploreVisualizationNodeType } from '~/types/explore/definitions/node-types';
 import type {
-    FullVisualizationExploreNodeData,
-    VisualizationExploreNodeData,
-} from '~/types/explore/interfaces/visualization-node';
+    ExploreFileNodeType,
+    ExploreMinerNodeType,
+    ExploreVisualizationNodeType,
+} from '~/types/explore/definitions/node-types';
+import type { FileExploreNodeData } from '~/types/explore/interfaces/file-node';
+import type { MinerExploreNodeData } from '~/types/explore/interfaces/miner-node';
+import type { VisualizationExploreNodeData } from '~/types/explore/interfaces/visualization-node';
 
 /**
  * =============================================================================
@@ -22,10 +24,10 @@ export interface VisualizationNode extends Node<VisualizationExploreNodeData> {
     data: VisualizationExploreNodeData & { nodeType: ExploreVisualizationNodeType; nodeCategory: 'visualization' };
 }
 
-export interface FullVisualizationNode extends Node<FullVisualizationExploreNodeData> {
-    data: FullVisualizationExploreNodeData & { nodeType: ExploreVisualizationNodeType; nodeCategory: 'visualization' };
+export interface MinerNode extends Node<MinerExploreNodeData> {
+    data: MinerExploreNodeData & { nodeType: ExploreMinerNodeType; nodeCategory: 'miner' };
 }
 
-export type TExploreNode = Node<FileExploreNodeData> | Node<VisualizationExploreNodeData>;
+export type TExploreNode = Node<FileExploreNodeData> | Node<VisualizationExploreNodeData> | Node<MinerExploreNodeData>;
 
-export type ExploreNodeData = VisualizationExploreNodeData | FileExploreNodeData;
+export type ExploreNodeData = VisualizationExploreNodeData | FileExploreNodeData | MinerExploreNodeData;

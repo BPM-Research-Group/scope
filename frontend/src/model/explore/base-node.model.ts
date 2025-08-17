@@ -11,7 +11,7 @@ import {
 
 export abstract class BaseExploreNode {
     readonly id: NodeId;
-    readonly type: string;
+    readonly type: ExploreNodeCategory;
     position: XYPosition;
     data: ExploreNodeData;
 
@@ -22,7 +22,7 @@ export abstract class BaseExploreNode {
         this.position = position;
 
         const nodeCategory = getNodeCategory[nodeType];
-        this.type = nodeCategory === 'file' ? 'fileNode' : 'visualizationNode';
+        this.type = nodeCategory;
 
         // Child classes must implement their own data initialization
         this.data = this.initializeData(nodeType, nodeCategory);
