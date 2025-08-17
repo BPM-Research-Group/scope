@@ -1,5 +1,4 @@
-import { Eye, File, FileJson, FileSpreadsheet, Network, Workflow } from 'lucide-react';
-import DndCard from '~/components/explore/DndCard';
+import { Eye, File, FileJson, FileSpreadsheet, Network, Pickaxe, TreePine, Workflow } from 'lucide-react';
 import {
     Sidebar,
     SidebarContent,
@@ -9,6 +8,7 @@ import {
     SidebarMenu,
     SidebarMenuItem,
 } from '~/components/ui/sidebar';
+import DndCard from '~/components/explore/DndCard';
 
 interface ExploreSidebarProps {}
 
@@ -44,6 +44,19 @@ const ExploreSidebar: React.FC<ExploreSidebarProps> = ({}) => {
                             </SidebarMenuItem>
                             <SidebarMenuItem className="ml-1">
                                 <DndCard title="LBOF Viewer" Icon={Workflow} nodeType="lbofViewerNode" />
+                            </SidebarMenuItem>
+                        </SidebarMenu>
+                    </SidebarGroupContent>
+                </SidebarGroup>
+                <SidebarGroup>
+                    <SidebarGroupLabel>
+                        <Pickaxe />
+                        <p className="ml-1">Miner</p>
+                    </SidebarGroupLabel>
+                    <SidebarGroupContent className="p-1">
+                        <SidebarMenu className="flex flex-row">
+                            <SidebarMenuItem className="ml-1">
+                                <DndCard title="OCPT Miner" Icon={TreePine} nodeType="ocptMinerNode" />
                             </SidebarMenuItem>
                         </SidebarMenu>
                     </SidebarGroupContent>

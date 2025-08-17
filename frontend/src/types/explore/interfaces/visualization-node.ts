@@ -1,4 +1,4 @@
-import type { BaseExploreNodeConfig, BaseExploreNodeData } from './base-node';
+import type { BaseExploreNodeConfig, BaseExploreNodeData } from '~/types/explore/interfaces/base-node';
 
 export interface VisualizationExploreNodeConfig extends BaseExploreNodeConfig {
     // Visualization-specific config properties can be added here in the future

@@ -1,6 +1,5 @@
 import { Position, type XYPosition } from '@xyflow/react';
 import { Network, Workflow } from 'lucide-react';
-import { BaseExploreNode } from './base-node.model';
 import {
     type BaseExploreNodeDisplay,
     type ExploreVisualizationNodeType,
@@ -8,6 +7,7 @@ import {
     type VisualizationExploreNodeData,
 } from '~/types/explore';
 import { assetTypes } from '~/types/files.types';
+import { BaseExploreNode } from '~/model/explore/base-node.model';
 
 export class VisualizationExploreNode extends BaseExploreNode {
     declare data: VisualizationExploreNodeData;

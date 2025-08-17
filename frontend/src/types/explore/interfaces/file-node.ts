@@ -1,4 +1,8 @@
-import type { BaseExploreNodeConfig, BaseExploreNodeData, BaseExploreNodeDisplay } from './base-node';
+import type {
+    BaseExploreNodeConfig,
+    BaseExploreNodeData,
+    BaseExploreNodeDisplay,
+} from '~/types/explore/interfaces/base-node';
 
 export interface FileExploreNodeDisplay extends BaseExploreNodeDisplay {
     isFileDialogOpen?: boolean;
