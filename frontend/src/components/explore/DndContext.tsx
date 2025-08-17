@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
-import type { ExploreNodeType } from '~/types/explore/node.types';
+import type { ExploreNodeType } from '~/types/explore';
 
 type DnDContextType = [ExploreNodeType | null, React.Dispatch<React.SetStateAction<ExploreNodeType | null>>];
 

@@ -1,20 +1,12 @@
 import { DragEvent, type MouseEvent as ReactMouseEvent, useCallback, useRef } from 'react';
-import {
-    addEdge,
-    type Connection,
-    type Edge,
-    type IsValidConnection,
-    type NodeChange,
-    useReactFlow,
-} from '@xyflow/react';
+import { type Connection, type Edge, type IsValidConnection, type NodeChange, useReactFlow } from '@xyflow/react';
 import { isEqual } from 'lodash-es';
 import { useVisualization } from '~/hooks/useVisualization';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { isFileNode, isVisualizationNode } from '~/lib/explore/exploreNodes.utils';
 import { isTwoFileNodes, isTwoVisualizationNodes } from '~/lib/explore/guardNodeConnections';
 import { Logger } from '~/lib/logger';
-import type { ExploreNodeData } from '~/types/explore/node.types';
-import type { VisualizationExploreNodeData } from '~/types/explore/visualizationNode.types';
+import type { ExploreNodeData, VisualizationExploreNodeData } from '~/types/explore';
 import { BaseExploreNode } from '~/model/explore/baseNode.model';
 
 const logger = Logger.getInstance();
@@ -270,8 +262,10 @@ export const useExploreEventHandlers = () => {
             }
 
             // OCPT File or OCEL File to OCPT Viewer
-            if ((sourceNode.data.nodeType === 'ocptFileNode' || sourceNode.data.nodeType === 'ocelFileNode') && 
-                targetNode.data.nodeType === 'ocptViewerNode') {
+            if (
+                (sourceNode.data.nodeType === 'ocptFileNode' || sourceNode.data.nodeType === 'ocelFileNode') &&
+                targetNode.data.nodeType === 'ocptViewerNode'
+            ) {
                 const updatedNodes = nodes.map((node) => {
                     if (node.id === target) {
                         return {

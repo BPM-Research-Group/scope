@@ -1,21 +1,21 @@
-import type { FileExploreNodeData } from '~/types/explore/fileNode.types';
 import {
     type ExploreFileNodeType,
     type ExploreNodeCategory,
     type ExploreNodeData,
     type ExploreNodeType,
-    exploreNodeTypeCategoryMap,
+    getNodeCategory,
     type ExploreVisualizationNodeType,
     type FileNode,
     fileNodeTypes,
     type FullVisualizationNode,
     type TExploreNode,
     visualizationNodeTypes,
-} from '~/types/explore/node.types';
-import type { FullVisualizationExploreNodeData } from '~/types/explore/visualizationNode.types';
+    type FileExploreNodeData,
+    type FullVisualizationExploreNodeData,
+} from '~/types/explore';
 
-export const getNodeCategory = (type: ExploreNodeType): ExploreNodeCategory => {
-    return exploreNodeTypeCategoryMap[type];
+export const getNodeCategoryByType = (type: ExploreNodeType): ExploreNodeCategory => {
+    return getNodeCategory[type];
 };
 
 export function isFileNode(node: TExploreNode): node is FileNode {

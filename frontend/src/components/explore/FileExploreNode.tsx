@@ -1,8 +1,7 @@
 import { memo } from 'react';
 import { NodeProps } from '@xyflow/react';
 import BaseExploreNode from './BaseExploreNode';
-import type { BaseExploreNodeDropdownActionType } from '~/types/explore/baseNode.types';
-import type { FileNode } from '~/types/explore/node.types';
+import type { BaseExploreNodeDropdownActionType, FileNode } from '~/types/explore';
 import { useFileDialogStore } from '~/stores/store';
 
 const FileExploreNode = memo<NodeProps<FileNode>>((props) => {

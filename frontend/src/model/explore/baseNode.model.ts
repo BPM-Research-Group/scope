@@ -1,17 +1,19 @@
 import { Position, type XYPosition } from '@xyflow/react';
 import { FileJson, FileSpreadsheet, Network, Workflow } from 'lucide-react';
 import { isExploreFileNodeType } from '~/lib/explore/exploreNodes.utils';
-import type { BaseExploreNodeConfig } from '~/types/explore/baseNode.types';
-import type { FileExploreNodeData } from '~/types/explore/fileNode.types';
 import {
+    type BaseExploreNodeConfig,
+    type BaseExploreNodeDisplay,
     type ExploreNodeCategory,
     type ExploreNodeData,
     type ExploreNodeType,
-    exploreNodeTypeCategoryMap,
     type ExploreVisualizationNodeType,
+    type FileExploreNodeData,
+    type FileExploreNodeDisplay,
+    getNodeCategory,
     type NodeId,
-} from '~/types/explore/node.types';
-import type { VisualizationExploreNodeData } from '~/types/explore/visualizationNode.types';
+    type VisualizationExploreNodeData,
+} from '~/types/explore';
 import { assetTypes } from '~/types/files.types';
 
 export class BaseExploreNode {
@@ -26,7 +28,7 @@ export class BaseExploreNode {
         this.id = BaseExploreNode.generateId(nodeType);
         this.position = position;
 
-        const nodeCategory = exploreNodeTypeCategoryMap[nodeType];
+        const nodeCategory = getNodeCategory[nodeType];
 
         this.type = nodeCategory === 'file' ? 'fileNode' : 'visualizationNode';
 
@@ -60,45 +62,62 @@ export class BaseExploreNode {
         return baseData as FileExploreNodeData;
     }
 
-    private static getDefaultDisplay(nodeType: ExploreNodeType, nodeCategory: ExploreNodeCategory) {
-        let base: Partial<ExploreNodeData> = {};
+    private static getDefaultDisplay(
+        nodeType: ExploreNodeType,
+        nodeCategory: ExploreNodeCategory
+    ): BaseExploreNodeDisplay {
+        const defaults: BaseExploreNodeDisplay = {
+            title: '',
+            Icon: Network, // Default icon
+        };
+
+        let categoryConfig: Partial<BaseExploreNodeDisplay> | Partial<FileExploreNodeDisplay> = {};
+
         switch (nodeCategory) {
             case 'file':
-                base = {
+                categoryConfig = {
                     isFileDialogOpen: false,
                 };
                 break;
             case 'visualization':
-                base = {};
+                categoryConfig = {};
                 break;
         }
 
+        let nodeSpecificConfig: Partial<BaseExploreNodeDisplay> = {};
+
         switch (nodeType) {
             case 'ocptViewerNode':
-                return {
-                    ...base,
+                nodeSpecificConfig = {
                     title: 'OCPT Viewer',
                     Icon: Network,
                 };
+                break;
             case 'lbofViewerNode':
-                return {
-                    ...base,
+                nodeSpecificConfig = {
                     title: 'LBOF Viewer',
                     Icon: Workflow,
                 };
+                break;
             case 'ocelFileNode':
-                return {
-                    ...base,
+                nodeSpecificConfig = {
                     title: 'OCEL File',
                     Icon: FileSpreadsheet,
                 };
+                break;
             case 'ocptFileNode':
-                return {
-                    ...base,
+                nodeSpecificConfig = {
                     title: 'OCPT File',
                     Icon: FileJson,
                 };
+                break;
         }
+
+        return {
+            ...defaults,
+            ...categoryConfig,
+            ...nodeSpecificConfig,
+        };
     }
 
     private static getDefaultConfig(

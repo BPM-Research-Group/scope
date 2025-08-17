@@ -1,4 +1,4 @@
-import type { BaseExploreNodeData } from '~/types/explore/baseNode.types';
+import type { BaseExploreNodeData } from './base-node';
 
 export interface VisualizationExploreNodeData extends BaseExploreNodeData {
     visualizationPath?: string;
