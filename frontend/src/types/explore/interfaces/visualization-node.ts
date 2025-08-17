@@ -1,6 +1,11 @@
-import type { BaseExploreNodeData } from './base-node';
+import type { BaseExploreNodeConfig, BaseExploreNodeData } from './base-node';
+
+export interface VisualizationExploreNodeConfig extends BaseExploreNodeConfig {
+    // Visualization-specific config properties can be added here in the future
+}
 
 export interface VisualizationExploreNodeData extends BaseExploreNodeData {
+    config: VisualizationExploreNodeConfig;
     visualizationPath?: string;
     visualize?: () => void;
     setVisualizationData?: (data: any) => void;

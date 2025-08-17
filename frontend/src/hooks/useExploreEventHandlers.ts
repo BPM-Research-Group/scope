@@ -6,12 +6,10 @@ import { useExploreFlowStore } from '~/stores/exploreStore';
 import { isFileNode, isVisualizationNode } from '~/lib/explore/exploreNodes.utils';
 import { isTwoFileNodes, isTwoVisualizationNodes } from '~/lib/explore/guardNodeConnections';
 import { Logger } from '~/lib/logger';
-import type { ExploreNodeData, VisualizationExploreNodeData } from '~/types/explore';
-import { BaseExploreNode } from '~/model/explore/baseNode.model';
+import type { ExploreNodeData, NodeId, VisualizationExploreNodeData } from '~/types/explore';
+import { NodeFactory } from '~/model/explore/node-factory.model';
 
 const logger = Logger.getInstance();
-
-type NodeId = string;
 
 export const useExploreEventHandlers = () => {
     const {
@@ -225,7 +223,7 @@ export const useExploreEventHandlers = () => {
                 y: event.clientY,
             });
 
-            const newNode = new BaseExploreNode(position, type);
+            const newNode = NodeFactory.createNode(position, type);
             newNode.data.onDataChange = onNodeDataChange;
             if (isVisualizationNode(newNode)) {
                 newNode.data.visualize = createVisualizationHandler(() => {
