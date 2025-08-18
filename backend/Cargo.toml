@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+anyhow = "1.0.99"
 axum = { version = "0.8.4", features = ["http2", "macros", "ws"] }
 axum-extra = { version = "0.10.1", features = ["multipart"] }
 bytes = "1.10.1"
