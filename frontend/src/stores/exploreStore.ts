@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { addEdge, applyNodeChanges, applyEdgeChanges, type Node, type Edge, type NodeChange, type EdgeChange, type Connection } from '@xyflow/react';
-import type { FileExploreNodeData } from '~/types/explore/fileNode.types';
-import type { VisualizationExploreNodeData } from '~/types/explore/visualizationNode.types';
+import type { FileExploreNodeData, VisualizationExploreNodeData } from '~/types/explore';
 
 type ExploreNode = Node<FileExploreNodeData> | Node<VisualizationExploreNodeData>;
 

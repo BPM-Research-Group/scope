@@ -1,26 +1,29 @@
-import { DragEvent, useCallback } from 'react';
-import { Background, Controls, ReactFlow, ReactFlowProvider } from '@xyflow/react';
+import { DragEvent, type NamedExoticComponent, useCallback } from 'react';
+import { Background, Controls, type NodeProps, ReactFlow, ReactFlowProvider } from '@xyflow/react';
 import { SidebarProvider } from '~/components/ui/sidebar';
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 import { DnDProvider, useDnD } from '~/components/explore/DndContext';
 import ExploreSidebar from '~/components/explore/ExploreSidebar';
 import FileExploreNode from '~/components/explore/FileExploreNode';
 import FileSelectionDialog from '~/components/explore/FileSelectionDialog';
+import MinerExploreNode from '~/components/explore/MinerExploreNode';
 import VisualizationExploreNode from '~/components/explore/VisualizationExploreNode';
 import { useExploreEventHandlers } from '~/hooks/useExploreEventHandlers';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { useFileDialogStore } from '~/stores/store';
 
 const nodeTypes = {
-    fileNode: FileExploreNode,
-    visualizationNode: VisualizationExploreNode,
+    file: FileExploreNode,
+    visualization: VisualizationExploreNode,
+    miner: MinerExploreNode,
 };
 
 const Explore: React.FC = () => {
     const { nodes, edges, onEdgesChange } = useExploreFlowStore();
     const [type] = useDnD();
     const { dialogNodeId } = useFileDialogStore();
-    const { onNodesChange, onEdgeDelete, onDragOver, onDrop, handleConnect, isValidConnection } = useExploreEventHandlers();
+    const { onNodesChange, onEdgeDelete, onDragOver, onDrop, handleConnect, isValidConnection } =
+        useExploreEventHandlers();
 
     const handleDrop = useCallback((event: DragEvent<HTMLElement>) => onDrop(event, type), [onDrop, type]);
 

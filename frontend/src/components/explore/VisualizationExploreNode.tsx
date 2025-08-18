@@ -5,8 +5,7 @@ import { Button } from '~/components/ui/button';
 import { useJSONFile, useStoredFiles } from '~/stores/store';
 import { useGetOcpt } from '~/services/queries';
 import { isFullVisualizationData } from '~/lib/explore/exploreNodes.utils';
-import type { BaseExploreNodeDropdownActionType } from '~/types/explore/baseNode.types';
-import type { VisualizationNode } from '~/types/explore/node.types';
+import type { BaseExploreNodeDropdownActionType, VisualizationNode } from '~/types/explore';
 import BaseExploreNode from './BaseExploreNode';
 
 const VisualizationExploreNode = memo<NodeProps<VisualizationNode>>((props) => {

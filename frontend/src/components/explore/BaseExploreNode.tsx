@@ -11,8 +11,7 @@ import {
     NodeHeaderMenuAction,
     NodeHeaderTitle,
 } from '~/components/ui/node-header';
-import type { BaseExploreNodeDropdownActionType } from '~/types/explore/baseNode.types';
-import type { TExploreNode } from '~/types/explore/node.types';
+import type { BaseExploreNodeDropdownActionType, TExploreNode } from '~/types/explore';
 
 interface BaseExploreNodeProps extends NodeProps<TExploreNode> {
     children?: ReactNode;

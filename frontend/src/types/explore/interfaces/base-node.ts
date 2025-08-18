@@ -1,6 +1,6 @@
 import type { ElementType } from 'react';
 import type { Position } from '@xyflow/react';
-import type { ExploreNodeCategory, ExploreNodeData, ExploreNodeType } from '~/types/explore/node.types';
+import type { ExploreNodeCategory, ExploreNodeType } from '~/types/explore/definitions/node-types';
 import type { AssetType, FileType } from '~/types/files.types';
 
 export type BaseExploreNodeDropdownActionType = 'openFileDialog' | 'changeSourceFile';
@@ -38,5 +38,5 @@ export interface BaseExploreNodeData extends Record<string, unknown> {
     assets: BaseExploreNodeAsset[];
     nodeType: ExploreNodeType;
     nodeCategory: ExploreNodeCategory;
-    onDataChange: (id: string, newData: Partial<ExploreNodeData>) => void;
+    onDataChange: (id: string, newData: Partial<BaseExploreNodeData>) => void;
 }
