@@ -4,7 +4,7 @@ use axum::{
     extract::DefaultBodyLimit,
 
 };
-use crate::handlers::ocel::{post_ocel_binary,test_post_handler,test_get_handler, upload_handler};
+use crate::handlers::ocel::{post_ocel_binary,test_post_handler,test_get_handler};
 
 pub fn router() -> Router {
     Router::new()
