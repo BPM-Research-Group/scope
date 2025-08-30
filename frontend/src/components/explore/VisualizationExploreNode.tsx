@@ -2,7 +2,6 @@ import { memo, useEffect } from 'react';
 import { NodeProps } from '@xyflow/react';
 import { Eye } from 'lucide-react';
 import { Button } from '~/components/ui/button';
-import { useJSONFile, useStoredFiles } from '~/stores/store';
 import { isFullVisualizationData } from '~/lib/explore/exploreNodes.utils';
 import type { BaseExploreNodeDropdownActionType, VisualizationNode } from '~/types/explore';
 import BaseExploreNode from './BaseExploreNode';
@@ -10,34 +9,13 @@ import BaseExploreNode from './BaseExploreNode';
 const VisualizationExploreNode = memo<NodeProps<VisualizationNode>>((props) => {
     const { id, selected, data } = props;
     const { assets } = data;
-    const { setJSONFile } = useJSONFile();
-    const { files } = useStoredFiles();
 
-    // Handle OCPT files directly (no API call needed, already processed)
+    // Process assets using the injected function
     useEffect(() => {
-        if (assets.length === 1 && assets[0]?.fileType === 'ocptFile') {
-            // For OCPT files, we assume the file data is already in OCPT format
-            console.log('OCPT file connected directly to visualization, no mining needed:', assets[0]);
-            const targetFile = files.find((file) => file.id === assets[0].fileId);
-            if (!targetFile) {
-                console.error('Could not find file in the store', assets[0]);
-                return;
-            }
-
-            // Read the file content and parse it as JSON
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                try {
-                    const fileContent = event.target?.result as string;
-                    const ocptData = JSON.parse(fileContent);
-                    setJSONFile(ocptData);
-                } catch (error) {
-                    console.error('Error parsing OCPT file as JSON:', error);
-                }
-            };
-            reader.readAsText(targetFile);
+        if (isFullVisualizationData(data)) {
+            data.processAssets();
         }
-    }, [assets, setJSONFile, files]);
+    }, [data, assets]);
 
     const handleDropdownAction = (action: BaseExploreNodeDropdownActionType) => {
         switch (action) {

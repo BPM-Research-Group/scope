@@ -1,6 +1,7 @@
 import { Position, type XYPosition } from '@xyflow/react';
 import { Network, Workflow } from 'lucide-react';
 import {
+    type BaseExploreNodeAsset,
     type BaseExploreNodeDisplay,
     type ExploreVisualizationNodeType,
     type VisualizationExploreNodeConfig,
@@ -25,6 +26,7 @@ export class VisualizationExploreNode extends BaseExploreNode {
             config: this.getConfig(nodeType),
             visualizationPath: this.getVisualizationPath(nodeType),
             visualize: () => {},
+            processAssets: () => {},
             setVisualizationData: undefined,
             onDataChange: () => {},
         };
@@ -79,4 +81,5 @@ export class VisualizationExploreNode extends BaseExploreNode {
                 return '/data/explore/ocpt';
         }
     }
+
 }
