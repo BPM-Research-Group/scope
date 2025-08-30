@@ -259,25 +259,19 @@ export const useExploreEventHandlers = () => {
                 directedNeighborMap.current.set(source, [...neighbors, target]);
             }
 
-            // OCPT File or OCEL File to OCPT Viewer
-            if (
-                (sourceNode.data.nodeType === 'ocptFileNode' || sourceNode.data.nodeType === 'ocelFileNode') &&
-                targetNode.data.nodeType === 'ocptViewerNode'
-            ) {
-                const updatedNodes = nodes.map((node) => {
-                    if (node.id === target) {
-                        return {
-                            ...node,
-                            data: {
-                                ...node.data,
-                                assets: [...(node.data.assets || []), ...(sourceNode.data.assets || [])],
-                            },
-                        };
-                    }
-                    return node;
-                });
-                setNodes(updatedNodes);
-            }
+            const updatedNodes = nodes.map((node) => {
+                if (node.id === target) {
+                    return {
+                        ...node,
+                        data: {
+                            ...node.data,
+                            assets: [...(node.data.assets || []), ...(sourceNode.data.assets || [])],
+                        },
+                    };
+                }
+                return node;
+            });
+            setNodes(updatedNodes);
 
             // Use the store's onConnect to handle the edge creation
             onConnect(params);

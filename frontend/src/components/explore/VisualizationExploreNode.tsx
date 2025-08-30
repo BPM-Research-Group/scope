@@ -1,9 +1,8 @@
 import { memo, useEffect } from 'react';
 import { NodeProps } from '@xyflow/react';
-import { Eye, Loader2 } from 'lucide-react';
+import { Eye } from 'lucide-react';
 import { Button } from '~/components/ui/button';
 import { useJSONFile, useStoredFiles } from '~/stores/store';
-import { useGetOcpt } from '~/services/queries';
 import { isFullVisualizationData } from '~/lib/explore/exploreNodes.utils';
 import type { BaseExploreNodeDropdownActionType, VisualizationNode } from '~/types/explore';
 import BaseExploreNode from './BaseExploreNode';
@@ -14,23 +13,11 @@ const VisualizationExploreNode = memo<NodeProps<VisualizationNode>>((props) => {
     const { setJSONFile } = useJSONFile();
     const { files } = useStoredFiles();
 
-    // Only make API call if we have exactly one asset and it's an OCEL file
-    const shouldFetchOcpt = assets.length === 1 && assets[0]?.fileType === 'ocelFile';
-    const { data: ocptData, isLoading } = useGetOcpt(shouldFetchOcpt ? assets[0]?.fileId : null);
-
-    // Set JSON data when it becomes available (from API for OCEL files)
-    useEffect(() => {
-        if (ocptData) {
-            console.log('OCPT data received from API for OCEL file:', ocptData);
-            setJSONFile(ocptData);
-        }
-    }, [ocptData, setJSONFile]);
-
-    // Handle OCPT files directly (no API call needed)
+    // Handle OCPT files directly (no API call needed, already processed)
     useEffect(() => {
         if (assets.length === 1 && assets[0]?.fileType === 'ocptFile') {
             // For OCPT files, we assume the file data is already in OCPT format
-            console.log('OCPT file connected directly, no API transformation needed:', assets[0]);
+            console.log('OCPT file connected directly to visualization, no mining needed:', assets[0]);
             const targetFile = files.find((file) => file.id === assets[0].fileId);
             if (!targetFile) {
                 console.error('Could not find file in the store', assets[0]);
@@ -68,20 +55,10 @@ const VisualizationExploreNode = memo<NodeProps<VisualizationNode>>((props) => {
             return (
                 <Button
                     onClick={() => data.visualize()}
-                    disabled={isLoading}
-                    className="flex bg-blue-500 items-around rounded-lg w-20 h-8 px-1 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex bg-blue-500 items-around rounded-lg w-20 h-8 px-1 justify-center"
                 >
-                    {isLoading ? (
-                        <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            <span>Loading</span>
-                        </>
-                    ) : (
-                        <>
-                            <Eye className="h-4 w-4" />
-                            <span>View</span>
-                        </>
-                    )}
+                    <Eye className="h-4 w-4" />
+                    <span>View</span>
                 </Button>
             );
         }
@@ -89,8 +66,8 @@ const VisualizationExploreNode = memo<NodeProps<VisualizationNode>>((props) => {
     };
 
     const renderVisualizationContent = () => {
-        if (assets.length >= 2 && isFullVisualizationData(data)) {
-            return <div>Error 2 input files! Please select input file manually</div>;
+        if (assets.length >= 2) {
+            return <div>Error: Multiple input files! Please select input file manually</div>;
         }
 
         if (assets.length === 0) {
@@ -99,7 +76,7 @@ const VisualizationExploreNode = memo<NodeProps<VisualizationNode>>((props) => {
 
         return (
             <div>
-                <p>Connected inputs: {assets.length}</p>
+                <p>Ready to visualize: {assets.length} input</p>
                 {assets.map((asset, index) => (
                     <div key={index} className="text-sm text-gray-600">
                         Input {index + 1}: {asset.fileName}
