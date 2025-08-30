@@ -1,5 +1,5 @@
-import { DragEvent, type NamedExoticComponent, useCallback } from 'react';
-import { Background, Controls, type NodeProps, ReactFlow, ReactFlowProvider } from '@xyflow/react';
+import { DragEvent, useCallback } from 'react';
+import { Background, Controls, ReactFlow, ReactFlowProvider } from '@xyflow/react';
 import { SidebarProvider } from '~/components/ui/sidebar';
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 import { DnDProvider, useDnD } from '~/components/explore/DndContext';
