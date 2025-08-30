@@ -1,53 +1,64 @@
 import { useCallback } from 'react';
-import { useJSONFile, useStoredFiles } from '~/stores/store';
+import { useExploreFlowStore } from '~/stores/exploreStore';
+import { useStoredFiles } from '~/stores/store';
 import type { VisualizationExploreNodeData } from '~/types/explore';
 
 export const useProcessAssets = () => {
-    const { setJSONFile } = useJSONFile();
     const { files } = useStoredFiles();
+    const { updateNodeData, getNode } = useExploreFlowStore();
 
     const createProcessAssetsHandler = useCallback(
-        (getNodeData: () => VisualizationExploreNodeData) => {
+        (getNodeData: () => VisualizationExploreNodeData, nodeId: string) => {
             return () => {
                 const nodeData = getNodeData();
                 const assets = nodeData.assets;
-                
+
                 if (assets.length !== 1) return;
 
                 const asset = assets[0];
 
-                // Handle OCPT files directly (no API call needed, already processed)
                 if (asset.fileType === 'ocptFile') {
-                    console.log('OCPT file connected directly to visualization, no mining needed:', asset);
-                    
-                    const targetFile = files.find((file) => file.name === asset.fileName);
-                    if (!targetFile) {
-                        console.error('Could not find file in the store', asset);
-                        return;
-                    }
+                    console.log('Processing OCPT asset:', asset);
 
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                        try {
-                            const fileContent = event.target?.result as string;
-                            const ocptData = JSON.parse(fileContent);
-                            // Use the appropriate store based on node type
-                            if (nodeData.nodeType === 'ocptViewerNode') {
-                                setJSONFile(ocptData);
-                            }
-                            // Future: if (nodeData.nodeType === 'lbofViewerNode') { setLBOFFile(ocptData); }
-                        } catch (error) {
-                            console.error('Error parsing OCPT file as JSON:', error);
+                    // Check if this is mined data or uploaded file
+                    if (asset.assetOrigin === 'mined') {
+                        console.log('Using mined data from source node');
+                        
+                        // Extract the source node ID from the fileId (format: "mined_${nodeId}")
+                        const sourceNodeId = asset.fileId.replace('mined_', '');
+                        const sourceNode = getNode(sourceNodeId);
+                        
+                        if (sourceNode && sourceNode.data.minedData) {
+                            console.log('Found mined data in source node:', sourceNode.data.minedData);
+                            updateNodeData(nodeId, { processedData: sourceNode.data.minedData });
+                        } else {
+                            console.error('Could not find mined data in source node:', sourceNodeId);
                         }
-                    };
-                    reader.readAsText(targetFile);
-                }
+                    } else {
+                        console.log('Reading uploaded OCPT file from store');
+                        
+                        const targetFile = files.find((file) => file.name === asset.fileName);
+                        if (!targetFile) {
+                            console.error('Could not find file in the store', asset);
+                            return;
+                        }
 
-                // Add other file types as needed
-                // if (asset.fileType === 'lbofFile') { ... }
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                            try {
+                                const fileContent = event.target?.result as string;
+                                const ocptData = JSON.parse(fileContent);
+                                updateNodeData(nodeId, { processedData: ocptData });
+                            } catch (error) {
+                                console.error('Error parsing OCPT file as JSON:', error);
+                            }
+                        };
+                        reader.readAsText(targetFile);
+                    }
+                }
             };
         },
-        [setJSONFile, files]
+        [files, updateNodeData, getNode]
     );
 
     return {

@@ -24,10 +24,10 @@ export class VisualizationExploreNode extends BaseExploreNode {
             assets: [],
             display: this.getDisplay(nodeType),
             config: this.getConfig(nodeType),
-            visualizationPath: this.getVisualizationPath(nodeType),
+            visualizationPath: this.getVisualizationPath(nodeType, this.id),
             visualize: () => {},
             processAssets: () => {},
-            setVisualizationData: undefined,
+            processedData: undefined,
             onDataChange: () => {},
         };
     }
@@ -73,13 +73,12 @@ export class VisualizationExploreNode extends BaseExploreNode {
         };
     }
 
-    private getVisualizationPath(nodeType: ExploreVisualizationNodeType): string {
+    private getVisualizationPath(nodeType: ExploreVisualizationNodeType, nodeId: string): string {
         switch (nodeType) {
             case 'lbofViewerNode':
-                return '/data/explore/lbof';
+                return `/data/explore/lbof/${nodeId}`;
             case 'ocptViewerNode':
-                return '/data/explore/ocpt';
+                return `/data/explore/ocpt/${nodeId}`;
         }
     }
-
 }

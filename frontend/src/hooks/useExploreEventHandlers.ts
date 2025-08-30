@@ -1,8 +1,8 @@
 import { DragEvent, type MouseEvent as ReactMouseEvent, useCallback, useRef } from 'react';
 import { type Connection, type Edge, type IsValidConnection, type NodeChange, useReactFlow } from '@xyflow/react';
 import { isEqual } from 'lodash-es';
-import { useVisualization } from '~/hooks/useVisualization';
 import { useProcessAssets } from '~/hooks/useProcessAssets';
+import { useVisualization } from '~/hooks/useVisualization';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { isFileNode, isVisualizationNode } from '~/lib/explore/exploreNodes.utils';
 import { isTwoFileNodes, isTwoVisualizationNodes } from '~/lib/explore/guardNodeConnections';
@@ -237,12 +237,19 @@ export const useExploreEventHandlers = () => {
                     // Use getNode to get the current node data
                     const currentNode = getNode(newNode.id);
                     return (currentNode?.data as VisualizationExploreNodeData) || newNode.data;
-                });
+                }, newNode.id);
             }
 
             addNode(newNode);
         },
-        [screenToFlowPosition, createVisualizationHandler, createProcessAssetsHandler, getNode, addNode, onNodeDataChange]
+        [
+            screenToFlowPosition,
+            createVisualizationHandler,
+            createProcessAssetsHandler,
+            getNode,
+            addNode,
+            onNodeDataChange,
+        ]
     );
 
     const handleConnect = useCallback(

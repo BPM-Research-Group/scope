@@ -1,5 +1,6 @@
 import {
     type ExploreFileNodeType,
+    type ExploreMinerNodeType,
     type ExploreNodeCategory,
     type ExploreNodeData,
     type ExploreNodeType,
@@ -8,6 +9,8 @@ import {
     type FileNode,
     fileNodeTypes,
     getNodeCategory,
+    type MinerNode,
+    minerNodeTypes,
     type TExploreNode,
     type VisualizationExploreNodeData,
     visualizationNodeTypes,
@@ -40,4 +43,12 @@ export function isExploreFileNodeType(nodeType: ExploreNodeType): nodeType is Ex
 
 export function isExploreVisualizationNodeType(nodeType: ExploreNodeType): nodeType is ExploreVisualizationNodeType {
     return visualizationNodeTypes.includes(nodeType as ExploreVisualizationNodeType);
+}
+
+export function isMinerNode(node: TExploreNode): node is MinerNode {
+    return node.data.nodeCategory === 'miner';
+}
+
+export function isExploreMinerNodeType(nodeType: ExploreNodeType): nodeType is ExploreMinerNodeType {
+    return minerNodeTypes.includes(nodeType as ExploreMinerNodeType);
 }

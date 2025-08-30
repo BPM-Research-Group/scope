@@ -1,27 +1,20 @@
-import { memo, useEffect } from 'react';
+import { memo } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import { Pickaxe } from 'lucide-react';
 import BaseExploreNode from '~/components/explore/BaseExploreNode';
-import { useJSONFile } from '~/stores/store';
-import { useGetOcpt } from '~/services/queries';
+import { useNodeQuery } from '~/hooks/useNodeQuery';
 import type { BaseExploreNodeDropdownActionType, MinerNode } from '~/types/explore';
 
 const MinerExploreNode = memo<NodeProps<MinerNode>>((props) => {
-    const { data } = props;
-    const { assets } = data;
-    const { setJSONFile } = useJSONFile();
+    const { id, data } = props;
+    const { assets, queryConfig } = data;
 
-    // Only make API call if we have exactly one asset and it's an OCEL file
-    const shouldFetchOcpt = assets.length === 1 && assets[0]?.fileType === 'ocelFile';
-    const { data: ocptData, isLoading } = useGetOcpt(shouldFetchOcpt ? assets[0]?.fileId : null);
-
-    // Set JSON data when it becomes available (from API for OCEL files)
-    useEffect(() => {
-        if (ocptData) {
-            console.log('OCPT data received from API for OCEL file:', ocptData);
-            setJSONFile(ocptData);
-        }
-    }, [ocptData, setJSONFile]);
+    // Use the node's specific query configuration
+    const { isLoading } = useNodeQuery(
+        queryConfig,
+        { fileId: assets[0]?.fileId },
+        id
+    );
 
     const handleDropdownAction = (action: BaseExploreNodeDropdownActionType) => {
         switch (action) {

@@ -1,5 +1,6 @@
 import { Position, type XYPosition } from '@xyflow/react';
 import { TreePine } from 'lucide-react';
+import { nodeQueryConfigs } from '~/services/nodeQueryConfig';
 import type { ExploreMinerNodeType } from '~/types/explore';
 import type {
     MinerExploreNodeConfig,
@@ -23,7 +24,9 @@ export class MinerExploreNode extends BaseExploreNode {
             assets: [],
             display: this.getDisplay(nodeType),
             config: this.getConfig(nodeType),
+            queryConfig: nodeQueryConfigs[nodeType],
             onDataChange: () => {},
+            minedData: undefined,
         };
     }
 

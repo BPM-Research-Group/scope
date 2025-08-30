@@ -15,10 +15,14 @@ export interface BaseExploreNodeDropdownOption {
     action: BaseExploreNodeDropdownActionType;
 }
 
+export const BaseExploreNodeAssetOrigins = ['mined', 'preprocessed'] as const;
+export type BaseExploreNodeAssetOrigin = (typeof BaseExploreNodeAssetOrigins)[number];
+
 export interface BaseExploreNodeAsset {
     fileName: string;
     fileId: string;
     fileType: FileType;
+    assetOrigin: BaseExploreNodeAssetOrigin;
 }
 
 export interface BaseExploreNodeDisplay {

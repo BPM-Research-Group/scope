@@ -1,27 +1,38 @@
 import { useEffect, useState } from 'react';
-import OCPT from '~/components/ocpt/OCPT';
-import { type TreeNode } from '~/types/ocpt/ocpt.types';
+import { useParams } from 'react-router-dom';
 import { SidebarProvider } from '~/components/ui/sidebar';
 import AppSidebar from '~/components/AppSidebar';
-import { useColorScaleStore, useIsOcptMode, useJSONFile } from '~/stores/store';
 import BreadcrumbNav from '~/components/BreadcrumbNav';
-import { addIdsToTree } from '~/lib/ocpt/addIdsToOcpt';
 import Flow from '~/components/flow/Flow';
+import OCPT from '~/components/ocpt/OCPT';
+import { useExploreFlowStore } from '~/stores/exploreStore';
+import { useColorScaleStore, useIsOcptMode } from '~/stores/store';
+import { addIdsToTree } from '~/lib/ocpt/addIdsToOcpt';
+import type { VisualizationExploreNodeData } from '~/types/explore';
+import { type TreeNode } from '~/types/ocpt/ocpt.types';
 
 const OcptViewer: React.FC = () => {
     const [treeData, setTreeData] = useState<TreeNode | null>(null);
     const [objectTypes, setObjectTypes] = useState<string[]>([]);
-    const { jsonFile } = useJSONFile();
+    const { nodeId } = useParams<{ nodeId: string }>();
+    const { getNode } = useExploreFlowStore();
     const { colorScale, setColorScaleObjectTypes } = useColorScaleStore();
     const { isOcptMode } = useIsOcptMode();
 
     useEffect(() => {
-        if (jsonFile) {
-            const idTree = addIdsToTree(jsonFile.hierarchy);
-            setTreeData(idTree);
-            setObjectTypes(jsonFile.ots);
+        if (nodeId) {
+            const node = getNode(nodeId);
+            const nodeData = node?.data as VisualizationExploreNodeData;
+            const processedData = nodeData?.processedData;
+            console.log(processedData);
+
+            if (processedData) {
+                const idTree = addIdsToTree(processedData.hierarchy);
+                setTreeData(idTree);
+                setObjectTypes(processedData.ots);
+            }
         }
-    }, [jsonFile]);
+    }, [nodeId, getNode]);
 
     useEffect(() => {
         setColorScaleObjectTypes(objectTypes);

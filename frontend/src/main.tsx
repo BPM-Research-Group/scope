@@ -26,7 +26,7 @@ const router = createBrowserRouter([
         element: <Explore />,
     },
     {
-        path: '/data/explore/ocpt',
+        path: '/data/explore/ocpt/:nodeId',
         element: <OcptViewer />,
     },
 ]);

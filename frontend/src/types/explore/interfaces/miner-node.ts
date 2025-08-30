@@ -1,3 +1,4 @@
+import type { QueryConfig } from '~/services/nodeQueryConfig';
 import type {
     BaseExploreNodeConfig,
     BaseExploreNodeData,
@@ -11,4 +12,6 @@ export interface MinerExploreNodeConfig extends BaseExploreNodeConfig {}
 export interface MinerExploreNodeData extends BaseExploreNodeData {
     config: MinerExploreNodeConfig;
     display: MinerExploreNodeDisplay;
+    queryConfig: QueryConfig;
+    minedData: any;
 }
