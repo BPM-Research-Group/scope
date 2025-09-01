@@ -1,17 +1,24 @@
 import { getOcpt } from '~/services/api';
-import type { ExploreMinerNodeType } from '~/types/explore';
+import type { BaseExploreNodeAsset, ExploreMinerNodeType } from '~/types/explore';
+import type { AssetType } from '~/types/files.types';
 
-export interface QueryConfig<TData = any, TVariables = any> {
-    queryKey: (params: any) => unknown[];
-    queryFn: (params: any) => Promise<TData>;
-    mutationFn?: (variables: TVariables) => Promise<TData>;
-    refetchOnWindowFocus?: boolean;
+export interface QueryConfig<TParams = any, TData = any> {
+    queryKey: (params: TParams) => unknown[];
+    queryFn: (params: TParams) => Promise<TData>;
+    mapParams: (assets: BaseExploreNodeAsset[]) => TParams;
+    outputAssetType: AssetType;
 }
 
 export const nodeQueryConfigs: Record<ExploreMinerNodeType, QueryConfig> = {
     ocptMinerNode: {
         queryKey: (params) => ['getOcpt', params.fileId],
         queryFn: (params) => getOcpt(params.fileId),
-        refetchOnWindowFocus: false,
+        mapParams: (assets) => {
+            const inputAsset = assets.find((asset) => asset.io === 'input');
+            return {
+                fileId: inputAsset?.id,
+            };
+        },
+        outputAssetType: 'ocptFile',
     },
 };

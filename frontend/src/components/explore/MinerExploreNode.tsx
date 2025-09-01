@@ -8,7 +8,7 @@ import type { BaseExploreNodeDropdownActionType, MinerNode } from '~/types/explo
 const MinerExploreNode = memo<NodeProps<MinerNode>>((props) => {
     const { id, data } = props;
     const { assets, queryConfig } = data;
-    const { isLoading } = useNodeQuery(queryConfig, { fileId: assets[0]?.id }, id);
+    const { isLoading } = useNodeQuery(queryConfig, assets, id);
 
     const handleDropdownAction = (action: BaseExploreNodeDropdownActionType) => {
         switch (action) {
@@ -22,10 +22,13 @@ const MinerExploreNode = memo<NodeProps<MinerNode>>((props) => {
     };
 
     const renderFileContent = () => {
+        if (assets.length === 0) return <p>No file</p>;
+
         const asset = assets[0];
+        console.log(asset);
 
         // Show mining animation when loading OCEL files
-        if (isLoading && asset.type === 'ocelFile') {
+        if (isLoading) {
             return (
                 <div className="flex flex-col items-center justify-center h-32 w-full">
                     <div className="relative mb-4">

@@ -26,7 +26,6 @@ export class MinerExploreNode extends BaseExploreNode {
             config: this.getConfig(nodeType),
             queryConfig: nodeQueryConfigs[nodeType],
             onDataChange: () => {},
-            minedData: undefined,
         };
     }
 

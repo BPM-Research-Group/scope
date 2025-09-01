@@ -13,5 +13,4 @@ export interface MinerExploreNodeData extends BaseExploreNodeData {
     config: MinerExploreNodeConfig;
     display: MinerExploreNodeDisplay;
     queryConfig: QueryConfig;
-    minedData: any;
 }

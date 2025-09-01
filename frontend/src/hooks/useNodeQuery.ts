@@ -1,43 +1,17 @@
 import { useEffect } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import type { QueryConfig } from '~/services/nodeQueryConfig';
 import type { BaseExploreNodeAsset } from '~/types/explore';
 
-interface UseNodeQueryOptions {
-    enabled?: boolean;
-    onSuccess?: (data: any) => void;
-    onError?: (error: any) => void;
-}
-
-export const useNodeQuery = (
-    config: QueryConfig | undefined,
-    params: Record<string, any>,
-    nodeId: string,
-    options: UseNodeQueryOptions = {}
-) => {
-    const queryClient = useQueryClient();
+export const useNodeQuery = (config: QueryConfig, assets: BaseExploreNodeAsset[], nodeId: string) => {
     const { updateNodeData, getNode } = useExploreFlowStore();
+    const params = config.mapParams(assets);
 
-    // Check if we have required parameters
-    const hasRequiredParams = Boolean(params.fileId);
-
-    // If no config, return empty state
-    if (!config) {
-        return {
-            data: undefined,
-            isLoading: false,
-            error: null,
-            refetch: () => Promise.resolve(),
-            mutate: () => {},
-        };
-    }
-
+    // Query will only be fetched once.
     const query = useQuery({
         queryKey: config.queryKey(params),
         queryFn: () => config.queryFn(params),
-        enabled: hasRequiredParams && options.enabled !== false,
-        refetchOnWindowFocus: config.refetchOnWindowFocus,
         staleTime: Infinity,
         refetchOnMount: false,
         refetchOnReconnect: false,
@@ -48,14 +22,11 @@ export const useNodeQuery = (
         if (query.data) {
             console.log('Query data received for node:', nodeId, query.data);
 
-            // Store the raw mined data
-            updateNodeData(nodeId, { minedData: query.data });
-
             // Convert mined data to asset format for downstream nodes
             const minedAsset: BaseExploreNodeAsset = {
-                id: `mined_${nodeId}`,
-                name: `Mined_${nodeId}.json`,
-                type: 'ocptFile',
+                id: `mined_${params}`,
+                name: `mined_${params}.json`,
+                type: config.outputAssetType,
                 origin: 'mined',
                 io: 'output',
             };
@@ -67,29 +38,13 @@ export const useNodeQuery = (
             updateNodeData(nodeId, {
                 assets: [...(node.data.assets || []), minedAsset],
             });
-
-            options.onSuccess?.(query.data);
         }
-    }, [query.data, nodeId, updateNodeData, options.onSuccess]);
-
-    const mutation = useMutation({
-        mutationFn: config.mutationFn || (() => Promise.resolve()),
-        onSuccess: (data) => {
-            // Invalidate the query
-            queryClient.invalidateQueries({
-                queryKey: config.queryKey(params),
-            });
-            options.onSuccess?.(data);
-        },
-        onError: options.onError,
-    });
+    }, [query.data, nodeId, updateNodeData]);
 
     return {
         data: query.data,
         isLoading: query.isLoading,
         error: query.error,
         refetch: query.refetch,
-        mutate: mutation.mutate,
-        isPending: mutation.isPending,
     };
 };
