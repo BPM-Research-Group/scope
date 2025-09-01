@@ -12,7 +12,7 @@ async fn main() -> Result<()> {
     // If args are provided: run the converter and exit.
     let mut args = std::env::args().skip(1);
     if let Some(in_path) = args.next() {
-        let out_path = args.next().unwrap_or_else(|| "out.ocel.json".to_string());
+        let out_path: String = args.next().unwrap_or_else(|| "out.ocel.json".to_string());
         convert_file(Path::new(&in_path), Path::new(&out_path))?;
         println!("Wrote: {}", out_path);
         return Ok(()); // done

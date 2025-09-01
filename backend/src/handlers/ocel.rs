@@ -12,12 +12,11 @@ use std::path::PathBuf;
 use tokio::fs;
 use serde_json;
 use chrono::Utc;
-use crate::models::ocel::OcelJson;
 use bytes::Bytes;
 use serde_json::Value;
 use std::path::Path as FsPath;
 use crate::core::ocel1_to_ocel2_converter::converter;
-use process_mining::OCEL;
+use crate::models::ocel::OCEL;
 
 
 // --- helpers ---
