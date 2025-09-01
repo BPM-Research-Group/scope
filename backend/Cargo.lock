@@ -181,6 +181,7 @@ dependencies = [
  "itertools",
  "log 0.4.27",
  "multipart",
+ "ordered-float 5.0.0",
  "process_mining",
  "serde",
  "serde_json",
@@ -1137,6 +1138,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ordered-float"
+version = "5.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e2c1f9f56e534ac6a9b8a4600bdf0f530fb393b5f393e7b4d03489c3cf0c3f01"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "parking_lot"
 version = "0.12.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1273,7 +1283,7 @@ checksum = "38030df6f219c836420a961de0b1417d203ae8c7c37b45257193f45b0d1f1ae1"
 dependencies = [
  "chrono",
  "flate2",
- "ordered-float",
+ "ordered-float 4.6.0",
  "petgraph",
  "quick-xml",
  "rayon",
