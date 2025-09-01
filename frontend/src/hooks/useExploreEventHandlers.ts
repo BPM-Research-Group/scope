@@ -1,7 +1,6 @@
 import { DragEvent, type MouseEvent as ReactMouseEvent, useCallback, useRef } from 'react';
 import { type Connection, type Edge, type IsValidConnection, type NodeChange, useReactFlow } from '@xyflow/react';
 import { isEqual } from 'lodash-es';
-import { useProcessAssets } from '~/hooks/useProcessAssets';
 import { useVisualization } from '~/hooks/useVisualization';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { isFileNode, isVisualizationNode } from '~/lib/explore/exploreNodes.utils';
@@ -28,7 +27,6 @@ export const useExploreEventHandlers = () => {
 
     const { screenToFlowPosition } = useReactFlow();
     const { createVisualizationHandler } = useVisualization();
-    const { createProcessAssetsHandler } = useProcessAssets();
     const directedNeighborMap = useRef(new Map<NodeId, NodeId[]>());
 
     const onNodeDataChange = useCallback(
@@ -80,8 +78,7 @@ export const useExploreEventHandlers = () => {
                         if (node.id === edge.target) {
                             // Filter out assets that match the source node's assets
                             const filteredAssets = node.data.assets.filter(
-                                (asset) =>
-                                    !sourceNode.data.assets.some((sourceAsset) => sourceAsset.fileId === asset.fileId)
+                                (asset) => !sourceNode.data.assets.some((sourceAsset) => sourceAsset.id === asset.id)
                             );
 
                             return {
@@ -128,8 +125,7 @@ export const useExploreEventHandlers = () => {
                     if (targetNode && isVisualizationNode(targetNode)) {
                         // Filter out assets that came from the deleted file node
                         const filteredAssets = targetNode.data.assets.filter(
-                            (asset) =>
-                                !nodeToDelete.data.assets.some((sourceAsset) => sourceAsset.fileId === asset.fileId)
+                            (asset) => !nodeToDelete.data.assets.some((sourceAsset) => sourceAsset.id === asset.id)
                         );
 
                         updateNodeData(edge.target, { assets: filteredAssets });
@@ -233,23 +229,11 @@ export const useExploreEventHandlers = () => {
                     const currentNode = getNode(newNode.id);
                     return (currentNode?.data as VisualizationExploreNodeData) || newNode.data;
                 });
-                newNode.data.processAssets = createProcessAssetsHandler(() => {
-                    // Use getNode to get the current node data
-                    const currentNode = getNode(newNode.id);
-                    return (currentNode?.data as VisualizationExploreNodeData) || newNode.data;
-                }, newNode.id);
             }
 
             addNode(newNode);
         },
-        [
-            screenToFlowPosition,
-            createVisualizationHandler,
-            createProcessAssetsHandler,
-            getNode,
-            addNode,
-            onNodeDataChange,
-        ]
+        [screenToFlowPosition, createVisualizationHandler, getNode, addNode, onNodeDataChange]
     );
 
     const handleConnect = useCallback(
@@ -279,7 +263,15 @@ export const useExploreEventHandlers = () => {
                         ...node,
                         data: {
                             ...node.data,
-                            assets: [...(node.data.assets || []), ...(sourceNode.data.assets || [])],
+                            assets: [
+                                ...(node.data.assets || []),
+                                ...(sourceNode.data.assets || [])
+                                    .filter((asset) => asset.io === 'output')
+                                    .map((asset) => ({
+                                        ...asset,
+                                        io: 'input' as const,
+                                    })),
+                            ],
                         },
                     };
                 }

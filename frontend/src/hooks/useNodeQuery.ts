@@ -17,7 +17,7 @@ export const useNodeQuery = (
     options: UseNodeQueryOptions = {}
 ) => {
     const queryClient = useQueryClient();
-    const { updateNodeData } = useExploreFlowStore();
+    const { updateNodeData, getNode } = useExploreFlowStore();
 
     // Check if we have required parameters
     const hasRequiredParams = Boolean(params.fileId);
@@ -38,6 +38,9 @@ export const useNodeQuery = (
         queryFn: () => config.queryFn(params),
         enabled: hasRequiredParams && options.enabled !== false,
         refetchOnWindowFocus: config.refetchOnWindowFocus,
+        staleTime: Infinity,
+        refetchOnMount: false,
+        refetchOnReconnect: false,
     });
 
     // Store mined data when it becomes available and convert to assets
@@ -50,15 +53,19 @@ export const useNodeQuery = (
 
             // Convert mined data to asset format for downstream nodes
             const minedAsset: BaseExploreNodeAsset = {
-                fileId: `mined_${nodeId}`,
-                fileName: `Mined_${nodeId}.json`,
-                fileType: 'ocptFile' as const,
-                assetOrigin: 'mined',
+                id: `mined_${nodeId}`,
+                name: `Mined_${nodeId}.json`,
+                type: 'ocptFile',
+                origin: 'mined',
+                io: 'output',
             };
+
+            const node = getNode(nodeId);
+            if (!node) return;
 
             // Add the mined asset to the node's assets
             updateNodeData(nodeId, {
-                assets: [minedAsset],
+                assets: [...(node.data.assets || []), minedAsset],
             });
 
             options.onSuccess?.(query.data);

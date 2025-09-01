@@ -1,4 +1,4 @@
-import { DragEvent, useCallback } from 'react';
+import { DragEvent, useCallback, useEffect } from 'react';
 import { Background, Controls, ReactFlow, ReactFlowProvider } from '@xyflow/react';
 import { SidebarProvider } from '~/components/ui/sidebar';
 import BreadcrumbNav from '~/components/BreadcrumbNav';
@@ -24,8 +24,11 @@ const Explore: React.FC = () => {
     const { dialogNodeId } = useFileDialogStore();
     const { onNodesChange, onEdgeDelete, onDragOver, onDrop, handleConnect, isValidConnection } =
         useExploreEventHandlers();
-
     const handleDrop = useCallback((event: DragEvent<HTMLElement>) => onDrop(event, type), [onDrop, type]);
+
+    useEffect(() => {
+        console.log(nodes);
+    }, [nodes]);
 
     return (
         <>

@@ -1,4 +1,4 @@
-import { memo, useEffect } from 'react';
+import { memo } from 'react';
 import { NodeProps } from '@xyflow/react';
 import { Eye } from 'lucide-react';
 import { Button } from '~/components/ui/button';
@@ -9,13 +9,6 @@ import BaseExploreNode from './BaseExploreNode';
 const VisualizationExploreNode = memo<NodeProps<VisualizationNode>>((props) => {
     const { id, selected, data } = props;
     const { assets } = data;
-
-    // Process assets using the injected function
-    useEffect(() => {
-        if (isFullVisualizationData(data)) {
-            data.processAssets();
-        }
-    }, [data, assets]);
 
     const handleDropdownAction = (action: BaseExploreNodeDropdownActionType) => {
         switch (action) {
@@ -57,7 +50,7 @@ const VisualizationExploreNode = memo<NodeProps<VisualizationNode>>((props) => {
                 <p>Ready to visualize: {assets.length} input</p>
                 {assets.map((asset, index) => (
                     <div key={index} className="text-sm text-gray-600">
-                        Input {index + 1}: {asset.fileName}
+                        Input {index + 1}: {asset.name}
                     </div>
                 ))}
             </div>

@@ -21,3 +21,9 @@ export const getOcpt = async (fileId: string) => {
     console.log(response);
     return response.data;
 };
+
+export const getConformance = async (fileId1: string, fileId2: string) => {
+    const response = await api.get(`/v1/conformance/${fileId1}/${fileId2}`);
+    console.log(response);
+    return response.data;
+};

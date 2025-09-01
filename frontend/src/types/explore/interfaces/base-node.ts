@@ -18,11 +18,15 @@ export interface BaseExploreNodeDropdownOption {
 export const BaseExploreNodeAssetOrigins = ['mined', 'preprocessed'] as const;
 export type BaseExploreNodeAssetOrigin = (typeof BaseExploreNodeAssetOrigins)[number];
 
+export const IoTypes = ['input', 'output'] as const;
+export type IoType = (typeof IoTypes)[number];
+
 export interface BaseExploreNodeAsset {
-    fileName: string;
-    fileId: string;
-    fileType: FileType;
-    assetOrigin: BaseExploreNodeAssetOrigin;
+    id: string;
+    name: string;
+    type: AssetType;
+    origin: BaseExploreNodeAssetOrigin;
+    io: IoType;
 }
 
 export interface BaseExploreNodeDisplay {

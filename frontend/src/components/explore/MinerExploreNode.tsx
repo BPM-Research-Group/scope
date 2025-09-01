@@ -8,13 +8,7 @@ import type { BaseExploreNodeDropdownActionType, MinerNode } from '~/types/explo
 const MinerExploreNode = memo<NodeProps<MinerNode>>((props) => {
     const { id, data } = props;
     const { assets, queryConfig } = data;
-
-    // Use the node's specific query configuration
-    const { isLoading } = useNodeQuery(
-        queryConfig,
-        { fileId: assets[0]?.fileId },
-        id
-    );
+    const { isLoading } = useNodeQuery(queryConfig, { fileId: assets[0]?.id }, id);
 
     const handleDropdownAction = (action: BaseExploreNodeDropdownActionType) => {
         switch (action) {
@@ -28,28 +22,10 @@ const MinerExploreNode = memo<NodeProps<MinerNode>>((props) => {
     };
 
     const renderFileContent = () => {
-        if (assets.length >= 2) {
-            return <div>Error: Multiple input files! Please select input file manually</div>;
-        }
-
-        if (assets.length === 0) {
-            return <p>No file selected</p>;
-        }
-
         const asset = assets[0];
 
-        // Show error for OCPT files - they don't need mining
-        if (asset.fileType === 'ocptFile') {
-            return (
-                <div className="text-yellow-600">
-                    <p>⚠️ OCPT files don't need mining</p>
-                    <p className="text-xs">Connect directly to visualization</p>
-                </div>
-            );
-        }
-
         // Show mining animation when loading OCEL files
-        if (isLoading && asset.fileType === 'ocelFile') {
+        if (isLoading && asset.type === 'ocelFile') {
             return (
                 <div className="flex flex-col items-center justify-center h-32 w-full">
                     <div className="relative mb-4">
@@ -98,12 +74,30 @@ const MinerExploreNode = memo<NodeProps<MinerNode>>((props) => {
         // Show file info when ready to mine
         return (
             <div>
-                <p>Mined: {assets.length} file</p>
-                {assets.map((asset, index) => (
-                    <div key={index} className="text-sm text-gray-600">
-                        {asset.fileType === 'ocelFile' ? '⛏️' : '📄'} {asset.fileName}
-                    </div>
-                ))}
+                <div>
+                    <p>Input Files</p>
+                    {assets.map((asset, index) => {
+                        if (asset.origin != 'mined') {
+                            return (
+                                <div key={index} className="text-sm text-gray-600">
+                                    {asset.type === 'ocelFile' ? '⛏️' : '📄'} {asset.name}
+                                </div>
+                            );
+                        }
+                    })}
+                </div>
+                <div>
+                    <p>Output Files</p>
+                    {assets.map((asset, index) => {
+                        if (asset.origin === 'mined') {
+                            return (
+                                <div key={index} className="text-sm text-gray-600">
+                                    {asset.type === 'ocelFile' ? '⛏️' : '📄'} {asset.name}
+                                </div>
+                            );
+                        }
+                    })}
+                </div>
             </div>
         );
     };

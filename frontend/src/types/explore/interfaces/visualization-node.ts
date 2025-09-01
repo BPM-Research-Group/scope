@@ -9,6 +9,5 @@ export interface VisualizationExploreNodeData extends BaseExploreNodeData {
     config: VisualizationExploreNodeConfig;
     visualizationPath?: string;
     visualize: () => void;
-    processAssets: () => void;
     processedData: undefined | JSONSchema;
 }

@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import FileShowcase from '~/components/explore/FileShowcase';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { useFileDialogStore, useStoredFiles } from '~/stores/store';
+import type { BaseExploreNodeAsset } from '~/types/explore';
 import type { ExtendedFile } from '~/types/fileObject.types';
 
 interface FileSelectionDialogProps {
@@ -29,8 +30,14 @@ const FileSelectionDialog: React.FC<FileSelectionDialogProps> = ({ isOpen }) => 
         (file: ExtendedFile) => {
             if (dialogNodeId) {
                 const node = getNode(dialogNodeId);
-                if (node && node.data.onDataChange) {
-                    const newAsset = { fileName: file.name, fileId: file.id, fileType: file.fileType };
+                if (node) {
+                    const newAsset: BaseExploreNodeAsset = {
+                        id: file.id,
+                        name: file.name,
+                        type: file.fileType,
+                        origin: 'preprocessed',
+                        io: 'output',
+                    };
                     const updatedAssets = [...node.data.assets, newAsset];
                     node.data.onDataChange(dialogNodeId, { assets: updatedAssets });
                 }
