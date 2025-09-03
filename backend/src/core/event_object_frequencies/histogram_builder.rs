@@ -28,6 +28,37 @@ fn build_object_index(log: &OCEL) -> HashMap<&str, &str> {
         .collect()
 }
 
+/*
+Example JSON output: 
+one histogram per (event_type, object_type) pair
+    - histogram x: count
+    - histogram y: frequency
+
+{
+  "histograms": [
+    {
+      "event_type": "Depart",
+      "object_type": "Container",
+      "histogram": [
+        { "count": 2, "frequency": 5 },
+        { "count": 3, "frequency": 2 },
+        { "count": 5, "frequency": 1 }
+      ]
+    },
+    {
+      "event_type": "Arrive",
+      "object_type": "Truck",
+      "histogram": [
+        { "count": 1, "frequency": 7 },
+        { "count": 2, "frequency": 4 }
+      ]
+    }
+  ]
+}
+
+*/
+
+
 pub fn build_event_object_histograms(log: &OCEL) -> Value {
     let object_index = build_object_index(log);
     let mut stats: HashMap<(String, String), HashMap<usize, usize>> = HashMap::new();
