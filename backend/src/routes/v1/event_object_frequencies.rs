@@ -1,8 +1,8 @@
 use axum::{
     Router,
-    routing::get,
+    routing::{get, post},
 };
-use crate::handlers::event_object_frequencies::{get_event_object_frequencies};
+use crate::handlers::event_object_frequencies::{get_event_object_frequencies, post_ocel_filter};
 
 pub fn router() -> Router {
     Router::new()
