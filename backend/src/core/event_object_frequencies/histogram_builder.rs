@@ -3,12 +3,17 @@ use serde_json::Value;
 use std::collections::HashMap;
 use process_mining::OCEL;
 
+#[derive(Serialize)]
+struct HistogramBin {
+    count: usize,
+    frequency: usize,
+}
 
 #[derive(Serialize)]
 struct HistogramEntry {
     event_type: String,
     object_type: String,
-    histogram: HashMap<String, usize>, // string keys for JSON
+    histogram: Vec<HistogramBin>, // now numeric + ordered
 }
 
 #[derive(Serialize)]
@@ -43,17 +48,67 @@ pub fn build_event_object_histograms(log: &OCEL) -> Value {
         }
     }
 
-    let histograms = stats.into_iter().map(|((etype, otype), hist)| {
-        HistogramEntry {
-            event_type: etype,
-            object_type: otype,
-            histogram: hist.into_iter()
-                .map(|(k, v)| (k.to_string(), v))
-                .collect(),
-        }
-    }).collect();
+    // Convert to serializable structures
+    let mut histograms: Vec<HistogramEntry> = stats
+        .into_iter()
+        .map(|((etype, otype), hist)| {
+            let mut bins: Vec<HistogramBin> = hist
+                .into_iter()
+                .map(|(count, freq)| HistogramBin { count, frequency: freq })
+                .collect();
+
+            // sort bins numerically by count
+            bins.sort_by_key(|bin| bin.count);
+
+            HistogramEntry {
+                event_type: etype,
+                object_type: otype,
+                histogram: bins,
+            }
+        })
+        .collect();
+
+    // Optional: sort outer vector for deterministic output
+    histograms.sort_by(|a, b| {
+        a.event_type
+            .cmp(&b.event_type)
+            .then_with(|| a.object_type.cmp(&b.object_type))
+    });
 
     let result = HistogramResult { histograms };
 
     serde_json::to_value(&result).unwrap()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio;
+    use std::path::PathBuf;
+    use tokio::fs as tokio_fs;
+
+    #[tokio::test]
+    async fn test_build_event_object_histograms() {
+        // 1. Build the path to your OCEL JSON
+        let ocel_path = PathBuf::from("./temp/ocel_v2_123.json");
+
+        // 2. Read the file
+        let ocel_data = tokio_fs::read_to_string(&ocel_path)
+            .await
+            .expect("failed to read OCEL JSON file");
+
+        // 3. Deserialize into OCEL
+        let ocel: OCEL = serde_json::from_str(&ocel_data)
+            .expect("failed to parse OCEL JSON");
+
+        // 4. Build the histogram
+        let histogram = build_event_object_histograms(&ocel);
+
+        // 5. Serialize to pretty JSON string
+        let json_str = serde_json::to_string_pretty(&histogram)
+            .expect("failed to serialize histogram");
+
+        // 6. Print to console
+        println!("{}", json_str);
+    }
 }
