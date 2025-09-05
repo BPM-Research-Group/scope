@@ -9,7 +9,7 @@
 export const fileNodeTypes = ['ocptFileNode', 'ocelFileNode'] as const;
 export type ExploreFileNodeType = (typeof fileNodeTypes)[number];
 
-export const visualizationNodeTypes = ['ocptViewerNode', 'lbofViewerNode'] as const;
+export const visualizationNodeTypes = ['ocptVisualizationNode', 'lbofVisualizationNode'] as const;
 export type ExploreVisualizationNodeType = (typeof visualizationNodeTypes)[number];
 
 export const minerNodeTypes = ['ocptMinerNode'] as const;

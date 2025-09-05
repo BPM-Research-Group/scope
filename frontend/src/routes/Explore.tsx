@@ -4,18 +4,22 @@ import { SidebarProvider } from '~/components/ui/sidebar';
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 import { DnDProvider, useDnD } from '~/components/explore/DndContext';
 import ExploreSidebar from '~/components/explore/ExploreSidebar';
-import FileExploreNode from '~/components/explore/FileExploreNode';
-import FileSelectionDialog from '~/components/explore/FileSelectionDialog';
-import MinerExploreNode from '~/components/explore/MinerExploreNode';
-import VisualizationExploreNode from '~/components/explore/VisualizationExploreNode';
+import OcelFileNode from '~/components/explore/file/OcelFileNode';
+import OcptFileNode from '~/components/explore/file/OcptFileNode';
+import FileSelectionDialog from '~/components/explore/file/ui/FileSelectionDialog';
+import OcptMinerNode from '~/components/explore/miner/OcptMinerNode';
+import OcptVisualizationNode from '~/components/explore/visualization/OcptVisualizationNode';
 import { useExploreEventHandlers } from '~/hooks/useExploreEventHandlers';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { useFileDialogStore } from '~/stores/store';
 
 const nodeTypes = {
-    file: FileExploreNode,
-    visualization: VisualizationExploreNode,
-    miner: MinerExploreNode,
+    // file: FileExploreNode,
+    // visualization: VisualizationExploreNode,
+    ocptMinerNode: OcptMinerNode,
+    ocptVisualizationNode: OcptVisualizationNode,
+    ocelFileNode: OcelFileNode,
+    ocptFileNode: OcptFileNode,
 };
 
 const Explore: React.FC = () => {

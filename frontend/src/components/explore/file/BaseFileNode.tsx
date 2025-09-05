@@ -1,11 +1,14 @@
 import { memo } from 'react';
-import { NodeProps } from '@xyflow/react';
+import type { NodeProps } from '@xyflow/react';
+import BaseExploreNode from '~/components/explore/BaseExploreNode';
 import { useFileDialogStore } from '~/stores/store';
-import type { BaseExploreNodeDropdownActionType, FileNode } from '~/types/explore';
-import BaseExploreNode from './BaseExploreNode';
+import type { BaseExploreNodeDropdownActionType, TFileNode } from '~/types/explore';
 
-const FileExploreNode = memo<NodeProps<FileNode>>((props) => {
-    const { id, selected, data } = props;
+interface FileNodeProps extends NodeProps<TFileNode> {}
+
+const BaseFileNode = memo<FileNodeProps>((props) => {
+    const { id, data } = props;
+    const { assets } = data;
     const { openDialog } = useFileDialogStore();
 
     const handleDropdownAction = (action: BaseExploreNodeDropdownActionType) => {
@@ -20,8 +23,6 @@ const FileExploreNode = memo<NodeProps<FileNode>>((props) => {
     };
 
     const renderFileContent = () => {
-        const { assets } = data;
-
         if (assets.length === 0) {
             return <p>No file selected</p>;
         }
@@ -41,4 +42,4 @@ const FileExploreNode = memo<NodeProps<FileNode>>((props) => {
     return <BaseExploreNode {...props} onDropdownAction={handleDropdownAction} customContent={renderFileContent()} />;
 });
 
-export default FileExploreNode;
+export default BaseFileNode;

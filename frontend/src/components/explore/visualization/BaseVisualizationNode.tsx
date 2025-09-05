@@ -1,13 +1,17 @@
 import { memo } from 'react';
-import { NodeProps } from '@xyflow/react';
+import type { NodeProps } from '@xyflow/react';
 import { Eye } from 'lucide-react';
 import { Button } from '~/components/ui/button';
+import BaseExploreNode from '~/components/explore/BaseExploreNode';
 import { isFullVisualizationData } from '~/lib/explore/exploreNodes.utils';
-import type { BaseExploreNodeDropdownActionType, VisualizationNode } from '~/types/explore';
-import BaseExploreNode from './BaseExploreNode';
+import type { BaseExploreNodeDropdownActionType, TVisualizationNode } from '~/types/explore';
 
-const VisualizationExploreNode = memo<NodeProps<VisualizationNode>>((props) => {
-    const { id, selected, data } = props;
+interface VisualizationNodeProps extends NodeProps<TVisualizationNode> {
+    // Add any visualization-specific props here if needed
+}
+
+const BaseVisualizationNode = memo<VisualizationNodeProps>((props) => {
+    const { data } = props;
     const { assets } = data;
 
     const handleDropdownAction = (action: BaseExploreNodeDropdownActionType) => {
@@ -67,4 +71,4 @@ const VisualizationExploreNode = memo<NodeProps<VisualizationNode>>((props) => {
     );
 });
 
-export default VisualizationExploreNode;
+export default BaseVisualizationNode;

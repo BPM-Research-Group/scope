@@ -16,15 +16,15 @@ import type { VisualizationExploreNodeData } from '~/types/explore/interfaces/vi
  * Strongly-typed node interfaces that extend ReactFlow's base Node type
  * with the custom data properties for each node type.
  */
-export interface FileNode extends Node<FileExploreNodeData> {
+export interface TFileNode extends Node<FileExploreNodeData> {
     data: FileExploreNodeData & { nodeType: ExploreFileNodeType; nodeCategory: 'file' };
 }
 
-export interface VisualizationNode extends Node<VisualizationExploreNodeData> {
+export interface TVisualizationNode extends Node<VisualizationExploreNodeData> {
     data: VisualizationExploreNodeData & { nodeType: ExploreVisualizationNodeType; nodeCategory: 'visualization' };
 }
 
-export interface MinerNode extends Node<MinerExploreNodeData> {
+export interface TMinerNode extends Node<MinerExploreNodeData> {
     data: MinerExploreNodeData & { nodeType: ExploreMinerNodeType; nodeCategory: 'miner' };
 }
 

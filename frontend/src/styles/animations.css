@@ -1,0 +1,26 @@
+@keyframes mining {
+  0% {
+    transform: rotate(-30deg) translateX(0px) translateY(0px);
+  }
+  10% {
+    transform: rotate(15deg) translateX(8px) translateY(6px);
+  }
+  20% {
+    transform: rotate(-30deg) translateX(0px) translateY(0px);
+  }
+  30% {
+    transform: rotate(-30deg) translateX(0px) translateY(0px);
+  }
+  40% {
+    transform: rotate(15deg) translateX(8px) translateY(6px);
+  }
+  50% {
+    transform: rotate(-30deg) translateX(0px) translateY(0px);
+  }
+  60% {
+    transform: rotate(-30deg) translateX(0px) translateY(0px);
+  }
+  100% {
+    transform: rotate(-30deg) translateX(0px) translateY(0px);
+  }
+}

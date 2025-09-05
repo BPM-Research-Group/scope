@@ -1,17 +1,17 @@
 import { type XYPosition } from '@xyflow/react';
+import { getNodeCategoryByType } from '~/lib/explore/exploreNodes.utils';
 import {
     type BaseExploreNodeConfig,
     type BaseExploreNodeDisplay,
     type ExploreNodeCategory,
     type ExploreNodeData,
     type ExploreNodeType,
-    getNodeCategory,
     type NodeId,
 } from '~/types/explore';
 
 export abstract class BaseExploreNode {
     readonly id: NodeId;
-    readonly type: ExploreNodeCategory;
+    readonly type: ExploreNodeType;
     position: XYPosition;
     data: ExploreNodeData;
 
@@ -20,11 +20,9 @@ export abstract class BaseExploreNode {
     constructor(position: XYPosition, nodeType: ExploreNodeType) {
         this.id = BaseExploreNode.generateId(nodeType);
         this.position = position;
+        this.type = nodeType;
 
-        const nodeCategory = getNodeCategory[nodeType];
-        this.type = nodeCategory;
-
-        // Child classes must implement their own data initialization
+        const nodeCategory = getNodeCategoryByType(nodeType);
         this.data = this.initializeData(nodeType, nodeCategory);
     }
 

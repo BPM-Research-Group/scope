@@ -6,7 +6,7 @@ import { useStoredFiles } from '~/stores/store';
 import { useUploadFileMutation } from '~/services/mutation';
 import type { ExtendedFile } from '~/types/fileObject.types';
 import type { FileType } from '~/types/files.types';
-import FileTypeSelectionDialog from './explore/FileTypeSelectionDialog';
+import FileTypeSelectionDialog from './explore/file/ui/FileTypeSelectionDialog';
 
 const Dropzone: React.FC = () => {
     // const { setAcceptedFile } = useAcceptedFile();

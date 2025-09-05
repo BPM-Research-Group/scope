@@ -45,13 +45,13 @@ export class VisualizationExploreNode extends BaseExploreNode {
         };
 
         switch (nodeType) {
-            case 'ocptViewerNode':
+            case 'ocptVisualizationNode':
                 return {
                     ...baseDisplay,
                     title: 'OCPT Viewer',
                     Icon: Network,
                 };
-            case 'lbofViewerNode':
+            case 'lbofVisualizationNode':
                 return {
                     ...baseDisplay,
                     title: 'LBOF Viewer',
@@ -73,9 +73,9 @@ export class VisualizationExploreNode extends BaseExploreNode {
 
     private getVisualizationPath(nodeType: ExploreVisualizationNodeType, nodeId: string): string {
         switch (nodeType) {
-            case 'lbofViewerNode':
+            case 'lbofVisualizationNode':
                 return `/data/explore/lbof/${nodeId}`;
-            case 'ocptViewerNode':
+            case 'ocptVisualizationNode':
                 return `/data/explore/ocpt/${nodeId}`;
         }
     }

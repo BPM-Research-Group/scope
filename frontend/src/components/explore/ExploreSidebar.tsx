@@ -40,10 +40,10 @@ const ExploreSidebar: React.FC<ExploreSidebarProps> = ({}) => {
                     <SidebarGroupContent className="p-1">
                         <SidebarMenu className="flex flex-row">
                             <SidebarMenuItem className="ml-1">
-                                <DndCard title="OCPT Viewer" Icon={Network} nodeType="ocptViewerNode" />
+                                <DndCard title="OCPT Visualization" Icon={Network} nodeType="ocptVisualizationNode" />
                             </SidebarMenuItem>
                             <SidebarMenuItem className="ml-1">
-                                <DndCard title="LBOF Viewer" Icon={Workflow} nodeType="lbofViewerNode" />
+                                <DndCard title="LBOF Visualization" Icon={Workflow} nodeType="lbofVisualizationNode" />
                             </SidebarMenuItem>
                         </SidebarMenu>
                     </SidebarGroupContent>
