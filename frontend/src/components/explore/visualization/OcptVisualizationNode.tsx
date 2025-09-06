@@ -3,8 +3,8 @@ import type { NodeProps } from '@xyflow/react';
 import type { TVisualizationNode } from '~/types/explore';
 import VisualizationNode from './BaseVisualizationNode';
 
-const OcptVisualizationNode = memo<NodeProps<TVisualizationNode>>((props) => {
-    return <VisualizationNode {...props} />;
+const OcptVisualizationNode = memo<NodeProps<TVisualizationNode>>((node) => {
+    return <VisualizationNode {...node} />;
 });
 
 export default OcptVisualizationNode;

@@ -9,8 +9,8 @@ interface MinerNodeProps extends NodeProps<TMinerNode> {
     isLoading: boolean;
 }
 
-const BaseMinerNode = memo<MinerNodeProps>(({ isLoading, ...props }) => {
-    const { assets } = props.data;
+const BaseMinerNode = memo<MinerNodeProps>(({ isLoading, ...node }) => {
+    const { assets } = node.data;
 
     const renderFileContent = () => {
         if (assets.length === 0) return <p>Ready to mine!</p>;
@@ -64,7 +64,7 @@ const BaseMinerNode = memo<MinerNodeProps>(({ isLoading, ...props }) => {
         );
     };
 
-    return <BaseExploreNode {...props} customContent={renderFileContent()} />;
+    return <BaseExploreNode {...node} customContent={renderFileContent()} />;
 });
 
 export default BaseMinerNode;
