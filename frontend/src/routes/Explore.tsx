@@ -1,6 +1,6 @@
 import { DragEvent, useCallback, useEffect } from 'react';
 import { Background, Controls, ReactFlow, ReactFlowProvider } from '@xyflow/react';
-import { SidebarProvider } from '~/components/ui/sidebar';
+import { SidebarInset, SidebarProvider } from '~/components/ui/sidebar';
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 import { DnDProvider, useDnD } from '~/components/explore/DndContext';
 import ExploreSidebar from '~/components/explore/ExploreSidebar';
@@ -37,7 +37,7 @@ const Explore: React.FC = () => {
     return (
         <>
             <SidebarProvider>
-                <div className="h-screen w-screen overflow-hidden">
+                <SidebarInset>
                     <BreadcrumbNav />
                     <div className="h-full w-full">
                         <ReactFlow
@@ -56,8 +56,8 @@ const Explore: React.FC = () => {
                             <Controls position="top-left" />
                         </ReactFlow>
                     </div>
-                    <ExploreSidebar />
-                </div>
+                </SidebarInset>
+                <ExploreSidebar />
             </SidebarProvider>
             <FileSelectionDialog isOpen={Boolean(dialogNodeId)} />
         </>
