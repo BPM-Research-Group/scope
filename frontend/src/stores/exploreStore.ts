@@ -13,6 +13,14 @@ import type { FileExploreNodeData, VisualizationExploreNodeData } from '~/types/
 
 type ExploreNode = Node<FileExploreNodeData> | Node<VisualizationExploreNodeData>;
 
+interface SavedPipeline {
+    id: string;
+    name: string;
+    nodes: ExploreNode[];
+    edges: Edge[];
+    savedAt: string;
+}
+
 interface ExploreFlowStore {
     nodes: ExploreNode[];
     edges: Edge[];
@@ -27,6 +35,10 @@ interface ExploreFlowStore {
     removeEdge: (edgeId: string) => void;
     getNode: (nodeId: string) => ExploreNode | undefined;
     clearFlow: () => void;
+    savePipeline: (name?: string) => void;
+    loadPipeline: (pipelineId: string) => void;
+    getSavedPipelines: () => SavedPipeline[];
+    deletePipeline: (pipelineId: string) => void;
 }
 
 export const useExploreFlowStore = create<ExploreFlowStore>((set, get) => ({
@@ -88,4 +100,37 @@ export const useExploreFlowStore = create<ExploreFlowStore>((set, get) => ({
     },
 
     clearFlow: () => set({ nodes: [], edges: [] }),
+
+    savePipeline: (name = 'Pipeline') => {
+        const { nodes, edges } = get();
+        const pipeline: SavedPipeline = {
+            id: Date.now().toString(),
+            name: name,
+            nodes: JSON.parse(JSON.stringify(nodes)),
+            edges: JSON.parse(JSON.stringify(edges)),
+            savedAt: new Date().toISOString(),
+        };
+
+        const existingPipelines = JSON.parse(localStorage.getItem('savedPipelines') || '[]');
+        const updatedPipelines = [...existingPipelines, pipeline];
+        localStorage.setItem('savedPipelines', JSON.stringify(updatedPipelines));
+    },
+
+    loadPipeline: (pipelineId: string) => {
+        const pipelines = JSON.parse(localStorage.getItem('savedPipelines') || '[]');
+        const pipeline = pipelines.find((p: SavedPipeline) => p.id === pipelineId);
+        if (pipeline) {
+            set({ nodes: pipeline.nodes, edges: pipeline.edges });
+        }
+    },
+
+    getSavedPipelines: () => {
+        return JSON.parse(localStorage.getItem('savedPipelines') || '[]');
+    },
+
+    deletePipeline: (pipelineId: string) => {
+        const pipelines = JSON.parse(localStorage.getItem('savedPipelines') || '[]');
+        const updatedPipelines = pipelines.filter((p: SavedPipeline) => p.id !== pipelineId);
+        localStorage.setItem('savedPipelines', JSON.stringify(updatedPipelines));
+    },
 }));
