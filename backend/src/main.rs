@@ -3,7 +3,7 @@ mod handlers;
 mod models;
 mod core;
 
-use core::ocel1_to_ocel2_converter::converter::convert_file;
+use core::struct_converters::ocel_1_ocel_2_converter::convert_file;
 use std::path::Path;
 use anyhow::Result;
 
