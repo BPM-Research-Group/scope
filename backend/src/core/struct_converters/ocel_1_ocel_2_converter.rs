@@ -5,7 +5,7 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use crate::models::ocel1::{Ocel1, Ocel1Event, Ocel1Object};
-use crate::core::ocel1_to_ocel2_converter::utils::{
+use crate::core::struct_converters::utils::{
     epoch_fixed_utc, json_to_attr_value, merge_tys, parse_time_any, vty_to_attr_type, VTy,
 };
 
