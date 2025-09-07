@@ -89,15 +89,15 @@ impl OCPTLeaf {
 
 
 /////////////////// frontend struct ////////////////
-#[derive(Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Ocpt {
-    ots: Vec<String>,
-    hierarchy: HierarchyNode,
+    pub ots: Vec<String>,
+    pub hierarchy: HierarchyNode,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
-enum HierarchyNode {
+pub enum HierarchyNode {
     Operator {
         value: String,
         children: Vec<HierarchyNode>,
@@ -107,19 +107,19 @@ enum HierarchyNode {
     },
 }
 
-#[derive(Serialize)]
-struct ActivityValue {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ActivityValue {
     #[serde(skip_serializing_if = "Option::is_none")]
-    isSilent: Option<bool>,
-    activity: String,
-    ots: Vec<ObjectType>,
+    pub isSilent: Option<bool>,
+    pub activity: String,
+    pub ots: Vec<ObjectType>,
 }
 
-#[derive(Serialize)]
-struct ObjectType {
-    ot: String,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ObjectType {
+    pub ot: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    exhibits: Option<Vec<String>>,
+    pub exhibits: Option<Vec<String>>,
 }
 
 ////////// sid ///////////////////////////
