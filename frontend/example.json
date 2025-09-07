@@ -1,0 +1,96 @@
+[
+    {
+        "id": "1757188643516",
+        "name": "my_pipeline",
+        "nodes": [
+            {
+                "id": "ocelFileNode_0",
+                "type": "ocelFileNode",
+                "position": {
+                    "x": 595,
+                    "y": 412.5
+                },
+                "data": {
+                    "nodeType": "ocelFileNode",
+                    "nodeCategory": "file",
+                    "assets": [],
+                    "display": {
+                        "title": "OCEL File",
+                        "Icon": {},
+                        "isFileDialogOpen": false
+                    },
+                    "config": {
+                        "handleOptions": [
+                            {
+                                "position": "right",
+                                "type": "source"
+                            }
+                        ],
+                        "dropdownOptions": [
+                            {
+                                "label": "Open File",
+                                "action": "openFileDialog"
+                            }
+                        ],
+                        "allowedAssetTypes": [
+                            "ocelFile"
+                        ]
+                    }
+                },
+                "selected": false,
+                "dragging": false
+            },
+            {
+                "id": "ocptMinerNode_1",
+                "type": "ocptMinerNode",
+                "position": {
+                    "x": 884,
+                    "y": 249.5
+                },
+                "data": {
+                    "nodeType": "ocptMinerNode",
+                    "nodeCategory": "miner",
+                    "assets": [],
+                    "display": {
+                        "title": "OCPT Miner",
+                        "Icon": {}
+                    },
+                    "config": {
+                        "handleOptions": [
+                            {
+                                "position": "left",
+                                "type": "target"
+                            },
+                            {
+                                "position": "right",
+                                "type": "source"
+                            }
+                        ],
+                        "dropdownOptions": [
+                            {
+                                "label": "Change Source",
+                                "action": "changeSourceFile"
+                            }
+                        ],
+                        "allowedAssetTypes": [
+                            "ocptFile",
+                            "ocelFile",
+                            "ocptAsset"
+                        ]
+                    }
+                },
+                "selected": false,
+                "dragging": false
+            }
+        ],
+        "edges": [
+            {
+                "id": "xy-edge__ocelFileNode_0-ocptMinerNode_1",
+                "source": "ocelFileNode_0",
+                "target": "ocptMinerNode_1",
+                "animated": true
+            }
+        ],
+        "savedAt": "2025-09-06T19:57:23.516Z"
+    }
+]

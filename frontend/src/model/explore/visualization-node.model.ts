@@ -1,5 +1,4 @@
 import { Position, type XYPosition } from '@xyflow/react';
-import { Network, Workflow } from 'lucide-react';
 import {
     type BaseExploreNodeDisplay,
     type ExploreVisualizationNodeType,
@@ -41,7 +40,7 @@ export class VisualizationExploreNode extends BaseExploreNode {
     private getVisualizationDisplay(nodeType: ExploreVisualizationNodeType): BaseExploreNodeDisplay {
         const baseDisplay = {
             title: '',
-            Icon: Network, // Default visualization icon
+            iconName: 'eye', // Default visualization icon
         };
 
         switch (nodeType) {
@@ -49,13 +48,13 @@ export class VisualizationExploreNode extends BaseExploreNode {
                 return {
                     ...baseDisplay,
                     title: 'OCPT Viewer',
-                    Icon: Network,
+                    iconName: 'network',
                 };
             case 'lbofVisualizationNode':
                 return {
                     ...baseDisplay,
                     title: 'LBOF Viewer',
-                    Icon: Workflow,
+                    iconName: 'workflow',
                 };
         }
     }

@@ -1,6 +1,7 @@
 import { memo, ReactNode } from 'react';
 import { Handle, NodeProps } from '@xyflow/react';
 import { Settings } from 'lucide-react';
+import { getIconComponent } from '~/lib/iconMap';
 import { BaseNode } from '~/components/ui/base-node';
 import { DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '~/components/ui/dropdown-menu';
 import {
@@ -34,7 +35,10 @@ const BaseExploreNode = memo<BaseExploreNodeProps>(
             <BaseNode key={id} selected={selected} className="px-3 py-2">
                 <NodeHeader className="-mx-3 -mt-2 border-b">
                     <NodeHeaderIcon>
-                        <display.Icon />
+                        {(() => {
+                            const IconComponent = getIconComponent(display.iconName);
+                            return <IconComponent />;
+                        })()}
                     </NodeHeaderIcon>
                     <NodeHeaderTitle>{display.title}</NodeHeaderTitle>
                     <NodeHeaderActions>

@@ -1,7 +1,7 @@
-import { BreadcrumbItem, BreadcrumbPage, BreadcrumbSeparator } from '~/components/ui/breadcrumb';
-import { Compass, Eye, File, House, Network } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import React from 'react';
+import { Compass, Eye, File, House, Network, Route } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { BreadcrumbItem, BreadcrumbPage, BreadcrumbSeparator } from '~/components/ui/breadcrumb';
 
 interface BreadCrumbPathProps {
     pathnames: string[];
@@ -19,6 +19,8 @@ const BreadCrumbPath: React.FC<BreadCrumbPathProps> = ({ pathnames }) => {
                 return <House className={className} />;
             case 'explore':
                 return <Compass className={className} />;
+            case 'pipeline':
+                return <Route className={className} />;
         }
     };
 

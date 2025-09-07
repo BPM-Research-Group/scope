@@ -1,5 +1,4 @@
 import { Position, type XYPosition } from '@xyflow/react';
-import { TreePine } from 'lucide-react';
 import type { ExploreMinerNodeType } from '~/types/explore';
 import type {
     MinerExploreNodeConfig,
@@ -38,7 +37,7 @@ export class MinerExploreNode extends BaseExploreNode {
     private getVisualizationDisplay(nodeType: ExploreMinerNodeType): MinerExploreNodeDisplay {
         const baseDisplay = {
             title: '',
-            Icon: TreePine, // Default visualization icon
+            iconName: 'treePine', // Default visualization icon
         };
 
         switch (nodeType) {
@@ -46,7 +45,7 @@ export class MinerExploreNode extends BaseExploreNode {
                 return {
                     ...baseDisplay,
                     title: 'OCPT Miner',
-                    Icon: TreePine,
+                    iconName: 'treePine',
                 };
         }
     }

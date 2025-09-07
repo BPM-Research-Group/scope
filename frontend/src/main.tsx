@@ -1,13 +1,14 @@
 import { StrictMode } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import Home from '~/routes/Home';
-import Upload from '~/routes/Upload';
-import OcptViewer from '~/routes/OcptViewer';
 import '~/index.css';
 import Explore from '~/routes/Explore';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import Home from '~/routes/Home';
+import OcptViewer from '~/routes/OcptViewer';
+import Pipeline from '~/routes/Pipeline';
+import Upload from '~/routes/Upload';
 
 // Create a client
 const queryClient = new QueryClient();
@@ -22,11 +23,15 @@ const router = createBrowserRouter([
         element: <Upload />,
     },
     {
-        path: '/data/explore/',
+        path: '/data/pipeline/',
+        element: <Pipeline />,
+    },
+    {
+        path: '/data/pipeline/explore/',
         element: <Explore />,
     },
     {
-        path: '/data/explore/ocpt/:nodeId',
+        path: '/data/pipeline/explore/ocpt/:nodeId',
         element: <OcptViewer />,
     },
 ]);

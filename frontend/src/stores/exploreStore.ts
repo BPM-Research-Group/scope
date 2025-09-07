@@ -13,7 +13,7 @@ import type { FileExploreNodeData, VisualizationExploreNodeData } from '~/types/
 
 type ExploreNode = Node<FileExploreNodeData> | Node<VisualizationExploreNodeData>;
 
-interface SavedPipeline {
+export interface SavedPipeline {
     id: string;
     name: string;
     nodes: ExploreNode[];
@@ -103,11 +103,31 @@ export const useExploreFlowStore = create<ExploreFlowStore>((set, get) => ({
 
     savePipeline: (name = 'Pipeline') => {
         const { nodes, edges } = get();
+        
+        // Create clean copies without function references or complex objects
+        const cleanNodes = nodes.map(node => ({
+            id: node.id,
+            type: node.type,
+            position: node.position,
+            data: node.data,
+            selected: false,
+            dragging: false,
+        }));
+        
+        const cleanEdges = edges.map(edge => ({
+            id: edge.id,
+            source: edge.source,
+            target: edge.target,
+            sourceHandle: edge.sourceHandle,
+            targetHandle: edge.targetHandle,
+            animated: edge.animated,
+        }));
+        
         const pipeline: SavedPipeline = {
             id: Date.now().toString(),
             name: name,
-            nodes: JSON.parse(JSON.stringify(nodes)),
-            edges: JSON.parse(JSON.stringify(edges)),
+            nodes: cleanNodes as ExploreNode[],
+            edges: cleanEdges,
             savedAt: new Date().toISOString(),
         };
 
@@ -120,7 +140,17 @@ export const useExploreFlowStore = create<ExploreFlowStore>((set, get) => ({
         const pipelines = JSON.parse(localStorage.getItem('savedPipelines') || '[]');
         const pipeline = pipelines.find((p: SavedPipeline) => p.id === pipelineId);
         if (pipeline) {
-            set({ nodes: pipeline.nodes, edges: pipeline.edges });
+            // Restore nodes with placeholder functions that will be replaced when the hook initializes
+            const restoredNodes = pipeline.nodes.map(node => ({
+                ...node,
+                data: {
+                    ...node.data,
+                    onDataChange: () => {}, // Placeholder - will be replaced by useExploreEventHandlers
+                    ...(node.data.visualize !== undefined && { visualize: () => {} }) // Placeholder for visualization nodes
+                }
+            }));
+            
+            set({ nodes: restoredNodes, edges: pipeline.edges });
         }
     },
 

@@ -58,7 +58,7 @@ export class FileExploreNode extends BaseExploreNode {
     private getFileDisplay(nodeType: ExploreFileNodeType): FileExploreNodeDisplay {
         const baseDisplay = {
             title: '',
-            Icon: FileJson, // Default file icon
+            iconName: 'fileJson', // Default file icon
             isFileDialogOpen: false,
         };
 
@@ -67,13 +67,13 @@ export class FileExploreNode extends BaseExploreNode {
                 return {
                     ...baseDisplay,
                     title: 'OCEL File',
-                    Icon: FileSpreadsheet,
+                    iconName: 'fileSpreadsheet',
                 };
             case 'ocptFileNode':
                 return {
                     ...baseDisplay,
                     title: 'OCPT File',
-                    Icon: FileJson,
+                    iconName: 'fileJson',
                 };
         }
     }
