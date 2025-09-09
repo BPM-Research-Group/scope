@@ -1,0 +1,340 @@
+{
+    "ots": [
+        "Orders",
+        "Items",
+        "Products",
+        "Customers",
+        "Packages"
+    ],
+    "hierarchy": {
+        "value": "sequence",
+        "children": [
+            {
+                "value": {
+                    "activity": "Place Order",
+                    "ots": [
+                        {
+                            "ot": "Orders"
+                        },
+                        {
+                            "ot": "Items",
+                            "exhibits": [
+                                "con"
+                            ]
+                        },
+                        {
+                            "ot": "Products",
+                            "exhibits": [
+                                "con",
+                                "div"
+                            ]
+                        },
+                        {
+                            "ot": "Customers",
+                            "exhibits": [
+                                "div"
+                            ]
+                        }
+                    ]
+                }
+            },
+            {
+                "value": "parallel",
+                "children": [
+                    {
+                        "value": "sequence",
+                        "children": [
+                            {
+                                "value": {
+                                    "activity": "Confirm Order",
+                                    "ots": [
+                                        {
+                                            "ot": "Orders"
+                                        },
+                                        {
+                                            "ot": "Items",
+                                            "exhibits": [
+                                                "con"
+                                            ]
+                                        },
+                                        {
+                                            "ot": "Products",
+                                            "exhibits": [
+                                                "con",
+                                                "div"
+                                            ]
+                                        },
+                                        {
+                                            "ot": "Customers",
+                                            "exhibits": [
+                                                "div"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                "value": {
+                                    "activity": "Pay Order",
+                                    "ots": [
+                                        {
+                                            "ot": "Orders"
+                                        },
+                                        {
+                                            "ot": "Items",
+                                            "exhibits": [
+                                                "con"
+                                            ]
+                                        },
+                                        {
+                                            "ot": "Products",
+                                            "exhibits": [
+                                                "con",
+                                                "div"
+                                            ]
+                                        },
+                                        {
+                                            "ot": "Customers",
+                                            "exhibits": [
+                                                "div"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "value": "sequence",
+                        "children": [
+                            {
+                                "value": "xor",
+                                "children": [
+                                    {
+                                        "value": "sequence",
+                                        "children": [
+                                            {
+                                                "value": {
+                                                    "activity": "Item Out Of Stock",
+                                                    "ots": [
+                                                        {
+                                                            "ot": "Items"
+                                                        },
+                                                        {
+                                                            "ot": "Orders",
+                                                            "exhibits": [
+                                                                "div"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "ot": "Products",
+                                                            "exhibits": [
+                                                                "div"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "ot": "Customers",
+                                                            "exhibits": [
+                                                                "div"
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "value": {
+                                                    "activity": "Reorder Item",
+                                                    "ots": [
+                                                        {
+                                                            "ot": "Items"
+                                                        },
+                                                        {
+                                                            "ot": "Orders",
+                                                            "exhibits": [
+                                                                "div"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "ot": "Products",
+                                                            "exhibits": [
+                                                                "div"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "ot": "Customers",
+                                                            "exhibits": [
+                                                                "div"
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "value": {
+                                            "isSilent": true,
+                                            "activity": "tau",
+                                            "ots": []
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "value": "sequence",
+                                "children": [
+                                    {
+                                        "value": "sequence",
+                                        "children": [
+                                            {
+                                                "value": {
+                                                    "activity": "Pick Item",
+                                                    "ots": [
+                                                        {
+                                                            "ot": "Items"
+                                                        },
+                                                        {
+                                                            "ot": "Orders",
+                                                            "exhibits": [
+                                                                "div"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "ot": "Products",
+                                                            "exhibits": [
+                                                                "div"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "ot": "Customers",
+                                                            "exhibits": [
+                                                                "div"
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "value": {
+                                                    "activity": "Create Package",
+                                                    "ots": [
+                                                        {
+                                                            "ot": "Packages"
+                                                        },
+                                                        {
+                                                            "ot": "Items",
+                                                            "exhibits": [
+                                                                "con"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "ot": "Orders",
+                                                            "exhibits": [
+                                                                "con",
+                                                                "div"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "ot": "Products",
+                                                            "exhibits": [
+                                                                "con",
+                                                                "div"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "ot": "Customers",
+                                                            "exhibits": [
+                                                                "div"
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "value": "sequence",
+                                        "children": [
+                                            {
+                                                "value": {
+                                                    "activity": "Send Package",
+                                                    "ots": [
+                                                        {
+                                                            "ot": "Packages"
+                                                        },
+                                                        {
+                                                            "ot": "Items",
+                                                            "exhibits": [
+                                                                "con"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "ot": "Orders",
+                                                            "exhibits": [
+                                                                "con",
+                                                                "div"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "ot": "Products",
+                                                            "exhibits": [
+                                                                "con",
+                                                                "div"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "ot": "Customers",
+                                                            "exhibits": [
+                                                                "div"
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "value": {
+                                                    "activity": "Package Delivered",
+                                                    "ots": [
+                                                        {
+                                                            "ot": "Packages"
+                                                        },
+                                                        {
+                                                            "ot": "Items",
+                                                            "exhibits": [
+                                                                "con"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "ot": "Orders",
+                                                            "exhibits": [
+                                                                "con",
+                                                                "div"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "ot": "Products",
+                                                            "exhibits": [
+                                                                "con",
+                                                                "div"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "ot": "Customers",
+                                                            "exhibits": [
+                                                                "div"
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+}

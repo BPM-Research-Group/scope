@@ -1,0 +1,145 @@
+{
+    "ots": ["Order", "Item", "Customer"],
+    "hierarchy": {
+        "value": "sequence",
+        "children": [
+            {
+                "value": "sequence",
+                "children": [
+                    {
+                        "value": {
+                            "activity": "Register",
+                            "ots": [
+                                {
+                                    "ot": "Customer"
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "value": {
+                            "activity": "Identify",
+                            "ots": [
+                                {
+                                    "ot": "Customer"
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "value": {
+                            "activity": "Deposit",
+                            "ots": [
+                                {
+                                    "ot": "Customer"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+            {
+                "value": "sequence",
+                "children": [
+                    {
+                        "value": "parallel",
+                        "children": [
+                            {
+                                "value": {
+                                    "activity": "Place",
+                                    "ots": [
+                                        {
+                                            "ot": "Order"
+                                        },
+                                        {
+                                            "ot": "Item",
+                                            "exhibits": ["con"]
+                                        },
+                                        {
+                                            "ot": "Customer",
+                                            "exhibits": ["div"]
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                "value": {
+                                    "activity": "Produce",
+                                    "ots": [
+                                        {
+                                            "ot": "Order",
+                                            "exhibits": ["div", "def"]
+                                        },
+                                        {
+                                            "ot": "Item"
+                                        }
+                                    ]
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "value": "parallel",
+                        "children": [
+                            {
+                                "value": "sequence",
+                                "children": [
+                                    {
+                                        "value": {
+                                            "activity": "Confirm",
+                                            "ots": [
+                                                {
+                                                    "ot": "Order"
+                                                },
+                                                {
+                                                    "ot": "Item",
+                                                    "exhibits": ["con"]
+                                                },
+                                                {
+                                                    "ot": "Customer",
+                                                    "exhibits": ["div"]
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "value": {
+                                            "activity": "Pay",
+                                            "ots": [
+                                                {
+                                                    "ot": "Order"
+                                                },
+                                                {
+                                                    "ot": "Item",
+                                                    "exhibits": ["con"]
+                                                },
+                                                {
+                                                    "ot": "Customer",
+                                                    "exhibits": ["div"]
+                                                }
+                                            ]
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "value": {
+                                    "activity": "Send",
+                                    "ots": [
+                                        {
+                                            "ot": "Order",
+                                            "exhibits": ["div"]
+                                        },
+                                        {
+                                            "ot": "Item"
+                                        }
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+}
