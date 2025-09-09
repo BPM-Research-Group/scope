@@ -5,8 +5,9 @@
     "type": "module",
     "scripts": {
         "sync-env": "tsx syncEnv.ts",
-        "dev": "npm run sync-env && vite",
-        "build": "npm run sync-env && vite build",
+        "sync-example-data": "tsx syncExampleData.ts",
+        "dev": "npm run sync-env && npm run sync-example-data && vite",
+        "build": "npm run sync-env && npm run sync-example-data && vite build",
         "lint": "eslint .",
         "preview": "vite preview",
         "test": "jest",
