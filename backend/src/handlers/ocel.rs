@@ -15,7 +15,7 @@ use chrono::Utc;
 use bytes::Bytes;
 use serde_json::Value;
 use std::path::Path as FsPath;
-use crate::core::ocel1_to_ocel2_converter::converter;
+use crate::core::struct_converters::{self, ocel_1_ocel_2_converter};
 use crate::models::ocel::OCEL;
 
 
@@ -42,7 +42,7 @@ pub async fn post_ocel_json(Json(payload): Json<Value>) -> impl IntoResponse {
 
     // Normalize into OCEL (v2 struct)
     let ocel_struct: OCEL = if is_ocel_v1(&payload) {
-        match converter::convert_ocel1_value_to_ocel(&payload) {
+        match ocel_1_ocel_2_converter::convert_ocel1_value_to_ocel(&payload) {
             Ok(oc) => oc,
             Err(e) => {
                 eprintln!("❌ v1→v2 conversion failed: {e:?}");
@@ -88,18 +88,22 @@ pub async fn post_ocel_json(Json(payload): Json<Value>) -> impl IntoResponse {
 pub async fn post_ocel_binary(mut multipart: Multipart) -> impl IntoResponse {
     let mut file_id: Option<String> = None;
     let mut file_bytes: Option<Bytes> = None;
+    let mut file_type: Option<String> = None;
 
     while let Some(field) = multipart.next_field().await.unwrap() {
         match field.name().unwrap_or("") {
-            "fileId" => {
+            "file_id" => {
                 let v = field.text().await.unwrap_or_default();
                 println!("📌 fileId: {v}");
                 file_id = Some(v);
             }
-            "file" => {
+            "data" => {
                 let data = field.bytes().await.unwrap_or_default();
                 println!("📥 file bytes: {}", data.len());
                 file_bytes = Some(data);
+            }
+            "file_type" => {
+                file_type = Some(field.text().await.unwrap_or_default());
             }
             other => println!("⚠️ Unknown form field: {other}"),
         }
@@ -133,7 +137,7 @@ pub async fn post_ocel_binary(mut multipart: Multipart) -> impl IntoResponse {
 
     // Normalize into OCEL (v2 struct)
     let ocel_struct: OCEL = if is_ocel_v1(&value) {
-        match converter::convert_ocel1_value_to_ocel(&value) {
+        match ocel_1_ocel_2_converter::convert_ocel1_value_to_ocel(&value) {
             Ok(oc) => oc,
             Err(e) => {
                 eprintln!("❌ v1→v2 conversion failed: {e:?}");
