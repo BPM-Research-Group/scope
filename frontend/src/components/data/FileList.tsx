@@ -1,11 +1,29 @@
+import { useCallback } from 'react';
 import { FolderOpen } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid';
 import { Button } from '~/components/ui/button';
 import FileShowcase from '~/components/data/FileShowcase';
 import { useStoredFiles } from '~/stores/store';
+import { useUploadFileMutation } from '~/services/mutation';
 import type { ExtendedFile } from '~/types/fileObject.types';
+import type { FileType } from '~/types/files.types';
 
 const FileList: React.FC = () => {
     const { files, addFile } = useStoredFiles();
+    const uploadFileMutation = useUploadFileMutation();
+
+    const handleFileUpload = useCallback(
+        (file: File, fileType: FileType) => {
+            const fileWithId = Object.assign(file, {
+                id: uuidv4(),
+                fileType,
+            }) as ExtendedFile;
+
+            addFile(fileWithId);
+            uploadFileMutation.mutate(fileWithId);
+        },
+        [addFile, uploadFileMutation]
+    );
 
     const loadExampleFiles = async () => {
         try {
@@ -13,11 +31,7 @@ const FileList: React.FC = () => {
             if (ocelResponse.ok) {
                 const ocelBlob = await ocelResponse.blob();
                 const ocelFile = new File([ocelBlob], 'ocel_v2_123.json', { type: 'application/json' });
-                const extendedOcelFile: ExtendedFile = Object.assign(ocelFile, { 
-                    id: Date.now().toString(), 
-                    fileType: 'ocelFile' as const 
-                });
-                addFile(extendedOcelFile);
+                handleFileUpload(ocelFile, 'ocelFile');
             }
 
             const ocptFiles = ['order_management_tree.json', 'presentation_example.json', 'very_small_ocpt.json'];
@@ -26,11 +40,7 @@ const FileList: React.FC = () => {
                 if (response.ok) {
                     const blob = await response.blob();
                     const file = new File([blob], fileName, { type: 'application/json' });
-                    const extendedFile: ExtendedFile = Object.assign(file, { 
-                        id: (Date.now() + Math.random()).toString(), 
-                        fileType: 'ocptFile' as const 
-                    });
-                    addFile(extendedFile);
+                    handleFileUpload(file, 'ocptFile');
                 }
             }
         } catch (error) {
