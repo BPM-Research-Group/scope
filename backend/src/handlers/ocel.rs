@@ -97,7 +97,7 @@ pub async fn post_ocel_binary(mut multipart: Multipart) -> impl IntoResponse {
                 println!("📌 fileId: {v}");
                 file_id = Some(v);
             }
-            "file" => {
+            "data" => {
                 let data = field.bytes().await.unwrap_or_default();
                 println!("📥 file bytes: {}", data.len());
                 file_bytes = Some(data);
