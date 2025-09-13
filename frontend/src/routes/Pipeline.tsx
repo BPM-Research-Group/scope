@@ -4,9 +4,17 @@ import { Button } from '~/components/ui/button';
 import { Separator } from '~/components/ui/separator';
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 import PipelineList from '~/components/pipeline/PipelineList';
+import { useExploreFlowStore } from '~/stores/exploreStore';
 
 const Pipeline: React.FC = () => {
     const navigate = useNavigate();
+    const { clearFlow } = useExploreFlowStore();
+
+    const newPipelineHandler = () => {
+        // Remove the old pipeline context
+        clearFlow();
+        navigate('/data/pipeline/explore')
+    }
 
     return (
         <div className="flex flex-col items-center min-h-screen pb-8">
@@ -14,7 +22,7 @@ const Pipeline: React.FC = () => {
             <div className="flex flex-col items-center w-1/2 flex-grow">
                 <div className="flex items-center justify-between mt-4 w-full">
                     <h1 className="font-bold text-4xl text-left w-full">Your pipelines</h1>
-                    <Button onClick={() => navigate('/data/pipeline/explore')} className="bg-blue-500">
+                    <Button onClick={newPipelineHandler} className="bg-blue-500">
                         <Plus />
                         <p>New Pipeline</p>
                     </Button>

@@ -1,4 +1,4 @@
-import { DragEvent, useCallback, useEffect } from 'react';
+import { DragEvent, useCallback, useMemo } from 'react';
 import { Background, Controls, ReactFlow, ReactFlowProvider } from '@xyflow/react';
 import { SidebarInset, SidebarProvider } from '~/components/ui/sidebar';
 import BreadcrumbNav from '~/components/BreadcrumbNav';
@@ -12,6 +12,9 @@ import OcptVisualizationNode from '~/components/explore/visualization/OcptVisual
 import { useExploreEventHandlers } from '~/hooks/useExploreEventHandlers';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { useFileDialogStore } from '~/stores/store';
+import { Logger } from '~/lib/logger';
+
+const logger = Logger.getInstance();
 
 const nodeTypes = {
     // file: FileExploreNode,
@@ -30,8 +33,8 @@ const Explore: React.FC = () => {
         useExploreEventHandlers();
     const handleDrop = useCallback((event: DragEvent<HTMLElement>) => onDrop(event, type), [onDrop, type]);
 
-    useEffect(() => {
-        console.log(nodes);
+    useMemo(() => {
+        logger.log(nodes);
     }, [nodes]);
 
     return (

@@ -69,30 +69,23 @@ export const useExploreEventHandlers = () => {
             const targetNode = getNode(edge.target);
 
             if (sourceNode && targetNode) {
-                // Check if this is a file -> visualization connection
-                const isFileToVisualization = isFileNode(sourceNode) && isVisualizationNode(targetNode);
-
-                if (isFileToVisualization) {
-                    // Remove assets from target node that came from source node
-                    const updatedNodes = nodes.map((node) => {
-                        if (node.id === edge.target) {
-                            // Filter out assets that match the source node's assets
-                            const filteredAssets = node.data.assets.filter(
-                                (asset) => !sourceNode.data.assets.some((sourceAsset) => sourceAsset.id === asset.id)
-                            );
-
-                            return {
-                                ...node,
-                                data: {
-                                    ...node.data,
-                                    assets: filteredAssets,
-                                },
-                            };
-                        }
-                        return node;
-                    });
-                    setNodes(updatedNodes);
-                }
+                const updatedNodes = nodes.map((node) => {
+                    if (node.id === edge.target) {
+                        // Filter out assets that match the source node's assets
+                        const filteredAssets = node.data.assets.filter(
+                            (asset) => !sourceNode.data.assets.some((sourceAsset) => sourceAsset.id === asset.id)
+                        );
+                        return {
+                            ...node,
+                            data: {
+                                ...node.data,
+                                assets: filteredAssets,
+                            },
+                        };
+                    }
+                    return node;
+                });
+                setNodes(updatedNodes);
 
                 const neighbors = directedNeighborMap.current.get(edge.source) || [];
                 const updatedNeighbors = neighbors.filter((id) => id !== edge.target);
