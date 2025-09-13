@@ -32,8 +32,8 @@ pub async fn post_ocpt(mut multipart: Multipart) -> Response {
         }
     } {
         match field.name().unwrap_or("") {
-            "id" => file_id = Some(field.text().await.unwrap_or_default()),
-            "data"   => file_bytes = Some(field.bytes().await.unwrap_or_default()),
+            "file_id" => file_id = Some(field.text().await.unwrap_or_default()),
+            "file"   => file_bytes = Some(field.bytes().await.unwrap_or_default()),
             _ => {}
         }
     }

@@ -92,17 +92,17 @@ pub async fn post_ocel_binary(mut multipart: Multipart) -> impl IntoResponse {
 
     while let Some(field) = multipart.next_field().await.unwrap() {
         match field.name().unwrap_or("") {
-            "id" => {
+            "file_id" => {
                 let v = field.text().await.unwrap_or_default();
                 println!("📌 fileId: {v}");
                 file_id = Some(v);
             }
-            "data" => {
+            "file" => {
                 let data = field.bytes().await.unwrap_or_default();
                 println!("📥 file bytes: {}", data.len());
                 file_bytes = Some(data);
             }
-            "type" => {
+            "file_type" => {
                 file_type = Some(field.text().await.unwrap_or_default());
             }
             other => println!("⚠️ Unknown form field: {other}"),
