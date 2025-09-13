@@ -14,7 +14,7 @@ use serde::Deserialize;
 use serde_json::Value;
 use std::path::Path as FsPath;
 use crate::core::df2_miner::ocpt_generator::generate_ocpt_from_fileid;
-use crate::core::struct_converters::ocpt_frontend_backend::frontend_to_backend;
+use crate::core::struct_converters::ocpt_frontend_backend::{frontend_to_backend, backend_to_frontend};
 use crate::models::ocpt::Ocpt;
 
 
@@ -130,36 +130,75 @@ async fn ensure_temp_dir() -> std::io::Result<()> {
     Ok(())
 }
 
+// Helper: read a backend OCPT from disk and convert to the FE shape.
+async fn read_backend_ocpt_as_frontend(path: &str) -> Result<Ocpt, String> {
+    let content = fs::read_to_string(path).await.map_err(|e| format!("read {}: {e}", path))?;
+    let backend: OCPT = serde_json::from_str(&content).map_err(|e| format!("parse backend OCPT {}: {e}", path))?;
+    if !backend.is_valid() {
+        return Err("backend OCPT failed is_valid()".to_string());
+    }
+    Ok(backend_to_frontend(&backend))
+}
+
 pub async fn get_ocpt(Path(file_id): Path<String>) -> impl IntoResponse {
     println!("📥 GET /v1/objects/ocpt/{}", file_id);
 
     let ocpt_path = format!("./temp/ocpt_{}.json", file_id);
-    let v2_path = format!("./temp/ocel_v2_{}.json", file_id);
-    let v1_path = format!("./temp/ocel_v1_{}.json", file_id);
-    println!("{}", v2_path);
-    // 1. If ocpt already exists, serve it
+    let v2_path   = format!("./temp/ocel_v2_{}.json", file_id);
+    let v1_path   = format!("./temp/ocel_v1_{}.json", file_id);
+
+    // 1) OCPT already exists → load backend struct, convert, return FE shape (keep same id)
     if FsPath::new(&ocpt_path).exists() {
-        return serve_file_as_json(&ocpt_path, &file_id).await;
+        match read_backend_ocpt_as_frontend(&ocpt_path).await {
+            Ok(frontend_ocpt) => {
+                let payload = serde_json::json!({
+                    "file_id": file_id,      // existing mined OCPT id
+                    "ocpt": frontend_ocpt
+                });
+                return (StatusCode::OK, Json(payload)).into_response();
+            }
+            Err(e) => {
+                eprintln!("❌ convert stored OCPT failed: {}", e);
+                return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to convert stored OCPT to frontend format").into_response();
+            }
+        }
     }
 
-    // 2. If ocel_v2 exists, generate ocpt and serve it
+    // 2) Have OCEL v2 → generate NEW OCPT (uuidv4), convert, return with new id
     if FsPath::new(&v2_path).exists() {
         println!("🛠️  Generating OCPT from ocel_v2_{}.json", file_id);
-        generate_ocpt_from_fileid(&file_id);
-        return serve_file_as_json(&ocpt_path, &file_id).await;
+
+        // Your updated generator returns the new uuidv4
+        let new_file_id  = generate_ocpt_from_fileid(&file_id);
+        let new_ocpt_path = format!("./temp/ocpt_{}.json", new_file_id);
+
+        match read_backend_ocpt_as_frontend(&new_ocpt_path).await {
+            Ok(frontend_ocpt) => {
+                let payload = serde_json::json!({
+                    "file_id": new_file_id,  // the new uuidv4 for the freshly mined OCPT
+                    "ocpt": frontend_ocpt
+                });
+                return (StatusCode::OK, Json(payload)).into_response();
+            }
+            Err(e) => {
+                eprintln!("❌ convert newly generated OCPT failed: {}", e);
+                return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to convert generated OCPT to frontend format").into_response();
+            }
+        }
     }
 
-    // 3. Fallback to ocel_v1 if it exists (serve as-is)
+    // 3) Fallback: OCEL v1 present → (unchanged) serve as-is, or wire your own converter here
     if FsPath::new(&v1_path).exists() {
         return serve_file_as_json(&v1_path, &file_id).await;
     }
 
-    // 4. Nothing found
+    // 4) Nothing found
     let msg = format!("No relevant file found for fileId: {}", file_id);
     println!("⚠️  {}", msg);
     (StatusCode::NOT_FOUND, msg).into_response()
 }
 
+// Keep this for the OCEL v1 fallback (or replace with a converter later)
 async fn serve_file_as_json(path: &str, file_id: &str) -> Response {
     match fs::read_to_string(path).await {
         Ok(content) => match serde_json::from_str::<Value>(&content) {
