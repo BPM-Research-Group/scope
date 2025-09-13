@@ -131,13 +131,25 @@ async fn ensure_temp_dir() -> std::io::Result<()> {
 }
 
 // Helper: read a backend OCPT from disk and convert to the FE shape.
-async fn read_backend_ocpt_as_frontend(path: &str) -> Result<Ocpt, String> {
-    let content = fs::read_to_string(path).await.map_err(|e| format!("read {}: {e}", path))?;
-    let backend: OCPT = serde_json::from_str(&content).map_err(|e| format!("parse backend OCPT {}: {e}", path))?;
-    if !backend.is_valid() {
+async fn read_ocpt_as_frontend(path: &str) -> Result<Ocpt, String> {
+    let content = fs::read_to_string(path)
+        .await
+        .map_err(|e| format!("read {}: {e}", path))?;
+
+    // 1) Try FE first
+    if let Ok(fe) = serde_json::from_str::<Ocpt>(&content) {
+        return Ok(fe);
+    }
+
+    // 2) Fallback to BE → FE
+    let be: OCPT = serde_json::from_str(&content)
+        .map_err(|e| format!("parse backend OCPT {}: {e}", path))?;
+
+    if !be.is_valid() {
         return Err("backend OCPT failed is_valid()".to_string());
     }
-    Ok(backend_to_frontend(&backend))
+
+    Ok(backend_to_frontend(&be))
 }
 
 pub async fn get_ocpt(Path(file_id): Path<String>) -> impl IntoResponse {
@@ -149,7 +161,7 @@ pub async fn get_ocpt(Path(file_id): Path<String>) -> impl IntoResponse {
 
     // 1) OCPT already exists → load backend struct, convert, return FE shape (keep same id)
     if FsPath::new(&ocpt_path).exists() {
-        match read_backend_ocpt_as_frontend(&ocpt_path).await {
+        match read_ocpt_as_frontend(&ocpt_path).await {
             Ok(frontend_ocpt) => {
                 let payload = serde_json::json!({
                     "file_id": file_id,      // existing mined OCPT id
@@ -172,7 +184,7 @@ pub async fn get_ocpt(Path(file_id): Path<String>) -> impl IntoResponse {
         let new_file_id  = generate_ocpt_from_fileid(&file_id);
         let new_ocpt_path = format!("./temp/ocpt_{}.json", new_file_id);
 
-        match read_backend_ocpt_as_frontend(&new_ocpt_path).await {
+        match read_ocpt_as_frontend(&new_ocpt_path).await {
             Ok(frontend_ocpt) => {
                 let payload = serde_json::json!({
                     "file_id": new_file_id,  // the new uuidv4 for the freshly mined OCPT
