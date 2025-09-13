@@ -13,7 +13,17 @@ export const uploadFile = async (file: ExtendedFile) => {
     formData.append('file_type', file.fileType);
 
     console.log('FormData entries:', Array.from(formData.entries()));
-    const response = await api.post<any, AxiosResponse<any, any>, any>('/v1/upload/general', formData);
+
+    let response;
+    switch (file.fileType) {
+        case 'ocelFile':
+            response = await api.post<any, AxiosResponse<any, any>, any>('/v1/upload/ocel', formData);
+            break;
+        case 'ocptFile':
+            response = await api.post<any, AxiosResponse<any, any>, any>('/v1/upload/ocpt', formData);
+            break;
+    }
+
     return response.data;
 };
 
