@@ -1,0 +1,49 @@
+{
+    "ots": [
+        "Orders",
+        "Items"
+    ],
+    "hierarchy": {
+        "value": "sequence",
+        "children": [
+            {
+                "value": {
+                    "activity": "A",
+                    "ots": [
+                        {
+                            "ot": "Orders"
+                        },
+                        {
+                            "ot": "Items",
+                            "exhibits": [
+                                "div"
+                            ]
+                        }
+                    ]
+                }
+            },
+            {
+                "value": "parallel",
+                "children": [
+                    {
+                        "value": {
+                            "activity": "B",
+                            "ots": [
+                                {
+                                    "ot": "Orders"
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "value": {
+                            "isSilent": true,
+                            "activity": "tau",
+                            "ots": []
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+}

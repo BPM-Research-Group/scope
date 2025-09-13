@@ -30,5 +30,5 @@
     "ts-node": {
         "esm": true
     },
-    "include": ["vite.config.ts", "jest.config.ts", "src/benchmark/**/*.ts", "syncEnv.ts"]
+    "include": ["vite.config.ts", "jest.config.ts", "src/benchmark/**/*.ts", "syncEnv.ts", "syncExampleData.ts"]
 }
