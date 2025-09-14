@@ -1,3 +1,7 @@
+//! Convert **OCEL 1.0** to **OCEL 2.0**.
+//!
+//! This module provides parsing and normalization utilities to transform
+//! legacy OCEL 1.0 logs into the OCEL v2 struct used in `process_mining`.
 use anyhow::{anyhow, Context, Result};
 use chrono::{DateTime, FixedOffset};
 use serde_json::{Map, Value};
@@ -8,25 +12,49 @@ use crate::models::ocel1::{Ocel1, Ocel1Event, Ocel1Object};
 use crate::core::struct_converters::utils::{
     epoch_fixed_utc, json_to_attr_value, merge_tys, parse_time_any, vty_to_attr_type, VTy,
 };
-
-// ==== Adjust this import to your OCEL destination types ====
 use process_mining::OCEL;
 use process_mining::ocel::ocel_struct::{
     OCELAttributeType, OCELAttributeValue, OCELEvent, OCELEventAttribute, OCELObject,
     OCELObjectAttribute, OCELRelationship, OCELType, OCELTypeAttribute,
 };
-// ==========================================================
 
+
+/// Parse an OCEL **1.0 JSON string** and return a normalized [`OCEL`] (v2).
+///
+/// Errors are annotated with `"deserialize OCEL 1.0 JSON"`.
+///
+/// # Errors
+/// - JSON is not valid OCEL 1.0, or the conversion to v2 fails.
+/// 
 pub fn convert_ocel1_str_to_ocel(s: &str) -> Result<OCEL> {
     let o1: Ocel1 = serde_json::from_str(s).context("deserialize OCEL 1.0 JSON")?;
     convert_ocel1_to_ocel(o1)
 }
 
+
+/// Parse an OCEL **1.0 `serde_json::Value`** and return a normalized [`OCEL`] (v2).
+///
+/// # Errors
+/// - Value cannot be deserialized as OCEL 1.0, or conversion fails.
 pub fn convert_ocel1_value_to_ocel(val: &Value) -> Result<OCEL> {
     let o1: Ocel1 = serde_json::from_value(val.clone()).context("deserialize OCEL 1.0 value")?;
     convert_ocel1_to_ocel(o1)
 }
 
+/// Core converter: **OCEL 1.0 → OCEL 2.0**.
+///
+/// **Steps**:
+/// 1. Validate input (must contain events).
+/// 2. Ensure all referenced objects exist (from `omap` and optional `vmap` hints).
+/// 3. Parse event timestamps and compute first-seen per object.
+/// 4. Build OCEL 2.0 events/objects (attributes, relationships).
+/// 5. Infer event/object *type schemas* (attribute names and types).
+/// 6. Sort events by time (then id) and objects by id; return an [`OCEL`].
+///
+/// # Errors
+/// - Missing/invalid timestamps, empty event set, or any failed conversion step.
+/// # Note
+/// - This conversion doesn't create any O2O relationships, since these are not captured in OCEL 1.0.
 pub fn convert_ocel1_to_ocel(mut o1: Ocel1) -> Result<OCEL> {
     if o1.events.is_empty() {
         return Err(anyhow!("No events found in OCEL 1.0 input"));
@@ -103,6 +131,11 @@ pub fn convert_ocel1_to_ocel(mut o1: Ocel1) -> Result<OCEL> {
     Ok(OCEL { event_types, object_types, events: events_vec, objects: objects_vec })
 }
 
+    /// Ensure that the `objects` map in `o1` covers all object IDs referenced in the `omap` and `vmap` of `o1.events`.
+    ///
+    /// This function is a helper for conversion of OCEL 1.0 to OCEL 2.0.
+    ///
+    /// It will insert missing objects with a default object type of `"UNKNOWN"` into `o1.objects`.
 fn ensure_objects_cover_omap_and_vmap(o1: &mut Ocel1) {
     let referenced: HashSet<String> = o1
         .events
@@ -129,6 +162,14 @@ fn ensure_objects_cover_omap_and_vmap(o1: &mut Ocel1) {
     }
 }
 
+/// Infers the event types from the given events.
+///
+/// This function takes a HashMap of OCEL 1.0 events and returns a Vec of OCEL 2.0 event types.
+///
+/// The event types are inferred by iterating over the events and extracting the types of the key-value pairs in the `vmap`.
+/// The types of the key-value pairs are merged using the `merge_tys` function.
+///
+/// The resulting event types are then mapped to OCEL 2.0 event types, where the attribute types are converted using the `vty_to_attr_type` function.
 fn infer_event_types(events: &HashMap<String, Ocel1Event>) -> Vec<OCELType> {
     let mut acc: BTreeMap<String, BTreeMap<String, VTy>> = BTreeMap::new();
     for ev in events.values() {
@@ -151,6 +192,19 @@ fn infer_event_types(events: &HashMap<String, Ocel1Event>) -> Vec<OCELType> {
         .collect()
 }
 
+/// Infers the object types from the given objects.
+///
+/// This function takes a HashMap of OCEL 1.0 objects and returns a Vec of OCEL 2.0 object types.
+///
+/// The object types are inferred by iterating over the objects and extracting the types of the key-value pairs in the `ovmap`.
+/// The types of the key-value pairs are merged using the `merge_tys` function.
+///
+/// The resulting object types are then mapped to OCEL 2.0 object types, where the attribute types are converted using the `vty_to_attr_type` function.
+///
+/// If an optional declared list is provided, the object types are also inferred from the declared list.
+/// The declared list is expected to be a JSON array of strings, where each string represents an object type.
+///
+/// The resulting object types are then filtered to only include the object types that are present in both the inferred object types and the declared object types (if provided).
 fn infer_object_types(
     objects: &HashMap<String, Ocel1Object>,
     declared_list: Option<&Value>,
@@ -182,6 +236,11 @@ fn infer_object_types(
         .collect()
 }
 
+
+
+/// Reads an OCEL 1.0 JSON file from the given `input_path` and writes the converted OCEL 2.0 JSON to the given `output_path`.
+/// 
+/// calls the [`convert_ocel1_str_to_ocel` function to convert the OCEL 1.0 JSON string to an OCEL 2.0 object.
 pub fn convert_file(input_path: &std::path::Path, output_path: &std::path::Path) -> Result<()> {
     let s = std::fs::read_to_string(input_path).with_context(|| {
         format!("reading OCEL 1.0 JSON from {}", input_path.to_string_lossy())
