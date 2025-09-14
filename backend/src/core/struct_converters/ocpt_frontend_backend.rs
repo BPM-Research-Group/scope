@@ -1,18 +1,22 @@
+//! Convert **[OcptFE]** to **[OCPT]** and viceversa.
 use anyhow::{anyhow, Result};
 use std::collections::{HashMap, HashSet};
-
 use crate::models::ocpt::{OcptFE, HierarchyNode, ActivityValue, ObjectTypeFE as FeObjectType, OCPT, OCPTLeaf, OCPTLeafLabel, OCPTNode, OCPTOperator, OCPTOperatorType};
 
 
-/* ========================= Public API ========================= */
-
-/// Frontend → Backend
+/// Converts a frontend OCPT [OcptFE] to a backend OCPT [OCPT].
 pub fn frontend_to_backend(front: OcptFE) -> Result<OCPT> {
     let root = frontend_node_to_backend(&front.hierarchy)?;
     Ok(OCPT::new(root))
 }
 
-/// Backend → Frontend
+
+/// Converts a backend OCPT [OCPT] to a frontend OCPT [OcptFE].
+///
+/// This function collects all object types appearing in any leaf,
+/// sorts them alphabetically, and then converts the backend OCPT hierarchy to a frontend hierarchy.
+/// 
+/// The resulting [OcptFE] is then composed of the sorted object types and the converted [HierarchyNode]s.
 pub fn backend_to_frontend(ocpt: &OCPT) -> OcptFE {
     // Collect all object types appearing in any leaf (related OR marked)
     let mut all_ots: HashSet<String> = HashSet::new();
@@ -30,6 +34,14 @@ pub fn backend_to_frontend(ocpt: &OCPT) -> OcptFE {
 }
 
 /* ========================= Frontend → Backend helpers ========================= */
+
+/// Converts a frontend OCPT node to a backend OCPT node.
+///
+/// This function is used to convert a frontend OCPT [HierarchyNode] to a backend OCPT [OCPTNode].
+///
+/// It takes a frontend OCPT node as input and returns the corresponding backend OCPT node.
+///
+/// The function recursively converts all child nodes until all nodes have been converted.
 
 fn frontend_node_to_backend(node: &HierarchyNode) -> Result<OCPTNode> {
     match node {
@@ -49,6 +61,16 @@ fn frontend_node_to_backend(node: &HierarchyNode) -> Result<OCPTNode> {
     }
 }
 
+/// Parses a string to an [OCPTOperatorType].
+///
+/// The following strings are recognized and mapped to the corresponding OCPTOperatorType:
+///
+/// - "sequence" or "seq" -> OCPTOperatorType::Sequence
+/// - "exclusivechoice" or "xor" or "choice" -> OCPTOperatorType::ExclusiveChoice
+/// - "concurrency" or "parallel" or "and" or "par" -> OCPTOperatorType::Concurrency
+/// - "loop" -> OCPTOperatorType::Loop(None)
+
+
 fn parse_operator(s: &str) -> Result<OCPTOperatorType> {
     let k = s.trim().to_lowercase();
     Ok(match k.as_str() {
@@ -65,6 +87,23 @@ fn parse_operator(s: &str) -> Result<OCPTOperatorType> {
     })
 }
 
+/// Converts a frontend [ActivityValue] value to a backend [OCPTLeaf] node.
+///
+/// - If is_tau is true, then the leaf is created with no activity
+/// - Otherwise, the leaf is created with the activity and all object types as related
+///
+/// - If an object type has "exhibits" information, then the leaf is updated accordingly
+/// - "div" tags mark an object type as divergent
+/// - "con" tags mark an object type as convergent
+/// - "def" tags mark an object type as deficient
+///
+/// # Arguments
+///
+/// * `v`: The frontend [ActivityValue] to be converted
+///
+/// # Returns
+///
+/// The converted backend [OCPTLeaf] node
 fn frontend_activity_to_leaf(v: &ActivityValue) -> OCPTLeaf {
     let is_tau = v.isSilent.unwrap_or(false);
     let mut leaf = if is_tau {
@@ -102,6 +141,18 @@ fn frontend_activity_to_leaf(v: &ActivityValue) -> OCPTLeaf {
 
 /* ========================= Backend → Frontend helpers ========================= */
 
+/// Converts a backend [OCPTNode] to a frontend [HierarchyNode].
+///
+/// - If the node is an operator, its value is converted using [stringify_operator]
+/// - If the node is a leaf, its value is converted using [backend_leaf_to_activity_value]
+///
+/// # Arguments
+///
+/// * `node`: The backend [OCPTNode] to be converted
+///
+/// # Returns
+///
+/// The converted frontend [HierarchyNode]  
 fn backend_node_to_frontend(node: &OCPTNode) -> HierarchyNode {
     match node {
         OCPTNode::Operator(op) => HierarchyNode::Operator {
@@ -115,6 +166,13 @@ fn backend_node_to_frontend(node: &OCPTNode) -> HierarchyNode {
     }
 }
 
+/// Converts an [OCPTOperatorType] to a string.
+///
+/// The conversion is as follows:
+/// - `Sequence` -> `"sequence"`
+/// - `ExclusiveChoice` -> `"exclusiveChoice"`
+/// - `Concurrency` -> `"parallel"`
+/// - `Loop(_cnt)` -> `"loop"` (ignoring the count parameter in the frontend)
 fn stringify_operator(op: &OCPTOperatorType) -> String {
     match op {
         OCPTOperatorType::Sequence => "sequence".to_string(),
@@ -123,6 +181,13 @@ fn stringify_operator(op: &OCPTOperatorType) -> String {
         OCPTOperatorType::Loop(_cnt) => "loop".to_string(), // ignore parameter in FE
     }
 }
+
+/// Converts a backend [OCPTLeaf] to a frontend [ActivityValue].
+///
+/// - If the leaf is a tau, it is converted to an activity value with isSilent set to true and no object types
+/// - If the leaf is an activity, its value is converted to an activity value with isSilent set to false and object types built from the leaf's related, divergent, convergent, and deficient object types
+///
+/// The resulting activity value has its object types sorted alphabetically by object type name.
 
 fn backend_leaf_to_activity_value(leaf: &OCPTLeaf) -> ActivityValue {
     match &leaf.activity_label {
@@ -180,6 +245,7 @@ fn backend_leaf_to_activity_value(leaf: &OCPTLeaf) -> ActivityValue {
     }
 }
 
+/// Collects all object types from a given [OCPTNode] and its children into a set.
 fn collect_all_ots_from_node(node: &OCPTNode, acc: &mut HashSet<String>) {
     match node {
         OCPTNode::Operator(op) => {
