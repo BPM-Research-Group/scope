@@ -1404,7 +1404,9 @@ impl OCPTLeaf {
 /////////////////// frontend struct ////////////////
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OcptFE {
+    /// Object Types
     pub ots: Vec<String>,
+    /// OCPT Node
     pub hierarchy: HierarchyNode,
 }
 
