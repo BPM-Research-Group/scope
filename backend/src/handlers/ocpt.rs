@@ -157,7 +157,6 @@ pub async fn get_ocpt(Path(file_id): Path<String>) -> impl IntoResponse {
 
     let ocpt_path = format!("./temp/ocpt_{}.json", file_id);
     let v2_path   = format!("./temp/ocel_v2_{}.json", file_id);
-    let v1_path   = format!("./temp/ocel_v1_{}.json", file_id);
 
     // 1) OCPT already exists → load backend struct, convert, return FE shape (keep same id)
     if FsPath::new(&ocpt_path).exists() {
@@ -199,35 +198,10 @@ pub async fn get_ocpt(Path(file_id): Path<String>) -> impl IntoResponse {
         }
     }
 
-    // 3) Fallback: OCEL v1 present → (unchanged) serve as-is, or wire your own converter here
-    if FsPath::new(&v1_path).exists() {
-        return serve_file_as_json(&v1_path, &file_id).await;
-    }
-
     // 4) Nothing found
     let msg = format!("No relevant file found for fileId: {}", file_id);
     println!("⚠️  {}", msg);
     (StatusCode::NOT_FOUND, msg).into_response()
-}
-
-// Keep this for the OCEL v1 fallback (or replace with a converter later)
-async fn serve_file_as_json(path: &str, file_id: &str) -> Response {
-    match fs::read_to_string(path).await {
-        Ok(content) => match serde_json::from_str::<Value>(&content) {
-            Ok(json) => {
-                println!("✅ JSON parsed successfully for fileId: {}", file_id);
-                (StatusCode::OK, Json(json)).into_response()
-            }
-            Err(e) => {
-                eprintln!("❌ Invalid JSON in file {}: {}", path, e);
-                (StatusCode::INTERNAL_SERVER_ERROR, "File is not valid JSON").into_response()
-            }
-        },
-        Err(e) => {
-            eprintln!("❌ Failed to read file {}: {}", path, e);
-            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to read file").into_response()
-        }
-    }
 }
 
 pub async fn delete_ocpt(Path(file_id): Path<String>) -> impl IntoResponse {
