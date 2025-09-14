@@ -7,7 +7,7 @@ import { isFullVisualizationData } from '~/lib/explore/exploreNodes.utils';
 import type { BaseExploreNodeDropdownActionType, TVisualizationNode } from '~/types/explore';
 
 interface VisualizationNodeProps extends NodeProps<TVisualizationNode> {
-    // Add any visualization-specific props here if needed
+    visualize: () => void;
 }
 
 const BaseVisualizationNode = memo<VisualizationNodeProps>((props) => {
@@ -29,7 +29,7 @@ const BaseVisualizationNode = memo<VisualizationNodeProps>((props) => {
         if (assets.length === 1 && isFullVisualizationData(data)) {
             return (
                 <Button
-                    onClick={() => data.visualize()}
+                    onClick={() => props.visualize()}
                     className="flex bg-blue-500 items-around rounded-lg w-20 h-8 px-1 justify-center"
                 >
                     <Eye className="h-4 w-4" />

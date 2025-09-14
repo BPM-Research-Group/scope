@@ -1,5 +1,6 @@
 import axios, { type AxiosResponse } from 'axios';
 import type { ExtendedFile } from '~/types/fileObject.types';
+import { JSONSchema } from '~/types/ocpt/ocpt.types';
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_BACKEND_BASE_URL,
@@ -27,7 +28,12 @@ export const uploadFile = async (file: ExtendedFile) => {
     return response.data;
 };
 
-export const getOcpt = async (fileId: string) => {
+type getOcptResult = {
+    ocpt: JSONSchema;
+    file_id: string;
+};
+
+export const getOcpt = async (fileId: string): Promise<getOcptResult> => {
     const response = await api.get(`/v1/objects/ocpt/${fileId}`);
     console.log(response);
     return response.data;
