@@ -22,10 +22,8 @@ export class VisualizationExploreNode extends BaseExploreNode {
             assets: [],
             display: this.getDisplay(nodeType),
             config: this.getConfig(nodeType),
-            visualizationPath: this.getVisualizationPath(nodeType, this.id),
-            visualize: () => {},
-            processedData: undefined,
             onDataChange: () => {},
+            processedData: undefined,
         };
     }
 
@@ -68,14 +66,5 @@ export class VisualizationExploreNode extends BaseExploreNode {
             dropdownOptions: [{ label: 'Change Source', action: 'changeSourceFile' as const }],
             allowedAssetTypes: assetTypes,
         };
-    }
-
-    private getVisualizationPath(nodeType: ExploreVisualizationNodeType, nodeId: string): string {
-        switch (nodeType) {
-            case 'lbofVisualizationNode':
-                return `/data/explore/lbof/${nodeId}`;
-            case 'ocptVisualizationNode':
-                return `/data/explore/ocpt/${nodeId}`;
-        }
     }
 }

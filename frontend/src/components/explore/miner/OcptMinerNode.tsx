@@ -1,6 +1,5 @@
-import { memo, useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import type { NodeProps } from '@xyflow/react';
-import { v4 as uuidv4 } from 'uuid';
 import BaseMinerNode from '~/components/explore/miner/BaseMinerNode';
 import { useGetOcpt } from '~/services/queries';
 import type { BaseExploreNodeAsset, TMinerNode } from '~/types/explore';
@@ -19,10 +18,11 @@ const OcptMinerNode = memo<NodeProps<TMinerNode>>((node) => {
     }, [node]);
 
     useEffect(() => {
-        if (!data || !fileName) return;
+        const outputAssets = node.data.assets.filter((asset) => asset.io === 'output');
+        if (!data || !fileName || outputAssets.length > 1) return;
 
         const asset: BaseExploreNodeAsset = {
-            id: uuidv4(), // We should get the ID from the backend once that is implemented
+            id: data.file_id,
             io: 'output',
             origin: 'mined',
             type: 'ocptAsset',
