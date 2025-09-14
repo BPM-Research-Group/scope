@@ -5,7 +5,6 @@ use axum::{
     extract::Path,
     response::Response,
 };
-use crate::models::ocpt2::OCPT;
 use axum_extra::extract::Multipart; 
 use serde_json;
 use std::path::PathBuf;
@@ -15,7 +14,7 @@ use serde_json::Value;
 use std::path::Path as FsPath;
 use crate::core::df2_miner::ocpt_generator::generate_ocpt_from_fileid;
 use crate::core::struct_converters::ocpt_frontend_backend::{frontend_to_backend, backend_to_frontend};
-use crate::models::ocpt::Ocpt;
+use crate::models::ocpt::{OcptFE, OCPT};
 
 
 
@@ -65,7 +64,7 @@ pub async fn post_ocpt(mut multipart: Multipart) -> Response {
         Ok(be) => be,
         Err(be_err) => {
             // 2) Fallback: try frontend shape and convert
-            match serde_json::from_value::<Ocpt>(value.clone()) {
+            match serde_json::from_value::<OcptFE>(value.clone()) {
                 Ok(front) => match frontend_to_backend(front) {
                     Ok(be) => be,
                     Err(conv_err) => {
@@ -131,13 +130,13 @@ async fn ensure_temp_dir() -> std::io::Result<()> {
 }
 
 // Helper: read a backend OCPT from disk and convert to the FE shape.
-async fn read_ocpt_as_frontend(path: &str) -> Result<Ocpt, String> {
+async fn read_ocpt_as_frontend(path: &str) -> Result<OcptFE, String> {
     let content = fs::read_to_string(path)
         .await
         .map_err(|e| format!("read {}: {e}", path))?;
 
     // 1) Try FE first
-    if let Ok(fe) = serde_json::from_str::<Ocpt>(&content) {
+    if let Ok(fe) = serde_json::from_str::<OcptFE>(&content) {
         return Ok(fe);
     }
 

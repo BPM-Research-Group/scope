@@ -1,6 +1,6 @@
 //copied from https://github.com/aarkue/rust4pm
 use crate::models::dfg::OCDirectlyFollowsGraph;
-use crate::models::ocpt2::{
+use crate::models::ocpt::{
     OCPTLeafLabel, OCPTNode, OCPT,
 };
 use crate::models::ocel::{EventIndex, ObjectIndex};

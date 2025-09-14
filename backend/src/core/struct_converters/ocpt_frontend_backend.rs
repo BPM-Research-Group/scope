@@ -1,21 +1,19 @@
 use anyhow::{anyhow, Result};
 use std::collections::{HashMap, HashSet};
 
-use crate::models::ocpt::{Ocpt, HierarchyNode, ActivityValue, ObjectType as FeObjectType};
-use crate::models::ocpt2::{
-    OCPT, OCPTLeaf, OCPTLeafLabel, OCPTNode, OCPTOperator, OCPTOperatorType,
-};
+use crate::models::ocpt::{OcptFE, HierarchyNode, ActivityValue, ObjectTypeFE as FeObjectType, OCPT, OCPTLeaf, OCPTLeafLabel, OCPTNode, OCPTOperator, OCPTOperatorType};
+
 
 /* ========================= Public API ========================= */
 
 /// Frontend → Backend
-pub fn frontend_to_backend(front: Ocpt) -> Result<OCPT> {
+pub fn frontend_to_backend(front: OcptFE) -> Result<OCPT> {
     let root = frontend_node_to_backend(&front.hierarchy)?;
     Ok(OCPT::new(root))
 }
 
 /// Backend → Frontend
-pub fn backend_to_frontend(ocpt: &OCPT) -> Ocpt {
+pub fn backend_to_frontend(ocpt: &OCPT) -> OcptFE {
     // Collect all object types appearing in any leaf (related OR marked)
     let mut all_ots: HashSet<String> = HashSet::new();
     collect_all_ots_from_node(&ocpt.root, &mut all_ots);
@@ -25,7 +23,7 @@ pub fn backend_to_frontend(ocpt: &OCPT) -> Ocpt {
 
     let hierarchy = backend_node_to_frontend(&ocpt.root);
 
-    Ocpt {
+    OcptFE {
         ots: ots_vec,
         hierarchy,
     }
@@ -213,8 +211,7 @@ mod tests {
     async fn test_convert_and_store_ocpt_123_roundtrip() {
         use tokio::fs;
         use crate::core::struct_converters::ocpt_frontend_backend::{frontend_to_backend, backend_to_frontend};
-        use crate::models::ocpt::Ocpt;
-        use crate::models::ocpt2::OCPT;
+        use crate::models::ocpt::{OcptFE,OCPT};
 
         // Hard-coded file path in ./temp
         let path = "./temp/ocpt_123.json";
@@ -225,7 +222,7 @@ mod tests {
             .expect("❌ failed to read ./temp/ocpt_123.json");
 
         // Try to parse as frontend struct first
-        if let Ok(fe_struct) = serde_json::from_str::<Ocpt>(&content) {
+        if let Ok(fe_struct) = serde_json::from_str::<OcptFE>(&content) {
             println!("📥 Parsed as frontend OCPT, converting to backend...");
 
             // Convert frontend → backend
