@@ -1,5 +1,4 @@
 use crate::{core::df2_miner::start_cuts::is_reachable, models::ocpt::{ProcessForest, TreeNode}};
-use itertools::Itertools;
 use log::info;
 use std::collections::{HashMap, HashSet, VecDeque};
 use crate::core::df2_miner::start_cuts::{is_exclusive_choice_cut_possible, is_sequence_cut_possible};

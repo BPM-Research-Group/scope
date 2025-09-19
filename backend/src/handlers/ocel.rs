@@ -10,7 +10,7 @@ use tokio::fs;
 use serde_json;
 use bytes::Bytes;
 use serde_json::Value;
-use crate::core::struct_converters::{self, ocel_1_ocel_2_converter};
+use crate::core::struct_converters::{ocel_1_ocel_2_converter};
 use crate::models::ocel::OCEL;
 
 

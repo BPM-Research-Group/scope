@@ -1,11 +1,6 @@
 use std::collections::{HashMap, HashSet};
-use chrono::NaiveDateTime;
-use chrono::{DateTime, Utc};
-
 use std::fs::File;
 use std::io::Write;
-use std::io::BufReader;
-use serde_json::Value;
 
 pub fn get_divergence_free_graph_v2(
     relations: &Vec<(String, String, String, String, String)>,

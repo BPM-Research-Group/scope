@@ -1,5 +1,4 @@
 use serde::Deserialize;
-use std::collections::{HashMap, HashSet};
 use serde::Serialize;
 
 // OCEL 2.0 structures
