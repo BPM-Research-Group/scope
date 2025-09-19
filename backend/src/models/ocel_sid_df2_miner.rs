@@ -1,3 +1,4 @@
+#![allow(dead_code)] // helper functions which didn't get used yet in the code
 use serde::Deserialize;
 use serde::Serialize;
 

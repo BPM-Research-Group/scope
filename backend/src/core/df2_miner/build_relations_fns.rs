@@ -1,5 +1,5 @@
 use std::collections::{HashMap};
-use crate::models::ocel_sid::{Event, Object};
+use crate::models::ocel_sid_df2_miner::{Event, Object};
 
 
 

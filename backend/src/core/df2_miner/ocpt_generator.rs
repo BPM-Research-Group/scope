@@ -3,7 +3,7 @@ use std::fs as stdfs;
 use std::fs::File;
 use simplelog::*;
 
-use crate::models::ocel_sid::{OcelJson};
+use crate::models::ocel_sid_df2_miner::{OcelJson};
 use crate::core::df2_miner::{
     build_relations_fns,
     interaction_patterns,

@@ -1,5 +1,5 @@
 use std::collections::{HashMap, HashSet};
-use crate::models::ocel_sid::{OcelJson};
+use crate::models::ocel_sid_df2_miner::{OcelJson};
 
 type Relation = (String, String, String, String, String); // (eid, activity, timestamp, oid, otype)
 
