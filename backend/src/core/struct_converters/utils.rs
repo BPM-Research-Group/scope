@@ -13,7 +13,9 @@ pub fn parse_time_any(s: &str) -> Option<DateTime<FixedOffset>> {
 }
 
 pub fn epoch_fixed_utc() -> DateTime<FixedOffset> {
-    NaiveDateTime::from_timestamp_opt(0, 0).unwrap().and_utc().into()
+    DateTime::from_timestamp(0, 0)      // seconds, nanoseconds
+        .unwrap()                       // Option → DateTime<Utc>
+        .with_timezone(&FixedOffset::east_opt(0).unwrap())
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
