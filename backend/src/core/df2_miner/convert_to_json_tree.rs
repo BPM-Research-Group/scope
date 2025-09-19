@@ -21,6 +21,7 @@ enum HierarchyNode {
 }
 
 #[derive(Serialize)]
+#[allow(non_snake_case)] // for isSilent, can't resolve warning since the name is required like this in the frontend
 struct ActivityValue {
     #[serde(skip_serializing_if = "Option::is_none")]
     isSilent: Option<bool>,
