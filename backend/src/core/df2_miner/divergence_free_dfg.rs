@@ -1,11 +1,6 @@
 use std::collections::{HashMap, HashSet};
-use chrono::NaiveDateTime;
-use chrono::{DateTime, Utc};
-
 use std::fs::File;
 use std::io::Write;
-use std::io::BufReader;
-use serde_json::Value;
 
 pub fn get_divergence_free_graph_v2(
     relations: &Vec<(String, String, String, String, String)>,
@@ -79,7 +74,7 @@ pub fn get_divergence_free_graph_v2(
             let current_activity = &current_relation.1;
             let next_activity = &next_relation.1;
             let current_otype = &current_relation.4;
-            let next_otype = &next_relation.4;
+            let _next_otype = &next_relation.4;
 
             // Check divergence condition before adding to DFG
             let should_skip = if let (Some(current_divergent), Some(next_divergent)) = (

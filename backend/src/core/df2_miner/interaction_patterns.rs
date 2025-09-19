@@ -1,5 +1,5 @@
 use std::collections::{HashMap, HashSet};
-use crate::models::ocel_sid::{OcelJson};
+use crate::models::ocel_sid_df2_miner::{OcelJson};
 
 type Relation = (String, String, String, String, String); // (eid, activity, timestamp, oid, otype)
 
@@ -15,7 +15,7 @@ fn sort_hashmap_values(map: HashMap<String, HashSet<String>>) -> HashMap<String,
 
 pub fn get_interaction_patterns(
     relations: &Vec<Relation>,
-    ocel: &OcelJson,
+    _ocel: &OcelJson,
 ) -> (
     HashMap<String, Vec<String>>, // divergent (sorted)
     HashMap<String, Vec<String>>, // convergent (sorted)

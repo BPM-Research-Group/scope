@@ -1,10 +1,10 @@
+#![allow(dead_code)] // helper functions which didn't get used yet in the code
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap};
 pub use process_mining::dfg::dfg_struct::DirectlyFollowsGraph;
-pub use process_mining::ocel::linked_ocel::index_linked_ocel::{IndexLinkedOCEL, ObjectIndex};
+pub use process_mining::ocel::linked_ocel::index_linked_ocel::{IndexLinkedOCEL};
 use process_mining::ocel::linked_ocel::LinkedOCELAccess;
 use process_mining::event_log::event_log_struct::{EventLog, EventLogClassifier};
-use crate::core::utils::dfr::{EventType, ObjectType};
 use crate::core::utils::flatten::flatten_ocel_on;
 
 /////////////////// backend struct copied from https://github.com/aarkue/rust4pm/process_mining/src/object_centric/object_centric_dfg_struct.rs ////////////////

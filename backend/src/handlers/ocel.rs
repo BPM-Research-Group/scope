@@ -10,7 +10,7 @@ use tokio::fs;
 use serde_json;
 use bytes::Bytes;
 use serde_json::Value;
-use crate::core::struct_converters::{self, ocel_1_ocel_2_converter};
+use crate::core::struct_converters::{ocel_1_ocel_2_converter};
 use crate::models::ocel::OCEL;
 
 
@@ -29,6 +29,7 @@ async fn ensure_temp_dir() -> Result<(), std::io::Error> {
 }
 
 // ========== POST: raw JSON body (accept v1 or v2, always store v2) ==========
+#[allow(dead_code)] // might wanna use this function in the future if we don't send the binary file from the frontend
 pub async fn post_ocel_json(Json(payload): Json<Value>) -> impl IntoResponse {
     if let Err(e) = ensure_temp_dir().await {
         eprintln!("❌ create ./temp failed: {e:?}");
@@ -83,7 +84,6 @@ pub async fn post_ocel_json(Json(payload): Json<Value>) -> impl IntoResponse {
 pub async fn post_ocel_binary(mut multipart: Multipart) -> impl IntoResponse {
     let mut file_id: Option<String> = None;
     let mut file_bytes: Option<Bytes> = None;
-    let mut file_type: Option<String> = None;
 
     while let Some(field) = multipart.next_field().await.unwrap() {
         match field.name().unwrap_or("") {
@@ -96,9 +96,6 @@ pub async fn post_ocel_binary(mut multipart: Multipart) -> impl IntoResponse {
                 let data = field.bytes().await.unwrap_or_default();
                 println!("📥 file bytes: {}", data.len());
                 file_bytes = Some(data);
-            }
-            "file_type" => {
-                file_type = Some(field.text().await.unwrap_or_default());
             }
             other => println!("⚠️ Unknown form field: {other}"),
         }

@@ -1,5 +1,5 @@
+#![allow(dead_code)] // helper functions which didn't get used yet in the code
 use serde::Deserialize;
-use std::collections::{HashMap, HashSet};
 use serde::Serialize;
 
 // OCEL 2.0 structures

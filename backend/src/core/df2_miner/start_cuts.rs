@@ -3,9 +3,10 @@ use crate::models::ocpt::{TreeNode, ProcessForest};
 use itertools::Itertools;
 use log::info;
 
+#[allow(dead_code)] // might be used later, not sure since code is from another master thesis project
 pub fn find_cuts(
     dfg: &HashMap<(String, String), usize>,
-    filtered_dfg: &HashMap<(String, String), usize>,
+    _filtered_dfg: &HashMap<(String, String), usize>,
     all_activities: HashSet<String>,
     start_activities: &HashSet<String>,
     end_activities: &HashSet<String>
@@ -326,6 +327,7 @@ fn is_redo_cut_possible(
 }
 
 
+#[allow(dead_code)] // might be used later, not sure since code is from another master thesis project
 fn get_start_and_end_activities(
     dfg: &HashMap<(String, String), usize>,
     filtered_activities: &HashSet<String>,

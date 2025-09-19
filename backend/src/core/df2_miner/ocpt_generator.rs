@@ -1,22 +1,17 @@
-use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
-use std::env;
 use std::fs as stdfs;
 use std::fs::File;
 use simplelog::*;
-use std::io::Write;
 
-use crate::models::ocel_sid::{OcelJson, Event, Object};
+use crate::models::ocel_sid_df2_miner::{OcelJson};
 use crate::core::df2_miner::{
     build_relations_fns,
     interaction_patterns,
     divergence_free_dfg,
     start_cuts_opti,
 };
-use crate::models::ocpt::{ProcessForest, TreeNode};
 use crate::core::df2_miner::convert_to_json_tree::{build_output}; // << your new module
 use uuid::Uuid;
-use log::info;
 
 pub fn generate_ocpt_from_fileid(file_id: &str) -> String {
     // Setup logging (ignore if already initialized)
@@ -32,7 +27,7 @@ pub fn generate_ocpt_from_fileid(file_id: &str) -> String {
 
     // Build relations
     let relations = build_relations_fns::build_relations(&ocel.events, &ocel.objects);
-    let (div, con, rel, defi, all_activities, all_object_types) =
+    let (div, con, _rel, defi, all_activities, _all_object_types) =
         interaction_patterns::get_interaction_patterns(&relations, &ocel);
 
     let (dfg, start_acts, end_acts) =

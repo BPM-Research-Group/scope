@@ -4,7 +4,7 @@
 //! legacy OCEL 1.0 logs into the OCEL v2 struct used in `process_mining`.
 use anyhow::{anyhow, Context, Result};
 use chrono::{DateTime, FixedOffset};
-use serde_json::{Map, Value};
+use serde_json::{Value};
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
@@ -14,7 +14,7 @@ use crate::core::struct_converters::utils::{
 };
 use process_mining::OCEL;
 use process_mining::ocel::ocel_struct::{
-    OCELAttributeType, OCELAttributeValue, OCELEvent, OCELEventAttribute, OCELObject,
+    OCELEvent, OCELEventAttribute, OCELObject,
     OCELObjectAttribute, OCELRelationship, OCELType, OCELTypeAttribute,
 };
 

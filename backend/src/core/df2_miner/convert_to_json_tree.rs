@@ -1,8 +1,6 @@
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use crate::models::ocpt::{TreeNode, ProcessForest};
-use itertools::Itertools;
-use log::info;
 
 #[derive(Serialize)]
 pub struct OutputJson {
@@ -12,7 +10,7 @@ pub struct OutputJson {
 
 #[derive(Serialize)]
 #[serde(untagged)]
-enum HierarchyNode {
+pub enum HierarchyNode {
     Operator {
         value: String,
         children: Vec<HierarchyNode>,
@@ -23,7 +21,8 @@ enum HierarchyNode {
 }
 
 #[derive(Serialize)]
-struct ActivityValue {
+#[allow(non_snake_case)] // for isSilent, can't resolve warning since the name is required like this in the frontend
+pub struct ActivityValue {
     #[serde(skip_serializing_if = "Option::is_none")]
     isSilent: Option<bool>,
     activity: String,

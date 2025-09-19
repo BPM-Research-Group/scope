@@ -1,5 +1,4 @@
 use crate::{core::df2_miner::start_cuts::is_reachable, models::ocpt::{ProcessForest, TreeNode}};
-use itertools::Itertools;
 use log::info;
 use std::collections::{HashMap, HashSet, VecDeque};
 use crate::core::df2_miner::start_cuts::{is_exclusive_choice_cut_possible, is_sequence_cut_possible};
@@ -32,7 +31,7 @@ pub fn find_cuts_start(
     // ----- perform cuts--------
 
     let (excl_set1, excl_set2) = find_exclusive_choice_cut(&filtered_dfg, &all_activities);
-    if (!excl_set1.is_empty() && !excl_set2.is_empty() && is_exclusive_choice_cut_possible(&filtered_dfg, &excl_set1, &excl_set2)) {
+    if !excl_set1.is_empty() && !excl_set2.is_empty() && is_exclusive_choice_cut_possible(&filtered_dfg, &excl_set1, &excl_set2) {
         info!("Exclusive cut found: {:?} (X) {:?}", excl_set1, excl_set2);
         let mut node = TreeNode {
             label: "excl".to_string(),
@@ -55,7 +54,7 @@ pub fn find_cuts_start(
     }
 
     let (set1, set2) = find_sequence_cut(&filtered_dfg, &all_activities);
-    if (!set1.is_empty() && !set2.is_empty() && is_sequence_cut_possible(&filtered_dfg, &set1, &set2)) {
+    if !set1.is_empty() && !set2.is_empty() && is_sequence_cut_possible(&filtered_dfg, &set1, &set2) {
         info!("Sequence cut found: {:?} (->) {:?}", set1, set2);
         let mut node = TreeNode {
             label: "seq".to_string(),
@@ -78,10 +77,10 @@ pub fn find_cuts_start(
     }
 
     let (is_parallel, para_set1, para_set2) = find_parallel_cut(&filtered_dfg, &all_activities);
-    if (is_parallel
+    if is_parallel
         && !para_set1.is_empty()
         && !para_set2.is_empty()
-        && parallel_cut_condition_check(&para_set1, &para_set2, &start_activities, &end_activities))
+        && parallel_cut_condition_check(&para_set1, &para_set2, &start_activities, &end_activities)
     {
         info!("Parallel cut found: {:?} (||) {:?}", para_set1, para_set2);
         let mut node = TreeNode {
@@ -110,7 +109,7 @@ pub fn find_cuts_start(
         &start_activities,
         &end_activities,
     );
-    if (is_redo
+    if is_redo
         && !redo_set2.is_empty()
         && !redo_set1.is_empty()
         && redo_cut_condition_check(
@@ -119,7 +118,7 @@ pub fn find_cuts_start(
             &redo_set2,
             &start_activities,
             &end_activities,
-        ))
+        )
     {
         info!("Redo cut found: {:?} (R) {:?}", redo_set1, redo_set2);
         let mut node = TreeNode {
@@ -229,6 +228,7 @@ fn find_exclusive_choice_cut(
     (set1, set2)
 }
 
+#[allow(dead_code)] // might be used later, not sure since code is from another master thesis project
 fn exclusive_cut_condition_check(
     dfg: &HashMap<(String, String), usize>,
     set1: &HashSet<String>,
@@ -239,7 +239,7 @@ fn exclusive_cut_condition_check(
         for b in set2 {
             let r1 = is_reachable(dfg, a, b);
             let r2 = is_reachable(dfg, b, a);
-            if (r1 || r2) {
+            if r1 || r2 {
                 failures.push((a.clone(), b.clone(), r1, r2));
             }
         }
@@ -402,7 +402,7 @@ pub fn partition_scc_sets(
 
     // Find common activities and remove them from both sets
     let intersection: HashSet<_> = set1.intersection(&set2).cloned().collect();
-    let mut common_activities = intersection.clone();
+    let common_activities = intersection.clone();
 
     for i in &intersection {
         set1.remove(i);
@@ -470,6 +470,7 @@ pub fn is_reachable_in_dag(
     false
 }
 
+#[allow(dead_code)] // might be used later, not sure since code is from another master thesis project
 fn sequence_cut_condition_check(
     dfg: &HashMap<(String, String), usize>,
     set1: &HashSet<String>,
@@ -567,7 +568,7 @@ fn find_redo_cut(
 
         if is_s1_redo && !is_s2_redo {
             set1.insert(x.clone());
-        } else if (!is_s1_redo && is_s2_redo) {
+        } else if !is_s1_redo && is_s2_redo {
             set2.insert(x.clone());
         } else {
             return (false, set1, set2);

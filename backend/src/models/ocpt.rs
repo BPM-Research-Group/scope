@@ -1,6 +1,5 @@
+#![allow(dead_code)] // helper functions which didn't get used yet in the code
 use std::collections::{HashMap, HashSet};
-use itertools::Itertools;
-use log::info;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -1421,7 +1420,7 @@ pub enum HierarchyNode {
         value: ActivityValue,
     },
 }
-
+#[allow(non_snake_case)] // for isSilent, can't resolve warning since the name is required like this in the frontend
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActivityValue {
     #[serde(skip_serializing_if = "Option::is_none")]
