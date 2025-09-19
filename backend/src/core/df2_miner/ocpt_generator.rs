@@ -27,7 +27,7 @@ pub fn generate_ocpt_from_fileid(file_id: &str) -> String {
 
     // Build relations
     let relations = build_relations_fns::build_relations(&ocel.events, &ocel.objects);
-    let (div, con, rel, defi, all_activities, all_object_types) =
+    let (div, con, _rel, defi, all_activities, _all_object_types) =
         interaction_patterns::get_interaction_patterns(&relations, &ocel);
 
     let (dfg, start_acts, end_acts) =
