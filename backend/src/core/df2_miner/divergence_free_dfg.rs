@@ -74,7 +74,7 @@ pub fn get_divergence_free_graph_v2(
             let current_activity = &current_relation.1;
             let next_activity = &next_relation.1;
             let current_otype = &current_relation.4;
-            let next_otype = &next_relation.4;
+            let _next_otype = &next_relation.4;
 
             // Check divergence condition before adding to DFG
             let should_skip = if let (Some(current_divergent), Some(next_divergent)) = (

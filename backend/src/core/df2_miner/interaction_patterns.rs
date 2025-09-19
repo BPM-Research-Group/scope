@@ -15,7 +15,7 @@ fn sort_hashmap_values(map: HashMap<String, HashSet<String>>) -> HashMap<String,
 
 pub fn get_interaction_patterns(
     relations: &Vec<Relation>,
-    ocel: &OcelJson,
+    _ocel: &OcelJson,
 ) -> (
     HashMap<String, Vec<String>>, // divergent (sorted)
     HashMap<String, Vec<String>>, // convergent (sorted)
