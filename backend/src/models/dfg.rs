@@ -1,3 +1,4 @@
+#![allow(dead_code)] // helper functions which didn't get used yet in the code
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap};
 pub use process_mining::dfg::dfg_struct::DirectlyFollowsGraph;
