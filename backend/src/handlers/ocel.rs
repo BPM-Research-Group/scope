@@ -1,8 +1,5 @@
 use axum::{
-    Router,
-    routing::{get, post},
     Json,
-    extract::{Query},
     http::StatusCode,
     response::IntoResponse,
     extract::Path,
@@ -11,10 +8,8 @@ use axum_extra::extract::Multipart;
 use std::path::PathBuf;
 use tokio::fs;
 use serde_json;
-use chrono::Utc;
 use bytes::Bytes;
 use serde_json::Value;
-use std::path::Path as FsPath;
 use crate::core::struct_converters::{self, ocel_1_ocel_2_converter};
 use crate::models::ocel::OCEL;
 
@@ -237,13 +232,3 @@ pub async fn delete_ocel(Path(file_id): Path<String>) -> impl IntoResponse {
     }
 }
 
-
-pub async fn test_post_handler() -> impl IntoResponse {
-    println!("POST /upload called");
-    (StatusCode::OK, "POST received: test response")
-}
-
-pub async fn test_get_handler() -> impl IntoResponse {
-    println!("GET /upload called");
-    (StatusCode::OK, "GET received: test response")
-}

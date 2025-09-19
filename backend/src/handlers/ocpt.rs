@@ -5,7 +5,6 @@ use axum::{
     extract::Path,
     response::Response,
 };
-use crate::models::ocpt2::OCPT;
 use axum_extra::extract::Multipart; 
 use serde_json;
 use std::path::PathBuf;
@@ -15,7 +14,7 @@ use serde_json::Value;
 use std::path::Path as FsPath;
 use crate::core::df2_miner::ocpt_generator::generate_ocpt_from_fileid;
 use crate::core::struct_converters::ocpt_frontend_backend::{frontend_to_backend, backend_to_frontend};
-use crate::models::ocpt::Ocpt;
+use crate::models::ocpt::{OcptFE, OCPT};
 
 
 
@@ -65,7 +64,7 @@ pub async fn post_ocpt(mut multipart: Multipart) -> Response {
         Ok(be) => be,
         Err(be_err) => {
             // 2) Fallback: try frontend shape and convert
-            match serde_json::from_value::<Ocpt>(value.clone()) {
+            match serde_json::from_value::<OcptFE>(value.clone()) {
                 Ok(front) => match frontend_to_backend(front) {
                     Ok(be) => be,
                     Err(conv_err) => {
@@ -131,13 +130,13 @@ async fn ensure_temp_dir() -> std::io::Result<()> {
 }
 
 // Helper: read a backend OCPT from disk and convert to the FE shape.
-async fn read_ocpt_as_frontend(path: &str) -> Result<Ocpt, String> {
+async fn read_ocpt_as_frontend(path: &str) -> Result<OcptFE, String> {
     let content = fs::read_to_string(path)
         .await
         .map_err(|e| format!("read {}: {e}", path))?;
 
     // 1) Try FE first
-    if let Ok(fe) = serde_json::from_str::<Ocpt>(&content) {
+    if let Ok(fe) = serde_json::from_str::<OcptFE>(&content) {
         return Ok(fe);
     }
 
@@ -157,7 +156,6 @@ pub async fn get_ocpt(Path(file_id): Path<String>) -> impl IntoResponse {
 
     let ocpt_path = format!("./temp/ocpt_{}.json", file_id);
     let v2_path   = format!("./temp/ocel_v2_{}.json", file_id);
-    let v1_path   = format!("./temp/ocel_v1_{}.json", file_id);
 
     // 1) OCPT already exists → load backend struct, convert, return FE shape (keep same id)
     if FsPath::new(&ocpt_path).exists() {
@@ -199,35 +197,10 @@ pub async fn get_ocpt(Path(file_id): Path<String>) -> impl IntoResponse {
         }
     }
 
-    // 3) Fallback: OCEL v1 present → (unchanged) serve as-is, or wire your own converter here
-    if FsPath::new(&v1_path).exists() {
-        return serve_file_as_json(&v1_path, &file_id).await;
-    }
-
     // 4) Nothing found
     let msg = format!("No relevant file found for fileId: {}", file_id);
     println!("⚠️  {}", msg);
     (StatusCode::NOT_FOUND, msg).into_response()
-}
-
-// Keep this for the OCEL v1 fallback (or replace with a converter later)
-async fn serve_file_as_json(path: &str, file_id: &str) -> Response {
-    match fs::read_to_string(path).await {
-        Ok(content) => match serde_json::from_str::<Value>(&content) {
-            Ok(json) => {
-                println!("✅ JSON parsed successfully for fileId: {}", file_id);
-                (StatusCode::OK, Json(json)).into_response()
-            }
-            Err(e) => {
-                eprintln!("❌ Invalid JSON in file {}: {}", path, e);
-                (StatusCode::INTERNAL_SERVER_ERROR, "File is not valid JSON").into_response()
-            }
-        },
-        Err(e) => {
-            eprintln!("❌ Failed to read file {}: {}", path, e);
-            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to read file").into_response()
-        }
-    }
 }
 
 pub async fn delete_ocpt(Path(file_id): Path<String>) -> impl IntoResponse {

@@ -1,141 +1,129 @@
-use anyhow::{Context, Result};
 use axum::{
     extract::Path as AxumPath,
     http::StatusCode,
     response::IntoResponse,
     Json,
 };
-use serde::Serialize;
+use serde_json::json;
 use tokio::fs as tokio_fs;
 
 use crate::core::conformance::object_centric_language_abstraction_struct::{
     compute_fitness_precision, OCLanguageAbstraction,
 };
-use crate::models::ocel::{IndexLinkedOCEL,OCEL};
-use crate::models::ocpt2::OCPT;
+use crate::models::ocel::{IndexLinkedOCEL, OCEL};
 
-#[derive(Serialize)]
-struct ConformanceResult {
-    fitness: f64,
-    precision: f64,
+// OCPT backend + (optionally) FE type & converter if needed
+use crate::models::ocpt::OCPT as BackendOCPT;
+use crate::models::ocpt::OcptFE as FrontendOcpt;
+use crate::core::struct_converters::ocpt_frontend_backend::frontend_to_backend;
+
+/// Helper: Load an OCPT from disk, accepting either FE or BE JSON.
+/// Always returns the **backend** OCPT.
+async fn load_backend_ocpt(path: &str) -> Result<BackendOCPT, String> {
+    let content = tokio_fs::read_to_string(path)
+        .await
+        .map_err(|e| format!("read {}: {e}", path))?;
+
+    // Try backend first
+    if let Ok(be) = serde_json::from_str::<BackendOCPT>(&content) {
+        return Ok(be);
+    }
+
+    // Try frontend -> convert to backend
+    let fe = serde_json::from_str::<FrontendOcpt>(&content)
+        .map_err(|e| format!("parse OCPT (backend or frontend) failed at {}: {e}", path))?;
+
+    frontend_to_backend(fe)
+        .map_err(|e| format!("frontend→backend OCPT conversion failed at {}: {e}", path))
 }
 
-/// GET /v1/conformance/single/:file_id
-/// -> loads ./temp/ocpt_{file_id}.json and ./temp/ocel_{file_id}.json
-pub async fn get_conformance_single(AxumPath(file_id): AxumPath<String>) -> impl IntoResponse {
-    let ocpt_path = format!("./temp/ocpt_{}.json", file_id);
-    let ocel_path = format!("./temp/ocel_{}.json", file_id);
+/// GET /v1/conformance/ocpt/{ocpt_id}/ocel/{ocel_id}"
+/// -> loads ./temp/ocpt_{ocpt_id}.json and (./temp/ocel_v2_{ocel_id}.json || ./temp/ocel_{ocel_id}.json)
+pub async fn get_conformance_ocpt_ocel(
+    AxumPath((ocpt_id, ocel_id)): AxumPath<(String, String)>,
+) -> impl IntoResponse {
+    // OCPT path (model)
+    let ocpt_path = format!("./temp/ocpt_{}.json", ocpt_id);
 
-    // Make sure these are Strings, not `str`
-    let ocpt_data: String = match tokio_fs::read_to_string(&ocpt_path).await {
-        Ok(s) => s,
-        Err(e) => {
-            return (
-                StatusCode::NOT_FOUND,
-                format!("OCPT not found at {}: {}", ocpt_path, e),
-            )
-                .into_response()
-        }
+    // OCEL path (log): prefer v2, fall back to plain
+    let ocel_v2_path = format!("./temp/ocel_v2_{}.json", ocel_id);
+    let ocel_plain_path = format!("./temp/ocel_{}.json", ocel_id);
+
+    // --- Load OCPT (FE or BE) ---
+    let ocpt_backend = match load_backend_ocpt(&ocpt_path).await {
+        Ok(x) => x,
+        Err(e) => return (StatusCode::BAD_REQUEST, e).into_response(),
     };
 
-    let ocel_data: String = match tokio_fs::read_to_string(&ocel_path).await {
+    // --- Load OCEL (prefer v2) ---
+    let ocel_data = match tokio_fs::read_to_string(&ocel_v2_path).await {
         Ok(s) => s,
-        Err(e) => {
-            return (
-                StatusCode::NOT_FOUND,
-                format!("OCEL not found at {}: {}", ocel_path, e),
-            )
-                .into_response()
-        }
+        Err(_) => match tokio_fs::read_to_string(&ocel_plain_path).await {
+            Ok(s) => s,
+            Err(e2) => {
+                return (
+                    StatusCode::NOT_FOUND,
+                    format!(
+                        "OCEL not found. Tried:\n  {}\n  {}\nError: {}",
+                        ocel_v2_path, ocel_plain_path, e2
+                    ),
+                )
+                    .into_response()
+            }
+        },
     };
 
-    let ocpt: OCPT = match serde_json::from_str(&ocpt_data) {
+    let ocel_struct: OCEL = match serde_json::from_str(&ocel_data) {
         Ok(o) => o,
         Err(e) => {
             return (
                 StatusCode::BAD_REQUEST,
-                format!("Failed to parse OCPT JSON ({}): {}", ocpt_path, e),
+                format!(
+                    "Failed to parse OCEL JSON ({} or {}): {}",
+                    ocel_v2_path, ocel_plain_path, e
+                ),
             )
                 .into_response()
         }
     };
 
-    let ocel_plain: OCEL = match serde_json::from_str(&ocel_data) {
-        Ok(o) => o,
-        Err(e) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                format!("Failed to parse OCEL JSON ({}): {}", ocel_path, e),
-            )
-                .into_response()
-        }
-    };
-
-    // build the indexed view
-    let locel: IndexLinkedOCEL = IndexLinkedOCEL::from_ocel(ocel_plain);
-
-    let model_abs = OCLanguageAbstraction::create_from_oc_process_tree(&ocpt);
+    // --- Conformance ---
+    let locel: IndexLinkedOCEL = IndexLinkedOCEL::from_ocel(ocel_struct);
+    let model_abs = OCLanguageAbstraction::create_from_oc_process_tree(&ocpt_backend);
     let log_abs = OCLanguageAbstraction::create_from_ocel(&locel);
     let (fitness, precision) = compute_fitness_precision(&log_abs, &model_abs);
 
-    Json(ConformanceResult { fitness, precision }).into_response()
+    Json(json!({
+        "fitness": fitness,
+        "precision": precision
+    }))
+    .into_response()
 }
 
-/// GET /v1/conformance/pair/:file_id_a/:file_id_b
-/// -> loads ./temp/ocpt_{a}.json and ./temp/ocpt_{b}.json
-pub async fn get_conformance_pair(
-    AxumPath((file_id_a, file_id_b)): AxumPath<(String, String)>,
+/// GET /v1/conformance/ocpt_1/{ocpt_id_1}/ocpt_2/{ocpt_id_2}
+/// -> loads ./temp/ocpt_{ocpt_id_1}.json and ./temp/ocpt_{ocpt_id_2}.json
+pub async fn get_conformance_ocpt_ocpt(
+    AxumPath((ocpt_id_1, ocpt_id_2)): AxumPath<(String, String)>,
 ) -> impl IntoResponse {
-    let ocpt_a_path = format!("./temp/ocpt_{}.json", file_id_a);
-    let ocpt_b_path = format!("./temp/ocpt_{}.json", file_id_b);
+    let ocpt_1_path = format!("./temp/ocpt_{}.json", ocpt_id_1);
+    let ocpt_2_path = format!("./temp/ocpt_{}.json", ocpt_id_2);
 
-    let data_a: String = match tokio_fs::read_to_string(&ocpt_a_path).await {
-        Ok(s) => s,
-        Err(e) => {
-            return (
-                StatusCode::NOT_FOUND,
-                format!("OCPT A not found at {}: {}", ocpt_a_path, e),
-            )
-                .into_response()
-        }
+    let ocpt_1 = match load_backend_ocpt(&ocpt_1_path).await {
+        Ok(x) => x,
+        Err(e) => return (StatusCode::BAD_REQUEST, e).into_response(),
+    };
+    let ocpt_2 = match load_backend_ocpt(&ocpt_2_path).await {
+        Ok(x) => x,
+        Err(e) => return (StatusCode::BAD_REQUEST, e).into_response(),
     };
 
-    let data_b: String = match tokio_fs::read_to_string(&ocpt_b_path).await {
-        Ok(s) => s,
-        Err(e) => {
-            return (
-                StatusCode::NOT_FOUND,
-                format!("OCPT B not found at {}: {}", ocpt_b_path, e),
-            )
-                .into_response()
-        }
-    };
-
-    let ocpt_a: OCPT = match serde_json::from_str(&data_a) {
-        Ok(o) => o,
-        Err(e) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                format!("Failed to parse OCPT A JSON ({}): {}", ocpt_a_path, e),
-            )
-                .into_response()
-        }
-    };
-
-    let ocpt_b: OCPT = match serde_json::from_str(&data_b) {
-        Ok(o) => o,
-        Err(e) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                format!("Failed to parse OCPT B JSON ({}): {}", ocpt_b_path, e),
-            )
-                .into_response()
-        }
-    };
-
-    let a_abs = OCLanguageAbstraction::create_from_oc_process_tree(&ocpt_a);
-    let b_abs = OCLanguageAbstraction::create_from_oc_process_tree(&ocpt_b);
+    let a_abs = OCLanguageAbstraction::create_from_oc_process_tree(&ocpt_1);
+    let b_abs = OCLanguageAbstraction::create_from_oc_process_tree(&ocpt_2);
     let (fitness, precision) = compute_fitness_precision(&a_abs, &b_abs);
 
-    Json(ConformanceResult { fitness, precision }).into_response()
+    Json(json!({
+        "fitness": fitness,
+        "precision": precision
+    }))
+    .into_response()
 }
