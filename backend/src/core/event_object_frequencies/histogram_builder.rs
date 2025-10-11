@@ -1,7 +1,7 @@
+use process_mining::OCEL;
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashMap;
-use process_mining::OCEL;
 
 #[derive(Serialize)]
 struct HistogramBin {
@@ -28,37 +28,47 @@ fn build_object_index(log: &OCEL) -> HashMap<&str, &str> {
         .collect()
 }
 
-/*
-Example JSON output: 
-one histogram per (event_type, object_type) pair
-    - histogram x: count
-    - histogram y: frequency
-
-{
-  "histograms": [
-    {
-      "event_type": "Depart",
-      "object_type": "Container",
-      "histogram": [
-        { "count": 2, "frequency": 5 },
-        { "count": 3, "frequency": 2 },
-        { "count": 5, "frequency": 1 }
-      ]
-    },
-    {
-      "event_type": "Arrive",
-      "object_type": "Truck",
-      "histogram": [
-        { "count": 1, "frequency": 7 },
-        { "count": 2, "frequency": 4 }
-      ]
-    }
-  ]
-}
-
-*/
-
-
+/// Build event-object frequency histograms for an [`OCEL`].
+/// Each histogram corresponds to a unique (event_type, object_type) pair
+/// and shows how many objects of that type are associated with events of that type.
+///
+/// # Example JSON output:
+/// one histogram per (event_type, object_type) pair
+///    - histogram x: count
+///    - histogram y: frequency
+///
+///
+/// ```json
+/// {
+///   "histograms": [
+///     {
+///       "event_type": "Depart",
+///       "object_type": "Container",
+///       "histogram": [
+///         { "count": 2, "frequency": 5 },
+///         { "count": 3, "frequency": 2 },
+///         { "count": 5, "frequency": 1 }
+///       ]
+///     },
+///     {
+///       "event_type": "Arrive",
+///       "object_type": "Truck",
+///       "histogram": [
+///         { "count": 1, "frequency": 7 },
+///         { "count": 2, "frequency": 4 }
+///       ]
+///     }
+///   ]
+/// }
+/// ```
+///     
+///
+///
+/// # Arguments
+/// * `log` - A reference to an [`OCEL`] log instance.
+///
+/// # Returns
+/// A [`serde_json::Value`] containing the JSON representation of the histograms.
 pub fn build_event_object_histograms(log: &OCEL) -> Value {
     let object_index = build_object_index(log);
     let mut stats: HashMap<(String, String), HashMap<usize, usize>> = HashMap::new();
@@ -85,7 +95,10 @@ pub fn build_event_object_histograms(log: &OCEL) -> Value {
         .map(|((etype, otype), hist)| {
             let mut bins: Vec<HistogramBin> = hist
                 .into_iter()
-                .map(|(count, freq)| HistogramBin { count, frequency: freq })
+                .map(|(count, freq)| HistogramBin {
+                    count,
+                    frequency: freq,
+                })
                 .collect();
 
             // sort bins numerically by count
@@ -114,14 +127,14 @@ pub fn build_event_object_histograms(log: &OCEL) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokio;
     use std::path::PathBuf;
+    use tokio;
     use tokio::fs as tokio_fs;
 
     #[tokio::test]
     async fn test_build_event_object_histograms() {
         // 1. Build the path to your OCEL JSON
-        let ocel_path = PathBuf::from("./temp/ocel_v2_123.json");
+        let ocel_path = PathBuf::from("../example_data/ocel/ocel_v2_123.json");
 
         // 2. Read the file
         let ocel_data = tokio_fs::read_to_string(&ocel_path)
@@ -129,15 +142,14 @@ mod tests {
             .expect("failed to read OCEL JSON file");
 
         // 3. Deserialize into OCEL
-        let ocel: OCEL = serde_json::from_str(&ocel_data)
-            .expect("failed to parse OCEL JSON");
+        let ocel: OCEL = serde_json::from_str(&ocel_data).expect("failed to parse OCEL JSON");
 
         // 4. Build the histogram
         let histogram = build_event_object_histograms(&ocel);
 
         // 5. Serialize to pretty JSON string
-        let json_str = serde_json::to_string_pretty(&histogram)
-            .expect("failed to serialize histogram");
+        let json_str =
+            serde_json::to_string_pretty(&histogram).expect("failed to serialize histogram");
 
         // 6. Print to console
         println!("{}", json_str);

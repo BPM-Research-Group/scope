@@ -1,18 +1,18 @@
-use crate::core::event_object_frequencies::{histogram_builder::build_event_object_histograms, histogram_filtering::filter_ocel_histograms};
-
-
-use tokio::fs as tokio_fs;
-use axum::{
-    extract::Path as AxumPath,
-    extract::Json as AxumJson,
-    http::StatusCode,
-    response::IntoResponse,
+use crate::core::event_object_frequencies::{
+    histogram_builder::build_event_object_histograms, histogram_filtering::filter_ocel_histograms,
 };
+
 use crate::models::ocel::OCEL;
+use axum::{
+    extract::Json as AxumJson, extract::Path as AxumPath, http::StatusCode, response::IntoResponse,
+};
+use tokio::fs as tokio_fs;
 
 /// GET /v1/event_object_frequencies/:file_id
 /// -> loads ./temp/ocpt_{file_id}.json and ./temp/ocel_{file_id}.json
-pub async fn get_event_object_frequencies(AxumPath(ocel_file_id): AxumPath<String>) -> impl IntoResponse {
+pub async fn get_event_object_frequencies(
+    AxumPath(ocel_file_id): AxumPath<String>,
+) -> impl IntoResponse {
     let ocel_path = format!("./temp/ocel_v2_{}.json", ocel_file_id);
 
     let ocel_data: String = match tokio_fs::read_to_string(&ocel_path).await {
@@ -22,7 +22,7 @@ pub async fn get_event_object_frequencies(AxumPath(ocel_file_id): AxumPath<Strin
                 StatusCode::NOT_FOUND,
                 format!("OCEL not found at {}: {}", ocel_path, e),
             )
-                .into_response()
+                .into_response();
         }
     };
 
@@ -33,7 +33,7 @@ pub async fn get_event_object_frequencies(AxumPath(ocel_file_id): AxumPath<Strin
                 StatusCode::BAD_REQUEST,
                 format!("Failed to parse OCEL JSON ({}): {}", ocel_path, e),
             )
-                .into_response()
+                .into_response();
         }
     };
 
@@ -41,7 +41,6 @@ pub async fn get_event_object_frequencies(AxumPath(ocel_file_id): AxumPath<Strin
 
     (StatusCode::OK, axum::Json(histogram)).into_response()
 }
-
 
 /// POST /v1/ocel_filter/:file_id
 /// Body: JSON following the `SelectionPayload` scheme
@@ -60,7 +59,7 @@ pub async fn post_ocel_filter(
                 StatusCode::NOT_FOUND,
                 format!("OCEL not found at {}: {}", ocel_path, e),
             )
-                .into_response()
+                .into_response();
         }
     };
 
@@ -71,7 +70,7 @@ pub async fn post_ocel_filter(
                 StatusCode::BAD_REQUEST,
                 format!("Failed to parse OCEL JSON ({}): {}", ocel_path, e),
             )
-                .into_response()
+                .into_response();
         }
     };
 
@@ -83,7 +82,7 @@ pub async fn post_ocel_filter(
                 StatusCode::BAD_REQUEST,
                 format!("Failed to serialize selection JSON: {}", e),
             )
-                .into_response()
+                .into_response();
         }
     };
 

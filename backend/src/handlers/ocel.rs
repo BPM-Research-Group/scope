@@ -1,18 +1,12 @@
-use axum::{
-    Json,
-    http::StatusCode,
-    response::IntoResponse,
-    extract::Path,
-};
-use axum_extra::extract::Multipart; 
+use crate::core::struct_converters::ocel_1_ocel_2_converter;
+use crate::models::ocel::OCEL;
+use axum::{Json, extract::Path, http::StatusCode, response::IntoResponse};
+use axum_extra::extract::Multipart;
+use bytes::Bytes;
+use serde_json;
+use serde_json::Value;
 use std::path::PathBuf;
 use tokio::fs;
-use serde_json;
-use bytes::Bytes;
-use serde_json::Value;
-use crate::core::struct_converters::{ocel_1_ocel_2_converter};
-use crate::models::ocel::OCEL;
-
 
 // --- helpers ---
 
@@ -33,7 +27,11 @@ async fn ensure_temp_dir() -> Result<(), std::io::Error> {
 pub async fn post_ocel_json(Json(payload): Json<Value>) -> impl IntoResponse {
     if let Err(e) = ensure_temp_dir().await {
         eprintln!("❌ create ./temp failed: {e:?}");
-        return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to prepare storage").into_response();
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to prepare storage",
+        )
+            .into_response();
     }
 
     // Normalize into OCEL (v2 struct)
@@ -42,7 +40,8 @@ pub async fn post_ocel_json(Json(payload): Json<Value>) -> impl IntoResponse {
             Ok(oc) => oc,
             Err(e) => {
                 eprintln!("❌ v1→v2 conversion failed: {e:?}");
-                return (StatusCode::BAD_REQUEST, "OCEL 1.0 to 2.0 conversion failed").into_response();
+                return (StatusCode::BAD_REQUEST, "OCEL 1.0 to 2.0 conversion failed")
+                    .into_response();
             }
         }
     } else if is_ocel_v2(&payload) {
@@ -64,7 +63,11 @@ pub async fn post_ocel_json(Json(payload): Json<Value>) -> impl IntoResponse {
         Ok(s) => s,
         Err(e) => {
             eprintln!("❌ serialize OCEL failed: {e:?}");
-            return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to serialize OCEL").into_response();
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to serialize OCEL",
+            )
+                .into_response();
         }
     };
     if let Err(e) = fs::write(&filename, pretty).await {
@@ -93,8 +96,18 @@ pub async fn post_ocel_binary(mut multipart: Multipart) -> impl IntoResponse {
                 file_id = Some(v);
             }
             "file" => {
-                let data = field.bytes().await.unwrap_or_default();
-                println!("📥 file bytes: {}", data.len());
+                let data = match field.bytes().await {
+                    Ok(bytes) if !bytes.is_empty() => bytes,
+                    Ok(_) => {
+                        return (StatusCode::BAD_REQUEST, "Uploaded file is empty").into_response();
+                    }
+                    Err(err) => {
+                        eprintln!("failed to read multipart field: {err:?}");
+                        return (StatusCode::BAD_REQUEST, "Failed to read uploaded file")
+                            .into_response();
+                    }
+                };
+                println!("· file bytes: {}", data.len());
                 file_bytes = Some(data);
             }
             other => println!("⚠️ Unknown form field: {other}"),
@@ -124,7 +137,11 @@ pub async fn post_ocel_binary(mut multipart: Multipart) -> impl IntoResponse {
 
     if let Err(e) = ensure_temp_dir().await {
         eprintln!("❌ create ./temp failed: {e:?}");
-        return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to prepare storage").into_response();
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to prepare storage",
+        )
+            .into_response();
     }
 
     // Normalize into OCEL (v2 struct)
@@ -133,7 +150,8 @@ pub async fn post_ocel_binary(mut multipart: Multipart) -> impl IntoResponse {
             Ok(oc) => oc,
             Err(e) => {
                 eprintln!("❌ v1→v2 conversion failed: {e:?}");
-                return (StatusCode::BAD_REQUEST, "OCEL 1.0 to 2.0 conversion failed").into_response();
+                return (StatusCode::BAD_REQUEST, "OCEL 1.0 to 2.0 conversion failed")
+                    .into_response();
             }
         }
     } else if is_ocel_v2(&value) {
@@ -154,7 +172,11 @@ pub async fn post_ocel_binary(mut multipart: Multipart) -> impl IntoResponse {
         Ok(s) => s,
         Err(e) => {
             eprintln!("❌ serialize OCEL failed: {e:?}");
-            return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to serialize OCEL").into_response();
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to serialize OCEL",
+            )
+                .into_response();
         }
     };
     if let Err(e) = fs::write(&filename, pretty).await {
@@ -174,14 +196,22 @@ pub async fn post_ocel_binary(mut multipart: Multipart) -> impl IntoResponse {
 pub async fn get_ocel(Path(file_id): Path<String>) -> impl IntoResponse {
     let path_json = PathBuf::from(format!("./temp/ocel_v2_{file_id}.json"));
     if !path_json.exists() {
-        return (StatusCode::NOT_FOUND, format!("No OCEL v2 file found for fileId: {file_id}")).into_response();
+        return (
+            StatusCode::NOT_FOUND,
+            format!("No OCEL v2 file found for fileId: {file_id}"),
+        )
+            .into_response();
     }
     match fs::read_to_string(&path_json).await {
         Ok(content) => match serde_json::from_str::<Value>(&content) {
             Ok(json) => (StatusCode::OK, Json(json)).into_response(),
             Err(e) => {
                 eprintln!("❌ parse stored OCEL failed: {e}");
-                (StatusCode::INTERNAL_SERVER_ERROR, "Stored file is not valid JSON").into_response()
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Stored file is not valid JSON",
+                )
+                    .into_response()
             }
         },
         Err(e) => {
@@ -190,8 +220,6 @@ pub async fn get_ocel(Path(file_id): Path<String>) -> impl IntoResponse {
         }
     }
 }
-
-
 
 pub async fn delete_ocel(Path(file_id): Path<String>) -> impl IntoResponse {
     println!("🗑️ DELETE /v1/objects/ocel/{}", file_id);
@@ -207,17 +235,21 @@ pub async fn delete_ocel(Path(file_id): Path<String>) -> impl IntoResponse {
     ];
 
     // Filter which ones exist
-    let existing: Vec<PathBuf> = candidates
-        .into_iter()
-        .filter(|p| p.exists())
-        .collect();
+    let existing: Vec<PathBuf> = candidates.into_iter().filter(|p| p.exists()).collect();
 
     if existing.len() > 1 {
-        eprintln!("❌ Conflict: Multiple OCEL versions found for fileId '{}'", file_id);
+        eprintln!(
+            "❌ Conflict: Multiple OCEL versions found for fileId '{}'",
+            file_id
+        );
         return (StatusCode::CONFLICT, "Conflict: multiple versions found").into_response();
     } else if existing.is_empty() {
         eprintln!("❌ No OCEL file found for fileId '{}'", file_id);
-        return (StatusCode::NOT_FOUND, format!("No OCEL file found for fileId: {}", file_id)).into_response();
+        return (
+            StatusCode::NOT_FOUND,
+            format!("No OCEL file found for fileId: {}", file_id),
+        )
+            .into_response();
     }
 
     match fs::remove_file(&existing[0]).await {
@@ -228,4 +260,3 @@ pub async fn delete_ocel(Path(file_id): Path<String>) -> impl IntoResponse {
         }
     }
 }
-

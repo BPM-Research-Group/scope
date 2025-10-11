@@ -1,5 +1,5 @@
+use crate::models::ocel_sid_df2_miner::OcelJson;
 use std::collections::{HashMap, HashSet};
-use crate::models::ocel_sid_df2_miner::{OcelJson};
 
 type Relation = (String, String, String, String, String); // (eid, activity, timestamp, oid, otype)
 
@@ -22,12 +22,12 @@ pub fn get_interaction_patterns(
     HashMap<String, Vec<String>>, // related (sorted)
     HashMap<String, Vec<String>>, // deficient (sorted)
     Vec<String>,                  // set of all activities (sorted)
-    Vec<String>                   // set of all object types (sorted)
+    Vec<String>,                  // set of all object types (sorted)
 ) {
     // Collect unique activities and object types
     let mut all_activities: HashSet<String> = HashSet::new();
     let mut all_object_types: HashSet<String> = HashSet::new();
-    
+
     for (_, activity, _, _, otype) in relations.iter() {
         all_activities.insert(activity.clone());
         all_object_types.insert(otype.clone());
@@ -49,7 +49,7 @@ pub fn get_interaction_patterns(
     // Create lookup dictionaries
     let mut look_up_dict_activities: HashMap<String, String> = HashMap::new();
     let mut look_up_dict_objects: HashMap<String, String> = HashMap::new();
-    
+
     for (eid, activity, _, oid, otype) in relations.iter() {
         look_up_dict_activities.insert(eid.clone(), activity.clone());
         look_up_dict_objects.insert(oid.clone(), otype.clone());
@@ -57,12 +57,15 @@ pub fn get_interaction_patterns(
 
     // Create identifiers structure (equivalent to Python's identifiers DataFrame)
     let mut event_object_sets: HashMap<String, Vec<String>> = HashMap::new();
-    
+
     // Group objects by event_id
     for (eid, _, _, oid, _) in relations.iter() {
-        event_object_sets.entry(eid.clone()).or_default().push(oid.clone());
+        event_object_sets
+            .entry(eid.clone())
+            .or_default()
+            .push(oid.clone());
     }
-    
+
     // Sort object sets for each event (equivalent to tuple(sorted(set(...))))
     let mut identifiers: HashMap<String, (Vec<String>, String)> = HashMap::new();
     for (eid, mut oids) in event_object_sets {
@@ -74,10 +77,14 @@ pub fn get_interaction_patterns(
 
     // Check for deficient object types (same as original logic)
     let mut activity_events: HashMap<String, HashSet<String>> = HashMap::new();
-    let mut activity_object_type_events: HashMap<(String, String), HashSet<String>> = HashMap::new();
+    let mut activity_object_type_events: HashMap<(String, String), HashSet<String>> =
+        HashMap::new();
 
     for (eid, activity, _, _, otype) in relations.iter() {
-        activity_events.entry(activity.clone()).or_default().insert(eid.clone());
+        activity_events
+            .entry(activity.clone())
+            .or_default()
+            .insert(eid.clone());
         activity_object_type_events
             .entry((activity.clone(), otype.clone()))
             .or_default()
@@ -87,13 +94,13 @@ pub fn get_interaction_patterns(
     for activity in &all_activities {
         if let Some(total_events) = activity_events.get(activity) {
             let total_event_count = total_events.len();
-            
+
             for otype in &all_object_types {
                 let key = (activity.clone(), otype.clone());
-                
+
                 if let Some(otype_events) = activity_object_type_events.get(&key) {
                     let otype_event_count = otype_events.len();
-                    
+
                     if otype_event_count != total_event_count {
                         if otype_event_count > 0 {
                             deficient.get_mut(activity).unwrap().insert(otype.clone());
@@ -110,10 +117,10 @@ pub fn get_interaction_patterns(
 
     // Create object type identifiers for each event (equivalent to Python's object_type columns)
     let mut event_object_type_sets: HashMap<String, HashMap<String, Vec<String>>> = HashMap::new();
-    
+
     for (event_id, (all_objects, _)) in &identifiers {
         let mut type_sets: HashMap<String, Vec<String>> = HashMap::new();
-        
+
         for otype in &all_object_types {
             let mut objects_of_type: Vec<String> = all_objects
                 .iter()
@@ -123,7 +130,7 @@ pub fn get_interaction_patterns(
             objects_of_type.sort();
             type_sets.insert(otype.clone(), objects_of_type);
         }
-        
+
         event_object_type_sets.insert(event_id.clone(), type_sets);
     }
 
@@ -138,31 +145,32 @@ pub fn get_interaction_patterns(
                     .unwrap()
                     .get(otype)
                     .unwrap()
-                    .len() > 0
+                    .len()
+                    > 0
             })
             .collect();
 
         for activity in &all_activities {
-            let activity_events_with_otype: Vec<&(&String, &(Vec<String>, String))> = events_with_otype
-                .iter()
-                .filter(|(_, (_, act))| act == activity)
-                .collect();
+            let activity_events_with_otype: Vec<&(&String, &(Vec<String>, String))> =
+                events_with_otype
+                    .iter()
+                    .filter(|(_, (_, act))| act == activity)
+                    .collect();
 
             if activity_events_with_otype.is_empty() {
                 continue;
             }
 
             // Check for convergent pattern: one event with multiple objects of same type
-            let has_convergent = activity_events_with_otype
-                .iter()
-                .any(|(event_id, _)| {
-                    event_object_type_sets
-                        .get(*event_id)
-                        .unwrap()
-                        .get(otype)
-                        .unwrap()
-                        .len() > 1
-                });
+            let has_convergent = activity_events_with_otype.iter().any(|(event_id, _)| {
+                event_object_type_sets
+                    .get(*event_id)
+                    .unwrap()
+                    .get(otype)
+                    .unwrap()
+                    .len()
+                    > 1
+            });
 
             if has_convergent {
                 convergent.get_mut(activity).unwrap().insert(otype.clone());
@@ -171,15 +179,15 @@ pub fn get_interaction_patterns(
             // Check for divergent pattern: same object set appears in multiple events
             // Group events by their object sets of this type
             let mut object_set_to_events: HashMap<Vec<String>, Vec<String>> = HashMap::new();
-            
+
             for (event_id, _) in &activity_events_with_otype {
                 let object_set = event_object_type_sets
-                                    .get(*event_id)
-                                    .unwrap()
-                                    .get(otype)
-                                    .unwrap()
-                                    .clone();
-                
+                    .get(*event_id)
+                    .unwrap()
+                    .get(otype)
+                    .unwrap()
+                    .clone();
+
                 if !object_set.is_empty() {
                     object_set_to_events
                         .entry(object_set)
@@ -190,7 +198,7 @@ pub fn get_interaction_patterns(
 
             // Count unique "all" object sets for each object set of this type
             let mut matches: HashMap<Vec<String>, HashSet<Vec<String>>> = HashMap::new();
-            
+
             for (object_set, event_ids) in &object_set_to_events {
                 if !object_set.is_empty() {
                     let mut unique_all_sets = HashSet::new();
@@ -213,18 +221,25 @@ pub fn get_interaction_patterns(
         }
     }
 
-     // Convert HashSets to sorted Vecs before returning
+    // Convert HashSets to sorted Vecs before returning
     let divergent_sorted = sort_hashmap_values(divergent);
     let convergent_sorted = sort_hashmap_values(convergent);
     let related_sorted = sort_hashmap_values(related);
     let deficient_sorted = sort_hashmap_values(deficient);
-    
+
     // Also sort the activity and object type sets
     let mut all_activities_sorted: Vec<String> = all_activities.into_iter().collect();
     all_activities_sorted.sort();
-    
+
     let mut all_object_types_sorted: Vec<String> = all_object_types.into_iter().collect();
     all_object_types_sorted.sort();
 
-    (divergent_sorted, convergent_sorted, related_sorted, deficient_sorted, all_activities_sorted, all_object_types_sorted)
+    (
+        divergent_sorted,
+        convergent_sorted,
+        related_sorted,
+        deficient_sorted,
+        all_activities_sorted,
+        all_object_types_sorted,
+    )
 }

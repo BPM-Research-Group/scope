@@ -1,9 +1,15 @@
+import React, { useEffect } from 'react';
 import { ScaleOrdinal } from 'd3';
 import { Table2 } from 'lucide-react';
-import React, { useEffect } from 'react';
-import ObjectTypeLegend from '~/components/ocpt/ObjectTypeLegend';
 import { Button } from '~/components/ui/button';
-
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '~/components/ui/dialog';
 import {
     Sidebar,
     SidebarContent,
@@ -14,24 +20,25 @@ import {
     SidebarMenuItem,
 } from '~/components/ui/sidebar';
 import { Switch } from '~/components/ui/switch';
-import { useIsOcptMode, useStoredFiles } from '~/stores/store';
-
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from '~/components/ui/dialog';
 import CsvEventLogShowcase from '~/components/CsvEventLogShowcase';
+import ObjectTypeLegend from '~/components/ocpt/ObjectTypeLegend';
+import { useIsOcptMode, useStoredFiles } from '~/stores/store';
 
 interface AppSidebarProps {
     objectTypes: string[];
     coloring: ScaleOrdinal<string, string, never>;
+    nodeId: string | undefined;
+    filteredObjectTypes: string[];
+    onFilteredObjectTypesChange: (newFilteredObjectTypes: string[]) => void;
 }
 
-const AppSidebar: React.FC<AppSidebarProps> = ({ objectTypes, coloring }) => {
+const AppSidebar: React.FC<AppSidebarProps> = ({
+    objectTypes,
+    coloring,
+    nodeId,
+    filteredObjectTypes,
+    onFilteredObjectTypesChange,
+}) => {
     const { setIsOcptMode } = useIsOcptMode();
     const { files } = useStoredFiles();
 
@@ -45,7 +52,13 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ objectTypes, coloring }) => {
                     <SidebarGroupContent>
                         <SidebarMenu>
                             <SidebarMenuItem className="ml-1">
-                                <ObjectTypeLegend objectTypes={objectTypes} coloring={coloring} />
+                                <ObjectTypeLegend
+                                    objectTypes={objectTypes}
+                                    coloring={coloring}
+                                    nodeId={nodeId}
+                                    filteredObjectTypes={filteredObjectTypes}
+                                    onFilteredObjectTypesChange={onFilteredObjectTypesChange}
+                                />
                             </SidebarMenuItem>
                         </SidebarMenu>
                     </SidebarGroupContent>

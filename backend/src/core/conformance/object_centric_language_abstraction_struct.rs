@@ -1,10 +1,8 @@
 //copied from https://github.com/aarkue/rust4pm
 use crate::models::dfg::OCDirectlyFollowsGraph;
-use crate::models::ocpt::{
-    OCPTLeafLabel, OCPTNode, OCPT,
-};
 use crate::models::ocel::{EventIndex, ObjectIndex};
 use crate::models::ocel::{IndexLinkedOCEL, LinkedOCELAccess};
+use crate::models::ocpt::{OCPT, OCPTLeafLabel, OCPTNode};
 use itertools::MultiUnzip;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -16,7 +14,6 @@ pub type ObjectType = String;
 
 /// OCEL event type
 pub type EventType = String;
-
 
 ///
 /// An object-centric language abstraction based on:

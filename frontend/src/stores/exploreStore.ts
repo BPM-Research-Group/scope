@@ -35,15 +35,20 @@ interface ExploreFlowStore {
     removeEdge: (edgeId: string) => void;
     getNode: (nodeId: string) => ExploreNode | undefined;
     clearFlow: () => void;
-    savePipeline: (name?: string) => void;
+    savePipeline: (name: string, pipelineIdToOverwrite?: string) => void;
     loadPipeline: (pipelineId: string) => void;
     getSavedPipelines: () => SavedPipeline[];
     deletePipeline: (pipelineId: string) => void;
+    currentPipeline: {
+        id: string | null;
+        name: string | null;
+    };
 }
 
 export const useExploreFlowStore = create<ExploreFlowStore>((set, get) => ({
     nodes: [],
     edges: [],
+    currentPipeline: { id: null, name: null },
 
     onNodesChange: (changes) => {
         set({
@@ -99,13 +104,13 @@ export const useExploreFlowStore = create<ExploreFlowStore>((set, get) => ({
         return get().nodes.find((node) => node.id === nodeId);
     },
 
-    clearFlow: () => set({ nodes: [], edges: [] }),
+    clearFlow: () => set({ nodes: [], edges: [], currentPipeline: { id: null, name: null } }),
 
-    savePipeline: (name = 'Pipeline') => {
+    savePipeline: (name: string, pipelineIdToOverwrite?: string) => {
         const { nodes, edges } = get();
-        
-        // Create clean copies without function references or complex objects
-        const cleanNodes = nodes.map(node => ({
+
+        // Create clean copies of nodes and edges for serialization
+        const cleanNodes = nodes.map((node) => ({
             id: node.id,
             type: node.type,
             position: node.position,
@@ -113,8 +118,8 @@ export const useExploreFlowStore = create<ExploreFlowStore>((set, get) => ({
             selected: false,
             dragging: false,
         }));
-        
-        const cleanEdges = edges.map(edge => ({
+
+        const cleanEdges = edges.map((edge) => ({
             id: edge.id,
             source: edge.source,
             target: edge.target,
@@ -122,35 +127,66 @@ export const useExploreFlowStore = create<ExploreFlowStore>((set, get) => ({
             targetHandle: edge.targetHandle,
             animated: edge.animated,
         }));
-        
-        const pipeline: SavedPipeline = {
-            id: Date.now().toString(),
-            name: name,
-            nodes: cleanNodes as ExploreNode[],
-            edges: cleanEdges,
-            savedAt: new Date().toISOString(),
-        };
 
-        const existingPipelines = JSON.parse(localStorage.getItem('savedPipelines') || '[]');
-        const updatedPipelines = [...existingPipelines, pipeline];
+        const existingPipelines = JSON.parse(localStorage.getItem('savedPipelines') || '[]') as SavedPipeline[];
+        let updatedPipelines: SavedPipeline[];
+        let savedPipeline: SavedPipeline | undefined;
+
+        if (pipelineIdToOverwrite) {
+            let pipelineExists = false;
+            updatedPipelines = existingPipelines.map((p) => {
+                if (p.id === pipelineIdToOverwrite) {
+                    pipelineExists = true;
+                    savedPipeline = {
+                        ...p,
+                        name,
+                        nodes: cleanNodes as ExploreNode[],
+                        edges: cleanEdges,
+                        savedAt: new Date().toISOString(),
+                    };
+                    return savedPipeline;
+                }
+                return p;
+            });
+
+            if (!pipelineExists) {
+                return; // Do not proceed if the pipeline to overwrite is not found
+            }
+        } else {
+            savedPipeline = {
+                id: Date.now().toString(),
+                name: name,
+                nodes: cleanNodes as ExploreNode[],
+                edges: cleanEdges,
+                savedAt: new Date().toISOString(),
+            };
+            updatedPipelines = [...existingPipelines, savedPipeline];
+        }
+
         localStorage.setItem('savedPipelines', JSON.stringify(updatedPipelines));
+        if (savedPipeline) {
+            set({ currentPipeline: { id: savedPipeline.id, name: savedPipeline.name } });
+        }
     },
 
     loadPipeline: (pipelineId: string) => {
         const pipelines = JSON.parse(localStorage.getItem('savedPipelines') || '[]');
         const pipeline = pipelines.find((p: SavedPipeline) => p.id === pipelineId);
         if (pipeline) {
-            // Restore nodes with placeholder functions that will be replaced when the hook initializes
-            const restoredNodes = pipeline.nodes.map(node => ({
+            const restoredNodes = pipeline.nodes.map((node) => ({
                 ...node,
                 data: {
                     ...node.data,
-                    onDataChange: () => {}, // Placeholder - will be replaced by useExploreEventHandlers
-                    ...(node.data.visualize !== undefined && { visualize: () => {} }) // Placeholder for visualization nodes
-                }
+                    onDataChange: () => {},
+                    ...(node.data.visualize !== undefined && { visualize: () => {} }),
+                },
             }));
-            
-            set({ nodes: restoredNodes, edges: pipeline.edges });
+
+            set({
+                nodes: restoredNodes,
+                edges: pipeline.edges,
+                currentPipeline: { id: pipeline.id, name: pipeline.name },
+            });
         }
     },
 
@@ -162,5 +198,9 @@ export const useExploreFlowStore = create<ExploreFlowStore>((set, get) => ({
         const pipelines = JSON.parse(localStorage.getItem('savedPipelines') || '[]');
         const updatedPipelines = pipelines.filter((p: SavedPipeline) => p.id !== pipelineId);
         localStorage.setItem('savedPipelines', JSON.stringify(updatedPipelines));
+
+        if (get().currentPipeline.id === pipelineId) {
+            set({ nodes: [], edges: [], currentPipeline: { id: null, name: null } });
+        }
     },
 }));

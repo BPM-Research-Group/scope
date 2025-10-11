@@ -1,7 +1,5 @@
-use std::collections::{HashMap};
 use crate::models::ocel_sid_df2_miner::{Event, Object};
-
-
+use std::collections::HashMap;
 
 pub fn build_relations(
     events: &Vec<Event>,
@@ -10,9 +8,8 @@ pub fn build_relations(
     let mut relations = Vec::new();
 
     // Create a HashMap for quick object lookup
-    let object_map: HashMap<String, &Object> = objects.iter()
-        .map(|obj| (obj.id.clone(), obj))
-        .collect();
+    let object_map: HashMap<String, &Object> =
+        objects.iter().map(|obj| (obj.id.clone(), obj)).collect();
 
     for event in events {
         for relationship in &event.relationships {
@@ -27,7 +24,7 @@ pub fn build_relations(
             }
         }
     }
-    // relations.sort(); 
+    // relations.sort();
 
     // First sorting by event id, then by timestamp
     relations.sort_by(|a, b| a.0.cmp(&b.0));

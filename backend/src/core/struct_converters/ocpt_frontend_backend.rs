@@ -1,8 +1,10 @@
 //! Convert **[OcptFE]** to **[OCPT]** and viceversa.
-use anyhow::{anyhow, Result};
+use crate::models::ocpt::{
+    ActivityValue, HierarchyNode, OCPT, OCPTLeaf, OCPTLeafLabel, OCPTNode, OCPTOperator,
+    OCPTOperatorType, ObjectTypeFE as FeObjectType, OcptFE,
+};
+use anyhow::{Result, anyhow};
 use std::collections::{HashMap, HashSet};
-use crate::models::ocpt::{OcptFE, HierarchyNode, ActivityValue, ObjectTypeFE as FeObjectType, OCPT, OCPTLeaf, OCPTLeafLabel, OCPTNode, OCPTOperator, OCPTOperatorType};
-
 
 /// Converts a frontend OCPT [OcptFE] to a backend OCPT [OCPT].
 pub fn frontend_to_backend(front: OcptFE) -> Result<OCPT> {
@@ -10,12 +12,11 @@ pub fn frontend_to_backend(front: OcptFE) -> Result<OCPT> {
     Ok(OCPT::new(root))
 }
 
-
 /// Converts a backend OCPT [OCPT] to a frontend OCPT [OcptFE].
 ///
 /// This function collects all object types appearing in any leaf,
 /// sorts them alphabetically, and then converts the backend OCPT hierarchy to a frontend hierarchy.
-/// 
+///
 /// The resulting [OcptFE] is then composed of the sorted object types and the converted [HierarchyNode]s.
 pub fn backend_to_frontend(ocpt: &OCPT) -> OcptFE {
     // Collect all object types appearing in any leaf (related OR marked)
@@ -69,7 +70,6 @@ fn frontend_node_to_backend(node: &HierarchyNode) -> Result<OCPTNode> {
 /// - "exclusivechoice" or "xor" or "choice" -> OCPTOperatorType::ExclusiveChoice
 /// - "concurrency" or "parallel" or "and" or "par" -> OCPTOperatorType::Concurrency
 /// - "loop" -> OCPTOperatorType::Loop(None)
-
 
 fn parse_operator(s: &str) -> Result<OCPTOperatorType> {
     let k = s.trim().to_lowercase();
@@ -201,16 +201,28 @@ fn backend_leaf_to_activity_value(leaf: &OCPTLeaf) -> ActivityValue {
             // Index ot -> (related, divergent, convergent, deficient)
             let mut marks: HashMap<&str, (bool, bool, bool, bool)> = HashMap::new();
             for ot in &leaf.related_ob_types {
-                marks.entry(ot.as_str()).or_insert((true, false, false, false)).0 = true;
+                marks
+                    .entry(ot.as_str())
+                    .or_insert((true, false, false, false))
+                    .0 = true;
             }
             for ot in &leaf.divergent_ob_types {
-                marks.entry(ot.as_str()).or_insert((false, false, false, false)).1 = true;
+                marks
+                    .entry(ot.as_str())
+                    .or_insert((false, false, false, false))
+                    .1 = true;
             }
             for ot in &leaf.convergent_ob_types {
-                marks.entry(ot.as_str()).or_insert((false, false, false, false)).2 = true;
+                marks
+                    .entry(ot.as_str())
+                    .or_insert((false, false, false, false))
+                    .2 = true;
             }
             for ot in &leaf.deficient_ob_types {
-                marks.entry(ot.as_str()).or_insert((false, false, false, false)).3 = true;
+                marks
+                    .entry(ot.as_str())
+                    .or_insert((false, false, false, false))
+                    .3 = true;
             }
 
             let mut ots: Vec<FeObjectType> = marks
@@ -229,7 +241,11 @@ fn backend_leaf_to_activity_value(leaf: &OCPTLeaf) -> ActivityValue {
                     // If it was "related" only, exhibits can be omitted.
                     FeObjectType {
                         ot: ot.to_string(),
-                        exhibits: if exhibits.is_empty() { None } else { Some(exhibits) },
+                        exhibits: if exhibits.is_empty() {
+                            None
+                        } else {
+                            Some(exhibits)
+                        },
                     }
                 })
                 .collect();
@@ -270,31 +286,35 @@ fn collect_all_ots_from_node(node: &OCPTNode, acc: &mut HashSet<String>) {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     #[tokio::test]
     async fn test_convert_and_store_ocpt_123_roundtrip() {
+        use crate::core::struct_converters::ocpt_frontend_backend::{
+            backend_to_frontend, frontend_to_backend,
+        };
+        use crate::models::ocpt::{OCPT, OcptFE};
         use tokio::fs;
-        use crate::core::struct_converters::ocpt_frontend_backend::{frontend_to_backend, backend_to_frontend};
-        use crate::models::ocpt::{OcptFE,OCPT};
 
-        // Hard-coded file path in ./temp
-        let path = "./temp/ocpt_123.json";
+        // Hard-coded file
+        let path = "../example_data/ocel/ocel_v2_123.json";
 
         // Read file content
         let content = fs::read_to_string(path)
             .await
-            .expect("❌ failed to read ./temp/ocpt_123.json");
+            .expect("❌ failed to read ../example_data/ocel/ocel_v2_123.json");
 
         // Try to parse as frontend struct first
         if let Ok(fe_struct) = serde_json::from_str::<OcptFE>(&content) {
             println!("📥 Parsed as frontend OCPT, converting to backend...");
 
             // Convert frontend → backend
-            let ocpt_backend = frontend_to_backend(fe_struct)
-                .expect("❌ frontend→backend conversion failed");
-            assert!(ocpt_backend.is_valid(), "frontend OCPT should yield valid backend OCPT");
+            let ocpt_backend =
+                frontend_to_backend(fe_struct).expect("❌ frontend→backend conversion failed");
+            assert!(
+                ocpt_backend.is_valid(),
+                "frontend OCPT should yield valid backend OCPT"
+            );
 
             // Store converted backend
             let out_backend = "./temp/ocpt_123_backend.json";

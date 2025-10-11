@@ -2,22 +2,21 @@
 //!
 //! This module provides parsing and normalization utilities to transform
 //! legacy OCEL 1.0 logs into the OCEL v2 struct used in `process_mining`.
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, FixedOffset};
-use serde_json::{Value};
+use serde_json::Value;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
-use crate::models::ocel1::{Ocel1, Ocel1Event, Ocel1Object};
 use crate::core::struct_converters::utils::{
-    epoch_fixed_utc, json_to_attr_value, merge_tys, parse_time_any, vty_to_attr_type, VTy,
+    VTy, epoch_fixed_utc, json_to_attr_value, merge_tys, parse_time_any, vty_to_attr_type,
 };
+use crate::models::ocel1::{Ocel1, Ocel1Event, Ocel1Object};
 use process_mining::OCEL;
 use process_mining::ocel::ocel_struct::{
-    OCELEvent, OCELEventAttribute, OCELObject,
-    OCELObjectAttribute, OCELRelationship, OCELType, OCELTypeAttribute,
+    OCELEvent, OCELEventAttribute, OCELObject, OCELObjectAttribute, OCELRelationship, OCELType,
+    OCELTypeAttribute,
 };
-
 
 /// Parse an OCEL **1.0 JSON string** and return a normalized [`OCEL`] (v2).
 ///
@@ -25,12 +24,11 @@ use process_mining::ocel::ocel_struct::{
 ///
 /// # Errors
 /// - JSON is not valid OCEL 1.0, or the conversion to v2 fails.
-/// 
+///
 pub fn convert_ocel1_str_to_ocel(s: &str) -> Result<OCEL> {
     let o1: Ocel1 = serde_json::from_str(s).context("deserialize OCEL 1.0 JSON")?;
     convert_ocel1_to_ocel(o1)
 }
-
 
 /// Parse an OCEL **1.0 `serde_json::Value`** and return a normalized [`OCEL`] (v2).
 ///
@@ -75,7 +73,11 @@ pub fn convert_ocel1_to_ocel(mut o1: Ocel1) -> Result<OCEL> {
             for oid in &ev.omap {
                 object_first_seen
                     .entry(oid.clone())
-                    .and_modify(|acc| if et < acc { *acc = *et })
+                    .and_modify(|acc| {
+                        if et < acc {
+                            *acc = *et
+                        }
+                    })
                     .or_insert(*et);
             }
         }
@@ -87,8 +89,13 @@ pub fn convert_ocel1_to_ocel(mut o1: Ocel1) -> Result<OCEL> {
 
         let mut attrs: Vec<OCELEventAttribute> = Vec::new();
         for (k, v) in &ev.vmap {
-            if k == "objid" || k == "objtype" { continue; }
-            attrs.push(OCELEventAttribute { name: k.clone(), value: json_to_attr_value(v) });
+            if k == "objid" || k == "objtype" {
+                continue;
+            }
+            attrs.push(OCELEventAttribute {
+                name: k.clone(),
+                value: json_to_attr_value(v),
+            });
         }
 
         let mut rels: Vec<OCELRelationship> = Vec::with_capacity(ev.omap.len());
@@ -106,7 +113,10 @@ pub fn convert_ocel1_to_ocel(mut o1: Ocel1) -> Result<OCEL> {
 
     let mut objects_vec: Vec<OCELObject> = Vec::with_capacity(o1.objects.len());
     for (oid, o) in &o1.objects {
-        let t0 = object_first_seen.get(oid).cloned().unwrap_or_else(epoch_fixed_utc);
+        let t0 = object_first_seen
+            .get(oid)
+            .cloned()
+            .unwrap_or_else(epoch_fixed_utc);
         let mut oattrs: Vec<OCELObjectAttribute> = Vec::new();
         for (k, v) in &o.ovmap {
             oattrs.push(OCELObjectAttribute::new(k, json_to_attr_value(v), t0));
@@ -119,7 +129,7 @@ pub fn convert_ocel1_to_ocel(mut o1: Ocel1) -> Result<OCEL> {
         });
     }
 
-    let event_types  = infer_event_types(&o1.events);
+    let event_types = infer_event_types(&o1.events);
     let object_types = infer_object_types(&o1.objects, o1.global_log.get("ocel:object-types"));
 
     events_vec.sort_by(|a, b| match a.time.cmp(&b.time) {
@@ -128,14 +138,19 @@ pub fn convert_ocel1_to_ocel(mut o1: Ocel1) -> Result<OCEL> {
     });
     objects_vec.sort_by(|a, b| a.id.cmp(&b.id));
 
-    Ok(OCEL { event_types, object_types, events: events_vec, objects: objects_vec })
+    Ok(OCEL {
+        event_types,
+        object_types,
+        events: events_vec,
+        objects: objects_vec,
+    })
 }
 
-    /// Ensure that the `objects` map in `o1` covers all object IDs referenced in the `omap` and `vmap` of `o1.events`.
-    ///
-    /// This function is a helper for conversion of OCEL 1.0 to OCEL 2.0.
-    ///
-    /// It will insert missing objects with a default object type of `"UNKNOWN"` into `o1.objects`.
+/// Ensure that the `objects` map in `o1` covers all object IDs referenced in the `omap` and `vmap` of `o1.events`.
+///
+/// This function is a helper for conversion of OCEL 1.0 to OCEL 2.0.
+///
+/// It will insert missing objects with a default object type of `"UNKNOWN"` into `o1.objects`.
 fn ensure_objects_cover_omap_and_vmap(o1: &mut Ocel1) {
     let referenced: HashSet<String> = o1
         .events
@@ -144,21 +159,25 @@ fn ensure_objects_cover_omap_and_vmap(o1: &mut Ocel1) {
         .collect();
 
     for ev in o1.events.values() {
-        use serde_json::Value::{String as JsString};
-        let id  = ev.vmap.get("objid");
-        let ty  = ev.vmap.get("objtype");
+        use serde_json::Value::String as JsString;
+        let id = ev.vmap.get("objid");
+        let ty = ev.vmap.get("objtype");
         if let (Some(JsString(id)), Some(JsString(ty))) = (id, ty) {
-            o1.objects.entry(id.clone()).or_insert(crate::models::ocel1::Ocel1Object {
-                object_type: ty.clone(),
-                ovmap: BTreeMap::new(),
-            });
+            o1.objects
+                .entry(id.clone())
+                .or_insert(crate::models::ocel1::Ocel1Object {
+                    object_type: ty.clone(),
+                    ovmap: BTreeMap::new(),
+                });
         }
     }
     for oid in referenced {
-        o1.objects.entry(oid).or_insert(crate::models::ocel1::Ocel1Object {
-            object_type: "UNKNOWN".to_string(),
-            ovmap: BTreeMap::new(),
-        });
+        o1.objects
+            .entry(oid)
+            .or_insert(crate::models::ocel1::Ocel1Object {
+                object_type: "UNKNOWN".to_string(),
+                ovmap: BTreeMap::new(),
+            });
     }
 }
 
@@ -175,9 +194,13 @@ fn infer_event_types(events: &HashMap<String, Ocel1Event>) -> Vec<OCELType> {
     for ev in events.values() {
         let m = acc.entry(ev.activity.clone()).or_default();
         for (k, v) in &ev.vmap {
-            if k == "objid" || k == "objtype" { continue; }
+            if k == "objid" || k == "objtype" {
+                continue;
+            }
             if let Some(t) = VTy::of(v) {
-                m.entry(k.clone()).and_modify(|tt| *tt = merge_tys(*tt, t)).or_insert(t);
+                m.entry(k.clone())
+                    .and_modify(|tt| *tt = merge_tys(*tt, t))
+                    .or_insert(t);
             }
         }
     }
@@ -214,7 +237,9 @@ fn infer_object_types(
         let m = acc.entry(o.object_type.clone()).or_default();
         for (k, v) in &o.ovmap {
             if let Some(t) = VTy::of(v) {
-                m.entry(k.clone()).and_modify(|tt| *tt = merge_tys(*tt, t)).or_insert(t);
+                m.entry(k.clone())
+                    .and_modify(|tt| *tt = merge_tys(*tt, t))
+                    .or_insert(t);
             }
         }
     }
@@ -236,19 +261,19 @@ fn infer_object_types(
         .collect()
 }
 
-
-
 /// Reads an OCEL 1.0 JSON file from the given `input_path` and writes the converted OCEL 2.0 JSON to the given `output_path`.
-/// 
+///
 /// calls the [`convert_ocel1_str_to_ocel` function to convert the OCEL 1.0 JSON string to an OCEL 2.0 object.
 pub fn convert_file(input_path: &std::path::Path, output_path: &std::path::Path) -> Result<()> {
     let s = std::fs::read_to_string(input_path).with_context(|| {
-        format!("reading OCEL 1.0 JSON from {}", input_path.to_string_lossy())
+        format!(
+            "reading OCEL 1.0 JSON from {}",
+            input_path.to_string_lossy()
+        )
     })?;
     let oc = convert_ocel1_str_to_ocel(&s)?;
     let out = serde_json::to_string_pretty(&oc)?;
-    std::fs::write(output_path, out).with_context(|| {
-        format!("writing OCEL JSON to {}", output_path.to_string_lossy())
-    })?;
+    std::fs::write(output_path, out)
+        .with_context(|| format!("writing OCEL JSON to {}", output_path.to_string_lossy()))?;
     Ok(())
 }

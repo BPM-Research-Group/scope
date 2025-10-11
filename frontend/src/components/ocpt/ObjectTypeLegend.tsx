@@ -1,36 +1,33 @@
 import { LegendItem, LegendLabel, LegendOrdinal } from '@visx/legend';
 import { ScaleOrdinal } from 'd3';
 import { Checkbox } from '~/components/ui/checkbox';
-import { useEffect, useState } from 'react';
-import { useFilteredObjectType } from '~/stores/store';
 
 interface ObjectTypeLegendProps {
     objectTypes: string[];
     coloring: ScaleOrdinal<string, string, never>;
+    nodeId: string | undefined;
+    filteredObjectTypes: string[];
+    onFilteredObjectTypesChange: (newFilteredObjectTypes: string[]) => void;
 }
 
-const ObjectTypeLegend: React.FC<ObjectTypeLegendProps> = ({ objectTypes, coloring }: ObjectTypeLegendProps) => {
-    const [checked, setChecked] = useState<boolean[]>([]);
-    const { setFilteredObjectTypes } = useFilteredObjectType();
-
-    useEffect(() => {
-        if (objectTypes) {
-            setChecked(new Array(objectTypes.length).fill(false));
-        }
-    }, [objectTypes]);
-
+const ObjectTypeLegend: React.FC<ObjectTypeLegendProps> = ({
+    objectTypes,
+    coloring,
+    nodeId,
+    filteredObjectTypes,
+    onFilteredObjectTypesChange,
+}: ObjectTypeLegendProps) => {
     if (!objectTypes) {
         return <div>Loading Legend</div>;
     }
 
-    const handleCheckboxChange = (index: number) => {
-        const updatedChecked = [...checked];
-        updatedChecked[index] = !updatedChecked[index];
-        setChecked(updatedChecked);
-
-        const selectedObjectTypes = objectTypes.filter((_, i) => updatedChecked[i]);
-        console.log(selectedObjectTypes);
-        setFilteredObjectTypes(selectedObjectTypes);
+    const handleCheckboxChange = (objectType: string) => {
+        if (nodeId) {
+            const newFilteredObjectTypes = filteredObjectTypes.includes(objectType)
+                ? filteredObjectTypes.filter((ot) => ot !== objectType)
+                : [...filteredObjectTypes, objectType];
+            onFilteredObjectTypesChange(newFilteredObjectTypes);
+        }
     };
 
     return (
@@ -42,10 +39,10 @@ const ObjectTypeLegend: React.FC<ObjectTypeLegendProps> = ({ objectTypes, colori
                             <Checkbox
                                 style={{
                                     borderColor: label.value,
-                                    backgroundColor: checked[i] ? label.value : 'white',
+                                    backgroundColor: filteredObjectTypes.includes(label.text) ? label.value : 'white',
                                 }}
-                                checked={checked[i]}
-                                onClick={() => handleCheckboxChange(i)}
+                                checked={filteredObjectTypes.includes(label.text)}
+                                onCheckedChange={() => handleCheckboxChange(label.text)}
                             />
                             <LegendLabel align="left" margin="0 0 0 4px">
                                 {label.text}

@@ -1,14 +1,15 @@
+import { useEffect, useState } from 'react';
 import { Group } from '@visx/group';
 import { hierarchy } from '@visx/hierarchy';
+import { HierarchyNode, HierarchyPointNode } from '@visx/hierarchy/lib/types';
 import { Zoom } from '@visx/zoom';
 import { ScaleOrdinal } from 'd3';
-import { useEffect, useState } from 'react';
-import ZoomButtons from '~/components/ZoomButtons';
-import { type TreeNode } from '~/types/ocpt/ocpt.types';
 import HoverPointTooltip from '~/components/ocpt/HoverPointTooltip';
-import { HierarchyNode, HierarchyPointNode } from '@visx/hierarchy/lib/types';
-import { useFilteredObjectType } from '~/stores/store';
 import { RenderTree } from '~/components/ocpt/OcptRendering';
+import ZoomButtons from '~/components/ZoomButtons';
+import { useExploreFlowStore } from '~/stores/exploreStore';
+import { NodeId, TVisualizationNode } from '~/types/explore';
+import { type TreeNode } from '~/types/ocpt/ocpt.types';
 
 export type OCPTProps = {
     width: number;
@@ -17,6 +18,7 @@ export type OCPTProps = {
     treeData: TreeNode | null;
     colorScale: ScaleOrdinal<string, string, never>;
     objectTypes: string[];
+    node: TVisualizationNode;
 };
 
 const defaultMargin = { top: 30, left: 30, right: 30, bottom: 70 };
@@ -28,14 +30,16 @@ const OCPT: React.FC<OCPTProps> = ({
     treeData,
     colorScale,
     objectTypes,
+    node,
 }) => {
     const [hoveredNode, setHoveredNode] = useState<HierarchyPointNode<TreeNode> | null>(null);
     const [tree, setTree] = useState<HierarchyNode<TreeNode> | null>(null);
-    const { filteredObjectTypes } = useFilteredObjectType();
+    const viewState = node.data.viewState;
+    const filteredObjectTypes = viewState?.filteredObjectTypes || [];
 
     useEffect(() => {
         const copyTreeData = JSON.parse(JSON.stringify(treeData));
-        if (!copyTreeData || filteredObjectTypes.length > 0) return;
+        if (!copyTreeData) return;
 
         setTree(hierarchy(copyTreeData, (d) => (d!.isExpanded ? null : d!.children)));
     }, [treeData]);

@@ -1,12 +1,12 @@
 #![allow(dead_code)] // helper functions which didn't get used yet in the code
-use std::collections::{HashMap, HashSet};
 use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
 
 /////////////////// backend struct copied from https://github.com/aarkue/rust4pm/process_mining/src/object_centric/ocpt/object_centric_process_tree_struct.rs ////////////////
 
 use crate::core::utils::dfr::{
-    add_all_dfr_from_to_alphabets, compute_shuffle_dfr_language, EventType, ObjectType,
+    EventType, ObjectType, add_all_dfr_from_to_alphabets, compute_shuffle_dfr_language,
 };
 
 ///
@@ -1397,8 +1397,6 @@ impl OCPTLeaf {
         )
     }
 }
-
-
 
 /////////////////// frontend struct ////////////////
 #[derive(Debug, Clone, Serialize, Deserialize)]

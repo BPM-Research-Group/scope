@@ -1,7 +1,6 @@
 import { memo, ReactNode } from 'react';
-import { Handle, NodeProps } from '@xyflow/react';
+import { Handle, type NodeProps } from '@xyflow/react';
 import { Settings } from 'lucide-react';
-import { getIconComponent } from '~/lib/iconMap';
 import { BaseNode } from '~/components/ui/base-node';
 import { DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '~/components/ui/dropdown-menu';
 import {
@@ -12,9 +11,20 @@ import {
     NodeHeaderMenuAction,
     NodeHeaderTitle,
 } from '~/components/ui/node-header';
-import type { BaseExploreNodeDropdownActionType, TExploreNode } from '~/types/explore';
+import { getIconComponent } from '~/lib/iconMap';
+import type {
+    BaseExploreNodeDropdownActionType,
+    BaseExploreNodeDropdownOption,
+    BaseExploreNodeHandleOption,
+} from '~/types/explore';
 
-interface BaseExploreNodeProps extends NodeProps<TExploreNode> {
+interface BaseExploreNodeProps {
+    id: string;
+    selected: boolean;
+    title: string;
+    iconName: string;
+    handleOptions: BaseExploreNodeHandleOption[];
+    dropdownOptions: BaseExploreNodeDropdownOption[];
     children?: ReactNode;
     customActions?: ReactNode;
     customContent?: ReactNode;
@@ -22,9 +32,18 @@ interface BaseExploreNodeProps extends NodeProps<TExploreNode> {
 }
 
 const BaseExploreNode = memo<BaseExploreNodeProps>(
-    ({ id, selected, data, children, customActions, customContent, onDropdownAction }) => {
-        const { assets, config, display } = data;
-
+    ({
+        id,
+        selected,
+        title,
+        iconName,
+        handleOptions,
+        dropdownOptions,
+        children,
+        customActions,
+        customContent,
+        onDropdownAction,
+    }) => {
         const handleDropdownAction = (action: BaseExploreNodeDropdownActionType) => {
             if (onDropdownAction) {
                 onDropdownAction(action);
@@ -36,11 +55,11 @@ const BaseExploreNode = memo<BaseExploreNodeProps>(
                 <NodeHeader className="-mx-3 -mt-2 border-b">
                     <NodeHeaderIcon>
                         {(() => {
-                            const IconComponent = getIconComponent(display.iconName);
+                            const IconComponent = getIconComponent(iconName);
                             return <IconComponent />;
                         })()}
                     </NodeHeaderIcon>
-                    <NodeHeaderTitle>{display.title}</NodeHeaderTitle>
+                    <NodeHeaderTitle>{title}</NodeHeaderTitle>
                     <NodeHeaderActions>
                         {customActions}
                         <NodeHeaderMenuAction label="Expand options">
@@ -49,7 +68,7 @@ const BaseExploreNode = memo<BaseExploreNodeProps>(
                                 <span className="ml-1">Options</span>
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            {config.dropdownOptions.map((ddOpt, index) => {
+                            {dropdownOptions.map((ddOpt, index) => {
                                 return (
                                     <DropdownMenuItem
                                         key={`${id}-${ddOpt.label}-${index}`}
@@ -64,7 +83,7 @@ const BaseExploreNode = memo<BaseExploreNodeProps>(
                     </NodeHeaderActions>
                 </NodeHeader>
                 <div className="mt-2">{customContent || <p>empty</p>}</div>
-                {config.handleOptions.map((handleOption, index) => (
+                {handleOptions.map((handleOption, index) => (
                     <Handle
                         key={`${id}-${handleOption.type}-${index}`}
                         position={handleOption.position}

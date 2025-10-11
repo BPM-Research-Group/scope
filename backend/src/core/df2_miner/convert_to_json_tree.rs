@@ -1,6 +1,6 @@
+use crate::models::ocpt::{ProcessForest, TreeNode};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
-use crate::models::ocpt::{TreeNode, ProcessForest};
 
 #[derive(Serialize)]
 pub struct OutputJson {
@@ -54,7 +54,11 @@ pub fn convert_tree(
         };
         HierarchyNode::Operator {
             value: op.to_string(),
-            children: node.children.iter().map(|c| convert_tree(c, con, defi, div)).collect(),
+            children: node
+                .children
+                .iter()
+                .map(|c| convert_tree(c, con, defi, div))
+                .collect(),
         }
     } else {
         // activity node
@@ -76,23 +80,30 @@ pub fn convert_tree(
         ot_set.extend(defi.get(&activity).unwrap_or(&vec![]).clone());
         ot_set.extend(div.get(&activity).unwrap_or(&vec![]).clone());
 
-        let mut ots: Vec<ObjectType> = ot_set.into_iter().map(|ot| {
-            let mut exhibits = Vec::new();
-            if con.get(&activity).map_or(false, |v| v.contains(&ot)) {
-                exhibits.push("con".to_string());
-            }
-            if defi.get(&activity).map_or(false, |v| v.contains(&ot)) {
-                exhibits.push("def".to_string());
-            }
-            if div.get(&activity).map_or(false, |v| v.contains(&ot)) {
-                exhibits.push("div".to_string());
-            }
+        let mut ots: Vec<ObjectType> = ot_set
+            .into_iter()
+            .map(|ot| {
+                let mut exhibits = Vec::new();
+                if con.get(&activity).map_or(false, |v| v.contains(&ot)) {
+                    exhibits.push("con".to_string());
+                }
+                if defi.get(&activity).map_or(false, |v| v.contains(&ot)) {
+                    exhibits.push("def".to_string());
+                }
+                if div.get(&activity).map_or(false, |v| v.contains(&ot)) {
+                    exhibits.push("div".to_string());
+                }
 
-            ObjectType {
-                ot,
-                exhibits: if exhibits.is_empty() { None } else { Some(exhibits) },
-            }
-        }).collect();
+                ObjectType {
+                    ot,
+                    exhibits: if exhibits.is_empty() {
+                        None
+                    } else {
+                        Some(exhibits)
+                    },
+                }
+            })
+            .collect();
 
         ots.sort_by(|a, b| a.ot.cmp(&b.ot)); // consistent order
 
@@ -113,7 +124,8 @@ pub fn build_output(
     div: &HashMap<String, Vec<String>>,
 ) -> OutputJson {
     // Determine unique OTs
-    let all_ots: HashSet<_> = con.values()
+    let all_ots: HashSet<_> = con
+        .values()
         .chain(defi.values())
         .chain(div.values())
         .flatten()
@@ -125,7 +137,10 @@ pub fn build_output(
     } else {
         HierarchyNode::Operator {
             value: "sequence".to_string(),
-            children: forest.iter().map(|n| convert_tree(n, con, defi, div)).collect(),
+            children: forest
+                .iter()
+                .map(|n| convert_tree(n, con, defi, div))
+                .collect(),
         }
     };
 

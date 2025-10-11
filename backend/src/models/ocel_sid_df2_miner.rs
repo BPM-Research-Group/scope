@@ -36,8 +36,8 @@ pub struct AttributeDefinition {
 pub struct Event {
     pub id: String,
     #[serde(rename = "type")]
-    pub activity: String,  
-    pub time: String,     
+    pub activity: String,
+    pub time: String,
     pub attributes: Option<Vec<Attribute>>,
     pub relationships: Vec<Relationship>,
 }
@@ -53,7 +53,7 @@ pub struct Object {
 #[derive(Debug, Deserialize)]
 pub struct Attribute {
     pub name: String,
-    pub value: serde_json::Value,  // it handle both strings and numbers
+    pub value: serde_json::Value, // it handle both strings and numbers
     pub time: Option<String>,
 }
 
@@ -64,7 +64,6 @@ pub struct Relationship {
     pub qualifier: String,
 }
 
-
 #[derive(Debug)]
 pub struct TreeNode {
     pub label: String,
@@ -72,7 +71,6 @@ pub struct TreeNode {
 }
 
 pub type ProcessForest = Vec<TreeNode>;
-
 
 // For format conversion of DFG to be sent a JSON response
 #[derive(Serialize)]

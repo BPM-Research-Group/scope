@@ -1,22 +1,15 @@
-use axum::{
-    Json,
-    http::StatusCode,
-    response::IntoResponse,
-    extract::Path,
-    response::Response,
+use crate::core::df2_miner::ocpt_generator::generate_ocpt_from_fileid;
+use crate::core::struct_converters::ocpt_frontend_backend::{
+    backend_to_frontend, frontend_to_backend,
 };
-use axum_extra::extract::Multipart; 
+use crate::models::ocpt::{OCPT, OcptFE};
+use axum::{Json, extract::Path, http::StatusCode, response::IntoResponse, response::Response};
+use axum_extra::extract::Multipart;
 use serde_json;
-use std::path::PathBuf;
-use tokio::fs;
 use serde_json::Value;
 use std::path::Path as FsPath;
-use crate::core::df2_miner::ocpt_generator::generate_ocpt_from_fileid;
-use crate::core::struct_converters::ocpt_frontend_backend::{frontend_to_backend, backend_to_frontend};
-use crate::models::ocpt::{OcptFE, OCPT};
-
-
-
+use std::path::PathBuf;
+use tokio::fs;
 
 pub async fn post_ocpt(mut multipart: Multipart) -> Response {
     let mut file_id: Option<String> = None;
@@ -26,12 +19,12 @@ pub async fn post_ocpt(mut multipart: Multipart) -> Response {
     while let Some(field) = match multipart.next_field().await {
         Ok(f) => f,
         Err(e) => {
-            return (StatusCode::BAD_REQUEST, format!("Malformed multipart: {e}")).into_response()
+            return (StatusCode::BAD_REQUEST, format!("Malformed multipart: {e}")).into_response();
         }
     } {
         match field.name().unwrap_or("") {
             "file_id" => file_id = Some(field.text().await.unwrap_or_default()),
-            "file"   => file_bytes = Some(field.bytes().await.unwrap_or_default()),
+            "file" => file_bytes = Some(field.bytes().await.unwrap_or_default()),
             _ => {}
         }
     }
@@ -53,7 +46,10 @@ pub async fn post_ocpt(mut multipart: Multipart) -> Response {
 
     // --- ensure ./temp exists ---
     if let Err(e) = ensure_temp_dir().await {
-        return (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to prepare storage: {e}"))
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Failed to prepare storage: {e}"),
+        )
             .into_response();
     }
 
@@ -71,7 +67,7 @@ pub async fn post_ocpt(mut multipart: Multipart) -> Response {
                             StatusCode::BAD_REQUEST,
                             format!("Failed to convert FE OCPT -> BE OCPT: {conv_err}"),
                         )
-                            .into_response()
+                            .into_response();
                     }
                 },
                 Err(fe_err) => {
@@ -83,7 +79,7 @@ pub async fn post_ocpt(mut multipart: Multipart) -> Response {
                              Backend parse error: {be_err}; Frontend parse error: {fe_err}"
                         ),
                     )
-                        .into_response()
+                        .into_response();
                 }
             }
         }
@@ -98,7 +94,7 @@ pub async fn post_ocpt(mut multipart: Multipart) -> Response {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Serialize OCPT failed: {e}"),
             )
-                .into_response()
+                .into_response();
         }
     };
     if let Err(e) = fs::write(&path, pretty).await {
@@ -140,8 +136,8 @@ async fn read_ocpt_as_frontend(path: &str) -> Result<OcptFE, String> {
     }
 
     // 2) Fallback to BE → FE
-    let be: OCPT = serde_json::from_str(&content)
-        .map_err(|e| format!("parse backend OCPT {}: {e}", path))?;
+    let be: OCPT =
+        serde_json::from_str(&content).map_err(|e| format!("parse backend OCPT {}: {e}", path))?;
 
     if !be.is_valid() {
         return Err("backend OCPT failed is_valid()".to_string());
@@ -154,7 +150,7 @@ pub async fn get_ocpt(Path(file_id): Path<String>) -> impl IntoResponse {
     println!("📥 GET /v1/objects/ocpt/{}", file_id);
 
     let ocpt_path = format!("./temp/ocpt_{}.json", file_id);
-    let v2_path   = format!("./temp/ocel_v2_{}.json", file_id);
+    let v2_path = format!("./temp/ocel_v2_{}.json", file_id);
 
     // 1) OCPT already exists → load backend struct, convert, return FE shape (keep same id)
     if FsPath::new(&ocpt_path).exists() {
@@ -168,7 +164,11 @@ pub async fn get_ocpt(Path(file_id): Path<String>) -> impl IntoResponse {
             }
             Err(e) => {
                 eprintln!("❌ convert stored OCPT failed: {}", e);
-                return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to convert stored OCPT to frontend format").into_response();
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to convert stored OCPT to frontend format",
+                )
+                    .into_response();
             }
         }
     }
@@ -178,7 +178,7 @@ pub async fn get_ocpt(Path(file_id): Path<String>) -> impl IntoResponse {
         println!("🛠️  Generating OCPT from ocel_v2_{}.json", file_id);
 
         // Your updated generator returns the new uuidv4
-        let new_file_id  = generate_ocpt_from_fileid(&file_id);
+        let new_file_id = generate_ocpt_from_fileid(&file_id);
         let new_ocpt_path = format!("./temp/ocpt_{}.json", new_file_id);
 
         match read_ocpt_as_frontend(&new_ocpt_path).await {
@@ -191,7 +191,11 @@ pub async fn get_ocpt(Path(file_id): Path<String>) -> impl IntoResponse {
             }
             Err(e) => {
                 eprintln!("❌ convert newly generated OCPT failed: {}", e);
-                return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to convert generated OCPT to frontend format").into_response();
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to convert generated OCPT to frontend format",
+                )
+                    .into_response();
             }
         }
     }

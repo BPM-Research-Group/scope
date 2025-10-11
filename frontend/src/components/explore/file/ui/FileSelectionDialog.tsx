@@ -22,7 +22,7 @@ const FileSelectionDialog: React.FC<FileSelectionDialogProps> = ({ isOpen }) => 
         const node = getNode(dialogNodeId);
         if (!node) return;
 
-        const validFiles = files.filter((file) => node.data.config.allowedAssetTypes.includes(file.fileType));
+        const validFiles = files.filter((file) => node.data.allowedAssetTypes.includes(file.fileType));
         setFilteredFiles(validFiles);
     }, [files, dialogNodeId, getNode]);
 

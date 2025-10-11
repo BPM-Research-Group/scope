@@ -1,16 +1,27 @@
 import { memo } from 'react';
-import type { NodeProps } from '@xyflow/react';
 import { Pickaxe } from 'lucide-react';
 import BaseExploreNode from '~/components/explore/BaseExploreNode';
-import type { TMinerNode } from '~/types/explore';
+import type {
+    BaseExploreNodeDropdownOption,
+    BaseExploreNodeHandleOption,
+    TMinerNode,
+} from '~/types/explore';
 import '~/styles/animations.css';
 
-interface MinerNodeProps extends NodeProps<TMinerNode> {
+interface MinerNodeProps {
+    id: string;
+    selected: boolean;
+    data: TMinerNode['data'];
+    title: string;
+    iconName: string;
+    handleOptions: BaseExploreNodeHandleOption[];
+    dropdownOptions: BaseExploreNodeDropdownOption[];
     isLoading: boolean;
 }
 
-const BaseMinerNode = memo<MinerNodeProps>(({ isLoading, ...node }) => {
-    const { assets } = node.data;
+const BaseMinerNode = memo<MinerNodeProps>((props) => {
+    const { id, selected, data, title, iconName, handleOptions, dropdownOptions, isLoading } = props;
+    const { assets } = data;
 
     const renderFileContent = () => {
         if (assets.length === 0) return <p>Ready to mine!</p>;
@@ -64,7 +75,17 @@ const BaseMinerNode = memo<MinerNodeProps>(({ isLoading, ...node }) => {
         );
     };
 
-    return <BaseExploreNode {...node} customContent={renderFileContent()} />;
+    return (
+        <BaseExploreNode
+            id={id}
+            selected={selected}
+            title={title}
+            iconName={iconName}
+            handleOptions={handleOptions}
+            dropdownOptions={dropdownOptions}
+            customContent={renderFileContent()}
+        />
+    );
 });
 
 export default BaseMinerNode;

@@ -1,9 +1,8 @@
 use axum::Router;
-use tower_http::cors::{CorsLayer, Any};
-use axum::http::Method;
 use axum::http::HeaderValue;
+use axum::http::Method;
+use tower_http::cors::{Any, CorsLayer};
 pub mod v1;
-
 
 pub fn create_routes() -> Router {
     let cors = CorsLayer::new()
@@ -11,7 +10,5 @@ pub fn create_routes() -> Router {
         .allow_methods([Method::GET, Method::POST, Method::DELETE, Method::PUT])
         .allow_headers(Any);
 
-    Router::new()
-        .nest("/v1", v1::router())
-        .layer(cors)
+    Router::new().nest("/v1", v1::router()).layer(cors)
 }

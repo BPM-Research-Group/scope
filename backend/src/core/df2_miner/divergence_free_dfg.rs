@@ -10,12 +10,12 @@ pub fn get_divergence_free_graph_v2(
     HashSet<String>,
     HashSet<String>,
 ) {
-
     // // Convert to a serializable Vec of Vecs
     let serializable: Vec<&(String, String, String, String, String)> = relations.iter().collect();
     let json = serde_json::to_string_pretty(&serializable).unwrap();
     let mut file = File::create("relations2.json").expect("Unable to create file");
-    file.write_all(json.as_bytes()).expect("Unable to write data");
+    file.write_all(json.as_bytes())
+        .expect("Unable to write data");
 
     // Initialize return structures
     let mut dfg: HashMap<(String, String), usize> = HashMap::new();
@@ -23,8 +23,9 @@ pub fn get_divergence_free_graph_v2(
     let mut end_activities: HashSet<String> = HashSet::new();
 
     // Group relations by object ID (oid)
-    let mut grouped_relations: HashMap<String, Vec<&(String, String, String, String, String)>> = HashMap::new();
-    
+    let mut grouped_relations: HashMap<String, Vec<&(String, String, String, String, String)>> =
+        HashMap::new();
+
     for relation in relations {
         grouped_relations
             .entry(relation.3.clone()) // oid is at index 3
@@ -39,13 +40,14 @@ pub fn get_divergence_free_graph_v2(
     // Process each group of relations for the same object ID in sorted order
     for oid in sorted_oids {
         let group = grouped_relations.get(&oid).unwrap();
-        
+
         // Remove duplicates based on eid (keep first occurrence)
         let mut seen_eids: HashSet<String> = HashSet::new();
         let mut unique_relations: Vec<&(String, String, String, String, String)> = Vec::new();
-        
+
         for relation in group {
-            if seen_eids.insert(relation.0.clone()) { // eid is at index 0
+            if seen_eids.insert(relation.0.clone()) {
+                // eid is at index 0
                 unique_relations.push(relation);
             }
         }
@@ -70,7 +72,7 @@ pub fn get_divergence_free_graph_v2(
         for i in 0..unique_relations.len() - 1 {
             let current_relation = unique_relations[i];
             let next_relation = unique_relations[i + 1];
-            
+
             let current_activity = &current_relation.1;
             let next_activity = &next_relation.1;
             let current_otype = &current_relation.4;

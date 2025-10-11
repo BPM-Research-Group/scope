@@ -1,7 +1,7 @@
-use std::collections::{HashMap, HashSet};
-use crate::models::ocpt::{TreeNode, ProcessForest};
+use crate::models::ocpt::{ProcessForest, TreeNode};
 use itertools::Itertools;
 use log::info;
+use std::collections::{HashMap, HashSet};
 
 #[allow(dead_code)] // might be used later, not sure since code is from another master thesis project
 pub fn find_cuts(
@@ -9,7 +9,7 @@ pub fn find_cuts(
     _filtered_dfg: &HashMap<(String, String), usize>,
     all_activities: HashSet<String>,
     start_activities: &HashSet<String>,
-    end_activities: &HashSet<String>
+    end_activities: &HashSet<String>,
 ) -> ProcessForest {
     let mut forest = Vec::new();
 
@@ -29,66 +29,141 @@ pub fn find_cuts(
     for i in 1..n {
         for combo in activities.iter().combinations(i) {
             let combo_set: HashSet<String> = combo.into_iter().cloned().collect();
-            let complement_set: HashSet<String> = all_activities
-                .difference(&combo_set)
-                .cloned()
-                .collect();
+            let complement_set: HashSet<String> =
+                all_activities.difference(&combo_set).cloned().collect();
 
-            let combined_activites: HashSet<String> = combo_set.union(&complement_set).cloned().collect();
+            let combined_activites: HashSet<String> =
+                combo_set.union(&complement_set).cloned().collect();
             let filtered_dfg = filter_keep_dfg(&dfg, &combined_activites);
 
-            let (filtered_start_activites,filtered_end_activites)=get_start_and_end_activities_v2(&dfg, &combined_activites, start_activities, end_activities);
-            
+            let (filtered_start_activites, filtered_end_activites) =
+                get_start_and_end_activities_v2(
+                    &dfg,
+                    &combined_activites,
+                    start_activities,
+                    end_activities,
+                );
+
             // info!("Checking cut: {:?} (.....) {:?}", combo_set, complement_set);
 
-            let excl_cut = is_exclusive_choice_cut_possible(&filtered_dfg, &combo_set, &complement_set);
+            let excl_cut =
+                is_exclusive_choice_cut_possible(&filtered_dfg, &combo_set, &complement_set);
             if excl_cut {
-                info!("Excl parallel cut found: {:?} (X) {:?}", combo_set, complement_set);
+                info!(
+                    "Excl parallel cut found: {:?} (X) {:?}",
+                    combo_set, complement_set
+                );
                 let mut node = TreeNode {
                     label: "excl".to_string(),
                     children: Vec::new(),
                 };
-                node.children.extend(find_cuts(&dfg, &filtered_dfg, combo_set, &start_activities, &end_activities));
-                node.children.extend(find_cuts(&dfg, &filtered_dfg, complement_set, &start_activities, &end_activities));
+                node.children.extend(find_cuts(
+                    &dfg,
+                    &filtered_dfg,
+                    combo_set,
+                    &start_activities,
+                    &end_activities,
+                ));
+                node.children.extend(find_cuts(
+                    &dfg,
+                    &filtered_dfg,
+                    complement_set,
+                    &start_activities,
+                    &end_activities,
+                ));
                 forest.push(node);
                 return forest; // Return early if you only want the first valid cut
             }
 
             let seq_cut = is_sequence_cut_possible(&filtered_dfg, &combo_set, &complement_set);
             if seq_cut {
-                info!("Seq parallel cut found: {:?} (->) {:?}", combo_set, complement_set);
+                info!(
+                    "Seq parallel cut found: {:?} (->) {:?}",
+                    combo_set, complement_set
+                );
                 let mut node = TreeNode {
                     label: "seq".to_string(),
                     children: Vec::new(),
                 };
-                node.children.extend(find_cuts(&dfg, &filtered_dfg, combo_set, &start_activities, &end_activities));
-                node.children.extend(find_cuts(&dfg, &filtered_dfg, complement_set, &start_activities, &end_activities));
+                node.children.extend(find_cuts(
+                    &dfg,
+                    &filtered_dfg,
+                    combo_set,
+                    &start_activities,
+                    &end_activities,
+                ));
+                node.children.extend(find_cuts(
+                    &dfg,
+                    &filtered_dfg,
+                    complement_set,
+                    &start_activities,
+                    &end_activities,
+                ));
                 forest.push(node);
                 return forest; // Return early if you only want the first valid cut
             }
 
-            let para_cut = is_parallel_cut_possible(&filtered_dfg, &combo_set, &complement_set, &filtered_start_activites, &filtered_end_activites);
+            let para_cut = is_parallel_cut_possible(
+                &filtered_dfg,
+                &combo_set,
+                &complement_set,
+                &filtered_start_activites,
+                &filtered_end_activites,
+            );
             if para_cut {
-                info!("Parallel cut found: {:?} (||) {:?}", combo_set, complement_set);
+                info!(
+                    "Parallel cut found: {:?} (||) {:?}",
+                    combo_set, complement_set
+                );
                 let mut node = TreeNode {
                     label: "para".to_string(),
                     children: Vec::new(),
                 };
-                node.children.extend(find_cuts(&dfg, &filtered_dfg, combo_set, &start_activities, &end_activities));
-                node.children.extend(find_cuts(&dfg, &filtered_dfg, complement_set, &start_activities, &end_activities));
+                node.children.extend(find_cuts(
+                    &dfg,
+                    &filtered_dfg,
+                    combo_set,
+                    &start_activities,
+                    &end_activities,
+                ));
+                node.children.extend(find_cuts(
+                    &dfg,
+                    &filtered_dfg,
+                    complement_set,
+                    &start_activities,
+                    &end_activities,
+                ));
                 forest.push(node);
                 return forest; // Return early if you only want the first valid cut
             }
 
-            let redo_cut = is_redo_cut_possible(&filtered_dfg, &combo_set, &complement_set, &filtered_start_activites, &filtered_end_activites);
+            let redo_cut = is_redo_cut_possible(
+                &filtered_dfg,
+                &combo_set,
+                &complement_set,
+                &filtered_start_activites,
+                &filtered_end_activites,
+            );
             if redo_cut {
                 info!("Redo cut found: {:?} (O->) {:?}", combo_set, complement_set);
                 let mut node = TreeNode {
                     label: "redo".to_string(),
                     children: Vec::new(),
                 };
-                node.children.extend(find_cuts(&dfg, &filtered_dfg, combo_set, &start_activities, &end_activities));
-                node.children.extend(find_cuts(&dfg, &filtered_dfg, complement_set, &start_activities, &end_activities));
+                node.children.extend(find_cuts(
+                    &dfg,
+                    &filtered_dfg,
+                    combo_set,
+                    &start_activities,
+                    &end_activities,
+                ));
+                node.children.extend(find_cuts(
+                    &dfg,
+                    &filtered_dfg,
+                    complement_set,
+                    &start_activities,
+                    &end_activities,
+                ));
                 forest.push(node);
                 return forest; // Return early if you only want the first valid cut
             }
@@ -112,7 +187,6 @@ pub fn is_reachable(
     activity1: &str,
     activity2: &str,
 ) -> bool {
-
     let mut visited = HashSet::new();
     let mut stack = vec![activity1.to_string()];
 
@@ -138,13 +212,10 @@ fn filter_keep_dfg(
     keep_list: &HashSet<String>,
 ) -> HashMap<(String, String), usize> {
     dfg.iter()
-        .filter(|((from, to), _)| {
-            keep_list.contains(from) && keep_list.contains(to)
-        })
+        .filter(|((from, to), _)| keep_list.contains(from) && keep_list.contains(to))
         .map(|(k, v)| (k.clone(), *v))
         .collect()
 }
-
 
 pub fn is_sequence_cut_possible(
     dfg: &HashMap<(String, String), usize>,
@@ -163,11 +234,9 @@ pub fn is_sequence_cut_possible(
     // Ensure no activity in set_1 is reachable from any activity in set_2
     for act2 in set_2_activities {
         for act1 in set_1_activities {
-            
             if is_reachable(dfg, act2, act1) {
                 return false;
             }
-
         }
     }
     true
@@ -180,7 +249,9 @@ pub fn is_exclusive_choice_cut_possible(
 ) -> bool {
     for act1 in set_1_activities {
         for act2 in set_2_activities {
-            if dfg.contains_key(&(act1.clone(), act2.clone())) || dfg.contains_key(&(act2.clone(), act1.clone())) {
+            if dfg.contains_key(&(act1.clone(), act2.clone()))
+                || dfg.contains_key(&(act2.clone(), act1.clone()))
+            {
                 return false;
             }
         }
@@ -222,7 +293,9 @@ fn is_parallel_cut_possible(
     // 5. ∀ a ∈ set_1, ∀ b ∈ set_2: (a, b) ∈ dfg ∧ (b, a) ∈ dfg
     for a in set_1_activities {
         for b in set_2_activities {
-            if !dfg.contains_key(&(a.clone(), b.clone())) || !dfg.contains_key(&(b.clone(), a.clone())) {
+            if !dfg.contains_key(&(a.clone(), b.clone()))
+                || !dfg.contains_key(&(b.clone(), a.clone()))
+            {
                 return false;
             }
         }
@@ -238,12 +311,12 @@ fn is_redo_cut_possible(
     start_activities: &HashSet<String>,
     end_activities: &HashSet<String>,
 ) -> bool {
-
     // info!("Checking redo...");
     // Condition 1: ignore for now as n==2
 
     // Condition 2: All start and end activities must be in set_1_activities
-    if !start_activities.is_subset(set_1_activities) || !end_activities.is_subset(set_1_activities) {
+    if !start_activities.is_subset(set_1_activities) || !end_activities.is_subset(set_1_activities)
+    {
         return false;
     }
     // info!("Condition 1 and 2 passed...");
@@ -326,7 +399,6 @@ fn is_redo_cut_possible(
     true
 }
 
-
 #[allow(dead_code)] // might be used later, not sure since code is from another master thesis project
 fn get_start_and_end_activities(
     dfg: &HashMap<(String, String), usize>,
@@ -394,11 +466,3 @@ fn get_start_and_end_activities_v2(
 
     (start_activities, end_activities)
 }
-
-
-
-
-
-
-
-

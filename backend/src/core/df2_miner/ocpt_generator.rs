@@ -1,24 +1,31 @@
+use simplelog::*;
 use std::collections::{HashMap, HashSet};
 use std::fs as stdfs;
 use std::fs::File;
-use simplelog::*;
 
-use crate::models::ocel_sid_df2_miner::{OcelJson};
+use crate::core::df2_miner::convert_to_json_tree::build_output; // << your new module
 use crate::core::df2_miner::{
-    build_relations_fns,
-    interaction_patterns,
-    divergence_free_dfg,
-    start_cuts_opti,
+    build_relations_fns, divergence_free_dfg, interaction_patterns, start_cuts_opti,
 };
-use crate::core::df2_miner::convert_to_json_tree::{build_output}; // << your new module
+use crate::models::ocel_sid_df2_miner::OcelJson;
 use uuid::Uuid;
 
 pub fn generate_ocpt_from_fileid(file_id: &str) -> String {
     // Setup logging (ignore if already initialized)
     CombinedLogger::init(vec![
-        TermLogger::new(LevelFilter::Info, Config::default(), TerminalMode::Mixed, ColorChoice::Auto),
-        WriteLogger::new(LevelFilter::Info, Config::default(), File::create("process.log").unwrap()),
-    ]).ok();
+        TermLogger::new(
+            LevelFilter::Info,
+            Config::default(),
+            TerminalMode::Mixed,
+            ColorChoice::Auto,
+        ),
+        WriteLogger::new(
+            LevelFilter::Info,
+            Config::default(),
+            File::create("process.log").unwrap(),
+        ),
+    ])
+    .ok();
 
     // Load OCEL from temp
     let file_path = format!("./temp/ocel_v2_{}.json", file_id);
@@ -34,7 +41,10 @@ pub fn generate_ocpt_from_fileid(file_id: &str) -> String {
         divergence_free_dfg::get_divergence_free_graph_v2(&relations, &div);
 
     // Filter out unwanted activities
-    let remove_list = vec!["failed delivery".to_string(), "payment reminder".to_string()];
+    let remove_list = vec![
+        "failed delivery".to_string(),
+        "payment reminder".to_string(),
+    ];
     let filtered_dfg = filter_dfg(&dfg, &remove_list);
     let filtered_activities = filter_activities(&all_activities, &remove_list);
 
@@ -57,7 +67,10 @@ pub fn generate_ocpt_from_fileid(file_id: &str) -> String {
     let out_path = format!("./temp/ocpt_{}.json", new_file_id);
     stdfs::write(&out_path, ocpt_json).unwrap();
 
-    println!("✅ OCPT saved to {} (new file_id = {})", out_path, new_file_id);
+    println!(
+        "✅ OCPT saved to {} (new file_id = {})",
+        out_path, new_file_id
+    );
 
     // Return the new id so caller can propagate it
     new_file_id
@@ -68,17 +81,12 @@ fn filter_dfg(
     remove_list: &Vec<String>,
 ) -> HashMap<(String, String), usize> {
     dfg.iter()
-        .filter(|((from, to), _)| {
-            !remove_list.contains(from) && !remove_list.contains(to)
-        })
+        .filter(|((from, to), _)| !remove_list.contains(from) && !remove_list.contains(to))
         .map(|(k, v)| (k.clone(), *v))
         .collect()
 }
 
-fn filter_activities(
-    all_activities: &Vec<String>,
-    remove_list: &Vec<String>,
-) -> HashSet<String> {
+fn filter_activities(all_activities: &Vec<String>, remove_list: &Vec<String>) -> HashSet<String> {
     all_activities
         .iter()
         .filter(|activity| !remove_list.contains(*activity))

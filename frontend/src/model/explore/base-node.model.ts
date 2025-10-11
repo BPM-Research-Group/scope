@@ -1,8 +1,6 @@
 import { type XYPosition } from '@xyflow/react';
 import { getNodeCategoryByType } from '~/lib/explore/exploreNodes.utils';
 import {
-    type BaseExploreNodeConfig,
-    type BaseExploreNodeDisplay,
     type ExploreNodeCategory,
     type ExploreNodeData,
     type ExploreNodeType,
@@ -32,6 +30,4 @@ export abstract class BaseExploreNode {
 
     // Abstract methods that child classes must implement
     protected abstract initializeData(nodeType: ExploreNodeType, nodeCategory: ExploreNodeCategory): ExploreNodeData;
-    protected abstract getDisplay(nodeType: ExploreNodeType): BaseExploreNodeDisplay;
-    protected abstract getConfig(nodeType: ExploreNodeType): BaseExploreNodeConfig;
 }

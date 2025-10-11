@@ -1,11 +1,14 @@
-use axum::{
-    Router,
-    routing::{get},
-};
 use crate::handlers::conformance::{get_conformance_ocpt_ocel, get_conformance_ocpt_ocpt};
+use axum::{Router, routing::get};
 
 pub fn router() -> Router {
     Router::new()
-        .route("/ocpt/{ocpt_id}/ocel/{ocel_id}", get(get_conformance_ocpt_ocel))
-        .route("/ocpt_1/{ocpt_id_1}/ocpt_2/{ocpt_id_2}", get(get_conformance_ocpt_ocpt))
+        .route(
+            "/ocpt/{ocpt_id}/ocel/{ocel_id}",
+            get(get_conformance_ocpt_ocel),
+        )
+        .route(
+            "/ocpt_1/{ocpt_id_1}/ocpt_2/{ocpt_id_2}",
+            get(get_conformance_ocpt_ocpt),
+        )
 }

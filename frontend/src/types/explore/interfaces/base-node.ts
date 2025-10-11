@@ -40,10 +40,9 @@ export interface BaseExploreNodeConfig {
 }
 
 export interface BaseExploreNodeData extends Record<string, unknown> {
-    display: BaseExploreNodeDisplay;
-    config: BaseExploreNodeConfig;
     assets: BaseExploreNodeAsset[];
     nodeType: ExploreNodeType;
     nodeCategory: ExploreNodeCategory;
+    allowedAssetTypes: readonly AssetType[];
     onDataChange: (id: string, newData: Partial<BaseExploreNodeData>) => void;
 }

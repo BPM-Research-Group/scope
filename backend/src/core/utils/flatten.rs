@@ -1,9 +1,7 @@
-use process_mining::event_log::{Attribute, AttributeValue, Event, Trace, XESEditableAttribute};
 use process_mining::event_log::EventLog;
+use process_mining::event_log::{Attribute, AttributeValue, Event, Trace, XESEditableAttribute};
 
-use crate::models::ocel::{LinkedOCELAccess, IndexLinkedOCEL, OCELAttributeValue};
-
-
+use crate::models::ocel::{IndexLinkedOCEL, LinkedOCELAccess, OCELAttributeValue};
 
 pub(crate) fn flatten_ocel_on(locel: &IndexLinkedOCEL, object_type: &str) -> EventLog {
     let mut traces: Vec<_> = locel

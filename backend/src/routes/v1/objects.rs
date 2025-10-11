@@ -1,11 +1,9 @@
+use crate::handlers::ocel::{delete_ocel, get_ocel};
+use crate::handlers::ocpt::{delete_ocpt, get_ocpt};
 use axum::{
     Router,
-    routing::{get, delete},
-
+    routing::{delete, get},
 };
-use crate::handlers::ocpt::{get_ocpt,delete_ocpt};
-use crate::handlers::ocel::{get_ocel,delete_ocel};
-
 
 pub fn router() -> Router {
     Router::new()

@@ -3,6 +3,7 @@ import { scaleOrdinal } from '@visx/scale';
 import type { ScaleOrdinal } from 'd3-scale';
 import { schemeSet1 } from 'd3-scale-chromatic';
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { ExtendedFile } from '~/types/fileObject.types';
 import type { FlowJson } from '~/types/flow/flow.types';
 import type { ObjectFlowMapRecord, OcelEventData } from '~/types/ocel.types';
@@ -37,15 +38,15 @@ interface FileStore {
 }
 
 interface UseFilteredObjectType {
-    filteredObjectTypes: string[];
-    setFilteredObjectTypes: (filteredObjectTypes: string[]) => void;
+    filteredObjectTypes: Map<string, string[]>;
+    setFilteredObjectTypes: (nodeId: string, filteredObjectTypes: string[]) => void;
 }
 
 interface ColorScaleState {
-    colorScale: ScaleOrdinal<string, string, never>;
-    objectTypes: string[];
-    setColorScaleObjectTypes: (types: string[]) => void;
-    updateColorScale: () => void;
+    colorScales: Map<string, { domain: string[]; range: string[] }>;
+    objectTypes: Map<string, string[]>;
+    setColorScaleObjectTypes: (nodeId: string, types: string[]) => void;
+    updateColorScale: (nodeId: string) => void;
 }
 
 interface RenderedOcptStore {
@@ -119,34 +120,6 @@ export const useStoredFiles = create<FileStore>((set) => ({
     addFile: (file) => set((state) => ({ files: [...state.files, file] })),
     removeFile: (file) => set((state) => ({ files: state.files.filter((f) => f !== file) })),
     clearFiles: () => set((state) => ({ files: [] })),
-}));
-
-export const useFilteredObjectType = create<UseFilteredObjectType>((set) => ({
-    filteredObjectTypes: [],
-    setFilteredObjectTypes: (newFilteredObjectTypes) => set(() => ({ filteredObjectTypes: newFilteredObjectTypes })),
-}));
-
-// Create the store
-export const useColorScaleStore = create<ColorScaleState>((set, get) => ({
-    colorScale: scaleOrdinal({
-        domain: [] as string[],
-        range: schemeSet1.slice(),
-    }),
-    objectTypes: [],
-
-    setColorScaleObjectTypes: (types: string[]) => {
-        set({ objectTypes: types });
-        get().updateColorScale();
-    },
-
-    updateColorScale: () => {
-        const { objectTypes } = get();
-        const newColorScale = scaleOrdinal({
-            domain: objectTypes,
-            range: schemeSet1.slice(),
-        });
-        set({ colorScale: newColorScale });
-    },
 }));
 
 export const useRenderedOcpt = create<RenderedOcptStore>((set) => ({

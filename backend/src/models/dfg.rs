@@ -1,11 +1,11 @@
 #![allow(dead_code)] // helper functions which didn't get used yet in the code
-use serde::{Deserialize, Serialize};
-use std::collections::{HashMap};
-pub use process_mining::dfg::dfg_struct::DirectlyFollowsGraph;
-pub use process_mining::ocel::linked_ocel::index_linked_ocel::{IndexLinkedOCEL};
-use process_mining::ocel::linked_ocel::LinkedOCELAccess;
-use process_mining::event_log::event_log_struct::{EventLog, EventLogClassifier};
 use crate::core::utils::flatten::flatten_ocel_on;
+pub use process_mining::dfg::dfg_struct::DirectlyFollowsGraph;
+use process_mining::event_log::event_log_struct::{EventLog, EventLogClassifier};
+use process_mining::ocel::linked_ocel::LinkedOCELAccess;
+pub use process_mining::ocel::linked_ocel::index_linked_ocel::IndexLinkedOCEL;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /////////////////// backend struct copied from https://github.com/aarkue/rust4pm/process_mining/src/object_centric/object_centric_dfg_struct.rs ////////////////
 
@@ -57,8 +57,6 @@ impl OCDirectlyFollowsGraph<'_> {
         serde_json::to_string(&self).unwrap()
     }
 }
-
-
 
 //////////////////// sid //////////////////////////
 #[derive(Serialize)]
