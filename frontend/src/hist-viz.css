@@ -1,4 +1,4 @@
-/* Page layout */
+/* ============ PAGE LAYOUT ============ */
 .hv-page {
   display: flex;
   flex-direction: column;
@@ -14,6 +14,7 @@
   font-size: 34px;
   line-height: 1.1;
 }
+
 .hv-h2 {
   margin: 4px 0 0 0;
   font-size: 28px;
@@ -21,14 +22,14 @@
   line-height: 1.1;
 }
 
-/* Vertical scroll for the list of rows */
+/* ============ MAIN SCROLL AREA ============ */
 .hv-board {
   flex: 1;
   overflow-y: auto;
   padding: 12px 18px 18px;
 }
 
-/* Row container */
+/* ============ ROW CONTAINER ============ */
 .hv-row {
   border: 1px solid #e4e4e7;
   border-radius: 12px;
@@ -42,13 +43,33 @@
   margin-bottom: 8px;
 }
 
-/* Horizontal scroll area per row */
+/* ============ SCROLLER ============ */
 .hv-row-scroller {
-  overflow-x: scroll;
+  overflow-x: auto;
   overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #3b82f6 #dbeafe;
+  scrollbar-gutter: stable;
 }
 
-/* Cards in a row – fixed min width enables horizontal scrolling */
+/* iOS-like scrollbar */
+.hv-row-scroller::-webkit-scrollbar {
+  height: 10px;
+}
+.hv-row-scroller::-webkit-scrollbar-track {
+  background: #dbeafe;
+  border-radius: 6px;
+}
+.hv-row-scroller::-webkit-scrollbar-thumb {
+  background-color: #3b82f6;
+  border-radius: 6px;
+  border: 2px solid #dbeafe;
+}
+.hv-row-scroller::-webkit-scrollbar-thumb:hover {
+  background-color: #2563eb;
+}
+
+/* ============ CARD GRID ============ */
 .hv-cards {
   display: grid;
   grid-auto-flow: column;
@@ -56,13 +77,14 @@
   gap: 12px;
 }
 
-/* Card */
+/* ============ CARD ============ */
 .hv-card {
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   padding: 10px;
   background: #fff;
 }
+
 .hv-card-head {
   display: flex;
   align-items: center;
@@ -71,15 +93,23 @@
   font-weight: 600;
 }
 
-/* Chart canvas */
-.hv-chart { width: 100%; height: auto; display: block; }
+/* ============ CHART CANVAS ============ */
+.hv-chart {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible; /* prevents label clipping */
+}
 
-/* Selection text */
+/* ============ SELECTION TEXT ============ */
 .hv-selection {
   margin-top: 6px;
   font-size: 12px;
   color: #111827;
+  text-align: center;
 }
+
+/* ============ BUTTONS ============ */
 .hv-btn-ghost {
   margin-left: 8px;
   border: 1px solid #e5e7eb;
@@ -87,61 +117,104 @@
   border-radius: 8px;
   padding: 2px 8px;
   cursor: pointer;
+  transition: background 0.2s ease;
 }
-.hv-btn-ghost:hover { background: #f3f4f6; }
-
-/* Tooltip style inside the SVG */
-.hv-tip { font-size: 11px; fill: #334155; pointer-events: none; }
-
-/* ================= Slider (iOS-like, Blue) ================= */
-
-.hv-slider {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 8px;
-  border-radius: 4px;
-  background: #e5e7eb; /* light grey track */
-  outline: none;
-  margin-top: 8px;
-  margin-bottom: 4px;
+.hv-btn-ghost:hover {
+  background: #f3f4f6;
 }
 
-/* Track (WebKit) */
-.hv-slider::-webkit-slider-runnable-track {
-  height: 8px;
+/* ============ TAG LISTS (if used later) ============ */
+.hv-taglist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0;
+}
+
+.hv-tag {
   background: #e5e7eb;
-  border-radius: 4px;
+  border-radius: 8px;
+  padding: 2px 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
 }
 
-/* Thumb (WebKit) */
-.hv-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 40px;                
-  height: 20px;               
-  background: #3b82f6;        /* iOS blue */
-  border-radius: 999px;       /* pill shape */
-  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
-  cursor: pointer;
-  margin-top: -6px;           /* aligns thumb with track */
-}
-
-
-/* Track (Firefox) */
-.hv-slider::-moz-range-track {
-  height: 8px;
-  background: #e5e7eb;
-  border-radius: 4px;
-}
-
-/* Thumb (Firefox) */
-.hv-slider::-moz-range-thumb {
-  width: 40px;
-  height: 20px;
-  background: #3b82f6;
+.hv-tag button {
+  background: transparent;
   border: none;
-  border-radius: 999px;       /* pill shape */
-  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
   cursor: pointer;
+  color: #6b7280;
+  font-weight: bold;
+}
+.hv-tag button:hover {
+  color: #ef4444;
+}
+
+/* ============ MODAL OVERLAY ============ */
+.hv-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: fadeIn 0.25s ease-out;
+  z-index: 2000;
+}
+
+/* ============ MODAL INNER CONTAINER ============ */
+.hv-modal-inner {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 40px rgba(0, 0, 0, 0.4);
+  padding: 20px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  animation: popIn 0.2s ease-out;
+}
+
+/* ============ LARGE EXPANDED HISTOGRAM ============ */
+.hv-modal-large {
+  width: 85vw;
+  height: 80vh;
+  max-width: 1200px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Modal header area */
+.hv-modal-head {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 8px;
+  position: relative;
+}
+.hv-modal-head strong {
+  font-size: 18px;
+}
+.hv-modal-head .hv-btn-ghost {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+/* ============ ANIMATIONS ============ */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes popIn {
+  from { transform: scale(0.97); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
