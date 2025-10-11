@@ -14,6 +14,7 @@ import { useExploreEventHandlers } from '~/hooks/useExploreEventHandlers';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { useFileDialogStore } from '~/stores/store';
 import { Logger } from '~/lib/logger';
+import HistVisualizationNode from '~/components/explore/visualization/HistVisualizationNode';
 
 const logger = Logger.getInstance();
 
@@ -24,6 +25,7 @@ const nodeTypes = {
     ocptVisualizationNode: OcptVisualizationNode,
     ocelFileNode: OcelFileNode,
     ocptFileNode: OcptFileNode,
+    histVisualizationNode: HistVisualizationNode, // Reusing the same component for histogram visualization
 };
 
 const Explore: React.FC = () => {
@@ -36,6 +38,7 @@ const Explore: React.FC = () => {
 
     useMemo(() => {
         logger.log(nodes);
+        console.log(nodes);
     }, [nodes]);
 
     return (
