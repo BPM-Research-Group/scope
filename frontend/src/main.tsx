@@ -9,6 +9,7 @@ import Home from '~/routes/Home';
 import OcptViewer from '~/routes/OcptViewer';
 import Pipeline from '~/routes/Pipeline';
 import Upload from '~/routes/Upload';
+import HistViz from './routes/Hist-Viz';
 
 // Create a client
 const queryClient = new QueryClient();
@@ -33,6 +34,10 @@ const router = createBrowserRouter([
     {
         path: '/data/pipeline/explore/ocpt/:nodeId',
         element: <OcptViewer />,
+    },
+    {
+        path: '/data/hist-viz',
+        element: <HistViz />,
     },
 ]);
 
