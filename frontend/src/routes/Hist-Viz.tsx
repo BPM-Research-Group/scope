@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from "react";
-import "~/hist-viz.css";
+import "~/styles/hist-viz.css";
 import { HISTOGRAM_DEMO } from "~/demoHistogram";
-import { HistogramChart } from "~/HistogramChart";
+import { HistogramChart } from "~/components/HistogramChart";
 import type { HistogramEntry, HistogramResult } from "~/types";
 
 export default function HistViz() {
