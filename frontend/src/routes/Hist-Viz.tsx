@@ -3,16 +3,21 @@ import "~/styles/hist-viz.css";
 import { HISTOGRAM_DEMO } from "~/demoHistogram";
 import { HistogramChart } from "~/components/HistogramChart";
 import type { HistogramEntry, HistogramResult } from "~/types";
-
+import histogramData from "./histogram.json";  // adjust path
+import { useExploreFlowStore } from "~/stores/exploreStore";
 export default function HistViz() {
-  const [data, setData] = useState<HistogramResult | null>(null);
+const [data, setData] = useState<HistogramResult | null>(null);
 
-  useEffect(() => {
-    fetch("/api/histograms")
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then(setData)
-      .catch(() => setData(HISTOGRAM_DEMO));
-  }, []);
+
+useEffect(() => {
+  setData(histogramData);
+}, []);
+  // useEffect(() => {
+  //   fetch("/histogram.json")
+  //     .then((r) => (r.ok ? r.json() : Promise.reject()))
+  //     .then(setData)
+  //     .catch(() => setData(HISTOGRAM_DEMO));
+  // }, []);
 
   const rows = useMemo(() => {
     if (!data) return [];
