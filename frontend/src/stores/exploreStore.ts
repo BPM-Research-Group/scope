@@ -173,7 +173,7 @@ export const useExploreFlowStore = create<ExploreFlowStore>((set, get) => ({
         const pipelines = JSON.parse(localStorage.getItem('savedPipelines') || '[]');
         const pipeline = pipelines.find((p: SavedPipeline) => p.id === pipelineId);
         if (pipeline) {
-            const restoredNodes = pipeline.nodes.map((node) => ({
+            const restoredNodes = pipeline.nodes.map((node:Node) => ({
                 ...node,
                 data: {
                     ...node.data,
