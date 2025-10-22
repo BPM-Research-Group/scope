@@ -44,3 +44,12 @@ export const getConformance = async (fileId1: string, fileId2: string) => {
     console.log(response);
     return response.data;
 };
+
+// type HistogramResult = {
+//   histograms: HistogramEntry[];
+// };
+
+export const getHistogram = async (fileId: string) => {
+    const response = await api.get(`/v1/event_object_frequencies/histogram/${fileId}`);
+    return response.data;
+};
