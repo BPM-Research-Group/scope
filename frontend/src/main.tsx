@@ -5,11 +5,11 @@ import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import '~/index.css';
 import Explore from '~/routes/Explore';
+import HistViz from '~/routes/Hist-Viz';
 import Home from '~/routes/Home';
 import OcptViewer from '~/routes/OcptViewer';
 import Pipeline from '~/routes/Pipeline';
 import Upload from '~/routes/Upload';
-import HistViz from './routes/Hist-Viz';
 
 // Create a client
 const queryClient = new QueryClient();
@@ -36,7 +36,7 @@ const router = createBrowserRouter([
         element: <OcptViewer />,
     },
     {
-        path: '/data/hist-viz',
+        path: '/data/hist-viz/:fileId',
         element: <HistViz />,
     },
 ]);
