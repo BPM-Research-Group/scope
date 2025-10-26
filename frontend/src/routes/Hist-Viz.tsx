@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { SidebarProvider } from '~/components/ui/sidebar';
+import BreadcrumbNav from '~/components/BreadcrumbNav';
 import { HistogramChart } from '~/components/HistogramChart';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { getHistogram } from '~/services/api';
 import type { TFileNode } from '~/types/explore';
-import { HISTOGRAM_DEMO } from '~/demoHistogram';
 import '~/styles/hist-viz.css';
 import type { HistogramEntry, HistogramResult } from '~/types';
-import histogramData from './histogram.json';
 
 export default function HistViz() {
     const [data, setData] = useState<HistogramResult | null>(null);
@@ -45,30 +45,40 @@ export default function HistViz() {
             .map(([evt, arr]) => [evt, arr.sort((a, b) => a.object_type.localeCompare(b.object_type))] as const);
     }, [data]);
 
-    if (!data) return <div style={{ padding: 20 }}>Loading histograms…</div>;
-
+    // Wrapping the view in SidebarProvider and BreadcrumbNav for consistent UI
     return (
-        <div className="hv-page">
-            <header className="hv-topbar">
-                <h1 className="hv-h1">Histograms</h1>
-                <h2 className="hv-h2">Event wise histograms</h2>
-            </header>
+        <SidebarProvider>
+            <div className="h-screen w-screen overflow-hidden">
+                <BreadcrumbNav />
+                <div className="flex flex-1 h-full w-full">
+                    {!data ? (
+                        <div style={{ padding: 20 }}>Loading histograms…</div>
+                    ) : (
+                        <div className="hv-page w-full">
+                            <header className="hv-topbar">
+                                <h1 className="hv-h1">Histograms</h1>
+                                <h2 className="hv-h2">Event wise histograms</h2>
+                            </header>
 
-            <main className="hv-board">
-                {rows.map(([event, entries]) => (
-                    <section className="hv-row" key={event}>
-                        <div className="hv-row-title">Event: {event}</div>
-                        <div className="hv-row-scroller">
-                            <div className="hv-cards">
-                                {entries.map((e) => (
-                                    <HistogramCard key={`${e.event_type}|${e.object_type}`} entry={e} />
+                            <main className="hv-board">
+                                {rows.map(([event, entries]) => (
+                                    <section className="hv-row" key={event}>
+                                        <div className="hv-row-title">Event: {event}</div>
+                                        <div className="hv-row-scroller">
+                                            <div className="hv-cards">
+                                                {entries.map((e) => (
+                                                    <HistogramCard key={`${e.event_type}|${e.object_type}`} entry={e} />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </section>
                                 ))}
-                            </div>
+                            </main>
                         </div>
-                    </section>
-                ))}
-            </main>
-        </div>
+                    )}
+                </div>
+            </div>
+        </SidebarProvider>
     );
 }
 

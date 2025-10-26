@@ -1,4 +1,14 @@
-import { Eye, File, FileJson, FileSpreadsheet, Network, Pickaxe, TreePine, Workflow } from 'lucide-react';
+import {
+    AlignEndHorizontal,
+    Eye,
+    File,
+    FileJson,
+    FileSpreadsheet,
+    Network,
+    Pickaxe,
+    TreePine,
+    Workflow,
+} from 'lucide-react';
 import {
     Sidebar,
     SidebarContent,
@@ -46,7 +56,11 @@ const ExploreSidebar: React.FC<ExploreSidebarProps> = ({}) => {
                                 <DndCard title="LBOF Visualization" Icon={Workflow} nodeType="lbofVisualizationNode" />
                             </SidebarMenuItem>
                             <SidebarMenuItem className="ml-1">
-                                <DndCard title="Histogram Visualization" Icon={Workflow} nodeType="histVisualizationNode" />
+                                <DndCard
+                                    title="Histogram Visualization"
+                                    Icon={AlignEndHorizontal}
+                                    nodeType="histVisualizationNode"
+                                />
                             </SidebarMenuItem>
                         </SidebarMenu>
                     </SidebarGroupContent>

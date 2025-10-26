@@ -1,5 +1,5 @@
 import React from 'react';
-import { Compass, Eye, File, House, Network, Route } from 'lucide-react';
+import { AlignEndHorizontalIcon, Compass, Eye, File, House, Network, Route } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { BreadcrumbItem, BreadcrumbPage, BreadcrumbSeparator } from '~/components/ui/breadcrumb';
 
@@ -21,6 +21,8 @@ const BreadCrumbPath: React.FC<BreadCrumbPathProps> = ({ pathnames }) => {
                 return <Compass className={className} />;
             case 'pipeline':
                 return <Route className={className} />;
+            case 'hist-viz':
+                return <AlignEndHorizontalIcon className={className} />;
         }
     };
 

@@ -36,7 +36,7 @@ const router = createBrowserRouter([
         element: <OcptViewer />,
     },
     {
-        path: '/data/hist-viz/:fileId',
+        path: '/data/pipeline/explore/hist-viz/:fileId',
         element: <HistViz />,
     },
 ]);
