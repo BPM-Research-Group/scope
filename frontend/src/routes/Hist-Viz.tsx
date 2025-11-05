@@ -169,7 +169,7 @@ export default function HistViz() {
         };
 
         console.log('Submitting to backend:', JSON.stringify(finalPayload, null, 2));
-        // setFilteredHistogram(fileId!, finalPayload);
+        setFilteredHistogram(fileId!, finalPayload);
         // Actual call to the backend API for submitting filtered data
         // e.g., sendFilteredData(finalPayload);
     };
