@@ -53,3 +53,8 @@ export const getHistogram = async (fileId: string) => {
     const response = await api.get(`/v1/event_object_frequencies/histogram/${fileId}`);
     return response.data;
 };
+
+export const setFilteredHistogram = async (fileId: string, payload: any) => {
+    const response = await api.post(`/v1/event_object_frequencies/histogram_filter/${fileId}`, payload);
+    return response.data;
+}
