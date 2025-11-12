@@ -250,7 +250,7 @@ export default function HistViz() {
                                 {/* --- Added filter buttons --- */}
                                 <div className="flex items-center gap-2 mr-6">
                                     <FilterDropdown
-                                        title="Case Filter"
+                                        title="Activity Filter"
                                         items={allEventTypes}
                                         selectedItems={selectedEventTypes}
                                         onItemSelect={handleEventTypeSelect}
@@ -259,7 +259,7 @@ export default function HistViz() {
                                         isEditing={isEditing} // ---Pass isEditing prop to stop the popup to collapse ---
                                     />
                                     <FilterDropdown
-                                        title="Object Filter"
+                                        title="Type Filter"
                                         items={allObjectTypes}
                                         selectedItems={selectedObjectTypes}
                                         onItemSelect={handleObjectTypeSelect}
