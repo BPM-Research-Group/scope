@@ -46,7 +46,7 @@ const router = createBrowserRouter([
         element: <OcelViewer />,
     },
     {
-        path: '/data/pipeline/explore/hist-viz/:fileId',
+        path: '/data/pipeline/explore/hist-viz/:nodeId',
         element: <HistViz />,
     },
 ]);

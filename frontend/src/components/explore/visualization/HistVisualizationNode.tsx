@@ -31,7 +31,7 @@ const HistVisualizationNode = memo<NodeProps<TVisualizationNode>>((node) => {
 
     const visualize = () => {
         if (fileId) {
-            navigate(`/data/pipeline/explore/hist-viz/${fileId}`); // sending the fileId in the route to display histograms
+            navigate(`/data/pipeline/explore/hist-viz/${id}`); // sending the fileId in the route to display histograms
         } else {
             console.warn('No fileId available for histogram visualization');
         }

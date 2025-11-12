@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { uploadFile } from '~/services/api';
+import { setFilteredHistogram, uploadFile } from '~/services/api';
 import type { ExtendedFile } from '~/types/fileObject.types';
 
 export const useUploadFileMutation = () => {
@@ -20,6 +20,20 @@ export const useUploadFileMutation = () => {
         // Always refetch after error or success:
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['uploadFile'] });
+        },
+    });
+};
+
+type FilteredHistogramPayload = {
+    fileId: string;
+    payload: any;
+};
+
+export const useSetFilteredHistogramMutation = () => {
+    return useMutation({
+        mutationKey: ['setFilteredHistogram'],
+        mutationFn: ({ fileId, payload }: FilteredHistogramPayload) => {
+            return setFilteredHistogram(fileId, payload);
         },
     });
 };
