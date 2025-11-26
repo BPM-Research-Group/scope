@@ -1,8 +1,11 @@
 // Handler layer only uses a subset of these helpers; keep the rest available without warnings.
 #![allow(dead_code)]
-use crate::core::case_notion::utils::{
-    build_event_identifiers, build_object_identifiers, detect_diverging_object_types,
-    map_object_id_to_type,
+use crate::core::case_notion::{
+    measures::{average_score, f1_from_measures, measure_value},
+    utils::{
+        build_event_identifiers, build_object_identifiers, detect_diverging_object_types,
+        map_object_id_to_type,
+    },
 };
 
 use process_mining::OCEL;
@@ -100,9 +103,45 @@ pub struct CaseNotionOcelOutput {
 pub struct CaseNotionEvaluation {
     pub object_type: Option<String>,
     pub measures: Vec<CaseMeasure>,
-    pub total_score: f64,
-    pub f1_score: Option<f64>,
     pub case_notion: FxHashSet<(Vec<String>, Vec<String>, Vec<(String, String)>)>,
+}
+
+impl CaseNotionEvaluation {
+    pub fn new(
+        object_type: Option<String>,
+        measures: Vec<CaseMeasure>,
+        case_notion: FxHashSet<(Vec<String>, Vec<String>, Vec<(String, String)>)>,
+    ) -> Self {
+        Self {
+            object_type,
+            measures: Self::with_summary_measures(measures),
+            case_notion,
+        }
+    }
+
+    fn with_summary_measures(mut measures: Vec<CaseMeasure>) -> Vec<CaseMeasure> {
+        let total_score = average_score(&measures);
+        let f1_score = f1_from_measures(&measures);
+        measures.push(CaseMeasure {
+            name: "Total Score".to_string(),
+            value: total_score,
+        });
+        if let Some(score) = f1_score {
+            measures.push(CaseMeasure {
+                name: "F1 Score".to_string(),
+                value: score,
+            });
+        }
+        measures
+    }
+
+    pub fn total_score(&self) -> Option<f64> {
+        measure_value(&self.measures, "Total Score")
+    }
+
+    pub fn f1_score(&self) -> Option<f64> {
+        measure_value(&self.measures, "F1 Score")
+    }
 }
 
 pub struct CaseNotionContext {

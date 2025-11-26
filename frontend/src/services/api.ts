@@ -11,7 +11,7 @@ export const uploadFile = async (file: ExtendedFile) => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('file_id', file.id);
-    formData.append('file_type', file.fileType);
+    // formData.append('file_type', file.fileType);
 
     console.log('FormData entries:', Array.from(formData.entries()));
 

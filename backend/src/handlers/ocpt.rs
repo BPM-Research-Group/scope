@@ -1,4 +1,3 @@
-use crate::core::df2_miner::ocpt_generator::generate_ocpt_from_fileid;
 use crate::core::struct_converters::ocpt_frontend_backend::{
     backend_to_frontend, frontend_to_backend,
 };
@@ -147,63 +146,32 @@ async fn read_ocpt_as_frontend(path: &str) -> Result<OcptFE, String> {
 }
 
 pub async fn get_ocpt(Path(file_id): Path<String>) -> impl IntoResponse {
-    println!("📥 GET /v1/objects/ocpt/{}", file_id);
+    println!("-> GET /v1/objects/ocpt/{}", file_id);
 
     let ocpt_path = format!("./temp/ocpt_{}.json", file_id);
-    let v2_path = format!("./temp/ocel_v2_{}.json", file_id);
-
-    // 1) OCPT already exists → load backend struct, convert, return FE shape (keep same id)
-    if FsPath::new(&ocpt_path).exists() {
-        match read_ocpt_as_frontend(&ocpt_path).await {
-            Ok(frontend_ocpt) => {
-                let payload = serde_json::json!({
-                    "file_id": file_id,      // existing mined OCPT id
-                    "ocpt": frontend_ocpt
-                });
-                return (StatusCode::OK, Json(payload)).into_response();
-            }
-            Err(e) => {
-                eprintln!("❌ convert stored OCPT failed: {}", e);
-                return (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Failed to convert stored OCPT to frontend format",
-                )
-                    .into_response();
-            }
-        }
+    if !FsPath::new(&ocpt_path).exists() {
+        let msg = format!("OCPT file not found for fileId: {}", file_id);
+        eprintln!("{}", msg);
+        return (StatusCode::NOT_FOUND, msg).into_response();
     }
 
-    // 2) Have OCEL v2 → generate NEW OCPT (uuidv4), convert, return with new id
-    if FsPath::new(&v2_path).exists() {
-        println!("🛠️  Generating OCPT from ocel_v2_{}.json", file_id);
-
-        // Your updated generator returns the new uuidv4
-        let new_file_id = generate_ocpt_from_fileid(&file_id);
-        let new_ocpt_path = format!("./temp/ocpt_{}.json", new_file_id);
-
-        match read_ocpt_as_frontend(&new_ocpt_path).await {
-            Ok(frontend_ocpt) => {
-                let payload = serde_json::json!({
-                    "file_id": new_file_id,  // the new uuidv4 for the freshly mined OCPT
-                    "ocpt": frontend_ocpt
-                });
-                return (StatusCode::OK, Json(payload)).into_response();
-            }
-            Err(e) => {
-                eprintln!("❌ convert newly generated OCPT failed: {}", e);
-                return (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Failed to convert generated OCPT to frontend format",
-                )
-                    .into_response();
-            }
+    match read_ocpt_as_frontend(&ocpt_path).await {
+        Ok(frontend_ocpt) => {
+            let payload = serde_json::json!({
+                "file_id": file_id,
+                "ocpt": frontend_ocpt
+            });
+            (StatusCode::OK, Json(payload)).into_response()
+        }
+        Err(e) => {
+            eprintln!("convert stored OCPT failed: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to convert stored OCPT to frontend format",
+            )
+                .into_response()
         }
     }
-
-    // 4) Nothing found
-    let msg = format!("No relevant file found for fileId: {}", file_id);
-    println!("⚠️  {}", msg);
-    (StatusCode::NOT_FOUND, msg).into_response()
 }
 
 pub async fn delete_ocpt(Path(file_id): Path<String>) -> impl IntoResponse {

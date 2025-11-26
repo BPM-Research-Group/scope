@@ -1,5 +1,6 @@
 use crate::core::struct_converters::ocel_1_ocel_2_converter;
 use crate::models::ocel::OCEL;
+use crate::traits::import_export::ImportableFromPath;
 use axum::{Json, extract::Path, http::StatusCode, response::IntoResponse};
 use axum_extra::extract::Multipart;
 use bytes::Bytes;
@@ -196,30 +197,9 @@ pub async fn post_ocel_binary(mut multipart: Multipart) -> impl IntoResponse {
 
 // ========== GET: only serve v2 files ==========
 pub async fn get_ocel(Path(file_id): Path<String>) -> impl IntoResponse {
-    let path_json = PathBuf::from(format!("./temp/ocel_v2_{file_id}.json"));
-    if !path_json.exists() {
-        return (
-            StatusCode::NOT_FOUND,
-            format!("No OCEL v2 file found for fileId: {file_id}"),
-        )
-            .into_response();
-    }
-    match fs::read_to_string(&path_json).await {
-        Ok(content) => match serde_json::from_str::<Value>(&content) {
-            Ok(json) => (StatusCode::OK, Json(json)).into_response(),
-            Err(e) => {
-                eprintln!("❌ parse stored OCEL failed: {e}");
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Stored file is not valid JSON",
-                )
-                    .into_response()
-            }
-        },
-        Err(e) => {
-            eprintln!("❌ read file failed: {e}");
-            (StatusCode::INTERNAL_SERVER_ERROR, "Could not read file").into_response()
-        }
+    match OCEL::import_from_path(&file_id).await {
+        Ok(ocel) => (StatusCode::OK, Json(ocel)).into_response(),
+        Err((status, message)) => (status, message).into_response(),
     }
 }
 
@@ -260,5 +240,18 @@ pub async fn delete_ocel(Path(file_id): Path<String>) -> impl IntoResponse {
             eprintln!("❌ Failed to delete file: {}", e);
             (StatusCode::INTERNAL_SERVER_ERROR, "Failed to delete file").into_response()
         }
+    }
+}
+
+pub async fn get_types(Path(file_id): Path<String>) -> impl IntoResponse {
+    match OCEL::import_from_path(&file_id).await {
+        Ok(ocel) => {
+            let payload = serde_json::json!({
+                "object_types": ocel.object_types,
+                "event_types": ocel.event_types,
+            });
+            (StatusCode::OK, Json(payload)).into_response()
+        }
+        Err((status, message)) => (status, message).into_response(),
     }
 }

@@ -1,12 +1,13 @@
 // Import BTreeSet for ordered sets, usable as FxHashMap keys
 use crate::core::case_notion::log_graphs::{ArcEntry, LogGraphTypeLevel};
 use crate::core::case_notion::main::{CaseNotionContext, CaseNotionEvaluation};
-use crate::core::case_notion::measures::{average_score, calculate_measures, f1_from_measures};
+use crate::core::case_notion::measures::calculate_measures;
 use crate::core::case_notion::utils::is_better_evaluation;
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde_json::Value;
 use std::collections::BTreeSet;
 use std::default::Default;
+use rayon::prelude::*;
 
 /*
     Advanced case notion. Repeatedly add events & object nodes to case notion given start object type.
@@ -357,17 +358,19 @@ pub fn best_advanced_case_notion(
             evaluate_advanced_case_notion_for_object_type(context, requested)
         }
         None => {
-            let mut best: Option<CaseNotionEvaluation> = None;
-            for object_type in context.sorted_object_types() {
-                if let Some(evaluation) =
+            context
+                .sorted_object_types()
+                .par_iter()
+                .filter_map(|object_type| {
                     evaluate_advanced_case_notion_for_object_type(context, object_type)
-                {
-                    if is_better_evaluation(&evaluation, best.as_ref()) {
-                        best = Some(evaluation);
+                })
+                .reduce_with(|best, candidate| {
+                    if is_better_evaluation(&candidate, Some(&best)) {
+                        candidate
+                    } else {
+                        best
                     }
-                }
-            }
-            best
+                })
         }
     }
 }
@@ -395,14 +398,9 @@ fn evaluate_advanced_case_notion_for_object_type(
         context.total_number_of_objects(),
         context.total_number_of_events(),
     );
-    let total_score = average_score(&measures);
-    let f1_score = f1_from_measures(&measures);
-
-    Some(CaseNotionEvaluation {
-        object_type: Some(object_type.to_string()),
+    Some(CaseNotionEvaluation::new(
+        Some(object_type.to_string()),
         measures,
-        total_score,
-        f1_score,
         case_notion,
-    })
+    ))
 }
