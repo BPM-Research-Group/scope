@@ -314,8 +314,8 @@ pub(crate) fn is_better_evaluation(
     match current {
         None => true,
         Some(best) => {
-            let cand_f1 = candidate.f1_score().unwrap_or(0.0);
-            let best_f1 = best.f1_score().unwrap_or(0.0);
+            let cand_f1 = candidate.f1_score.unwrap_or(0.0);
+            let best_f1 = best.f1_score.unwrap_or(0.0);
             if (cand_f1 - best_f1).abs() > EPSILON {
                 cand_f1 > best_f1
             } else {
@@ -324,9 +324,7 @@ pub(crate) fn is_better_evaluation(
                 if (cand_corr - best_corr).abs() > EPSILON {
                     cand_corr > best_corr
                 } else {
-                    let cand_total = candidate.total_score().unwrap_or(0.0);
-                    let best_total = best.total_score().unwrap_or(0.0);
-                    cand_total > best_total
+                    candidate.total_score > best.total_score
                 }
             }
         }
