@@ -30,3 +30,4 @@ storybook-static
 
 # Custom Ignore
 public/example_data
+package-lock.json
