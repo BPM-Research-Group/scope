@@ -9,10 +9,9 @@ interface SavePipelineDialogProps {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     mode: 'save' | 'saveAs';
-    onSaveSuccess?: () => void;
 }
 
-const SavePipelineDialog: React.FC<SavePipelineDialogProps> = ({ isOpen, onOpenChange, mode, onSaveSuccess }) => {
+const SavePipelineDialog: React.FC<SavePipelineDialogProps> = ({ isOpen, onOpenChange, mode }) => {
     const { savePipeline, currentPipeline } = useExploreFlowStore();
     const [pipelineName, setPipelineName] = useState('');
 
@@ -31,12 +30,10 @@ const SavePipelineDialog: React.FC<SavePipelineDialogProps> = ({ isOpen, onOpenC
         if (isOverwrite && currentPipeline.id && currentPipeline.name !== null) {
             // Overwrite call with name and ID
             savePipeline(currentPipeline.name, currentPipeline.id);
-            onSaveSuccess?.();
             onOpenChange(false);
         } else if (isSaveAs && pipelineName.trim()) {
             // Save As call with just the new name
             savePipeline(pipelineName.trim());
-            onSaveSuccess?.();
             onOpenChange(false);
         }
     };

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Save } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
-import { toast } from 'sonner';
 import { Breadcrumb, BreadcrumbList } from '~/components/ui/breadcrumb';
 import {
     DropdownMenu,
@@ -32,11 +31,6 @@ const BreadcrumbNav: React.FC = () => {
         if (mode === 'save') handleSave();
         else handleSaveAs();
         setIsMenuOpen(false);
-    };
-
-    const handleSaveSuccess = () => {
-        toast.success('Pipeline Saved');
-        setDialogMode(null);
     };
 
     return (
@@ -82,7 +76,6 @@ const BreadcrumbNav: React.FC = () => {
                         isOpen={dialogMode !== null}
                         onOpenChange={(isOpen) => !isOpen && setDialogMode(null)}
                         mode={dialogMode ?? 'save'}
-                        onSaveSuccess={handleSaveSuccess}
                     />
                 </div>
             )}
