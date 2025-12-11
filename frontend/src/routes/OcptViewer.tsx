@@ -62,8 +62,6 @@ const OcptViewer: React.FC = () => {
                 <div className="flex flex-1 h-full w-full">
                     {isOcptMode && node ? (
                         <OCPT
-                            height={1080}
-                            width={1920}
                             treeData={treeData}
                             colorScale={colorScale}
                             objectTypes={objectTypes}

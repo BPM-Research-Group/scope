@@ -498,6 +498,7 @@ pub async fn get_traditional_case_notion(
 
 pub async fn post_generic_case_notion(
     Path(file_id): Path<String>,
+    Query(query): Query<CaseNotionQuery>,
     Json(payload): Json<GenericCaseNotion>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     log::debug!("Received GenericCaseNotion for file_id: {}", file_id);
@@ -527,7 +528,7 @@ pub async fn post_generic_case_notion(
         &file_id,
         CaseKind::Generic,
         None,
-        None,
+        Some(query.case_notion_file_id.as_str()),
     )
     .await
     {

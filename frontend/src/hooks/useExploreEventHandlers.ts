@@ -10,7 +10,7 @@ import { Logger } from '~/lib/logger';
 import { BaseExploreNodeAsset } from '~/types/explore/nodeData/baseNodeData';
 import { VisualizationExploreNodeData } from '~/types/explore/nodeData/visualizationNodeData';
 import { ExploreNodeData } from '~/types/explore/nodes';
-import { ExploreFileNodeType, NodeId } from '~/types/explore/nodeTypesCategories';
+import { NodeId } from '~/types/explore/nodeTypesCategories';
 import { NodeFactory } from '~/model/explore/node-factory.model';
 
 const logger = Logger.getInstance();
@@ -47,10 +47,35 @@ export const useExploreEventHandlers = () => {
                     logger.debug(`Assets have changed for node ${id}`, currentAssets, newData.assets);
 
                     // Update the original node
-                    updateNodeData(id, { assets: [...(newData.assets || [])] });
+                    updateNodeData(id, newData);
 
                     if (isMinerNode(node)) {
                         const neighbors = directedNeighborMap.current.get(id) || [];
+
+                        // Handle removed assets
+                        const removedAssets = currentAssets.filter(
+                            (oldAsset) => !newData.assets?.some((newAsset) => isEqual(newAsset, oldAsset))
+                        );
+
+                        removedAssets.forEach((removedAsset) => {
+                            if (removedAsset.io === 'output') {
+                                // Find neighbors that were created from this asset
+                                const neighborsToDelete = neighbors.filter((neighborId) => {
+                                    const neighborNode = getNode(neighborId);
+                                    return neighborNode?.data.assets.some(
+                                        (asset: BaseExploreNodeAsset) =>
+                                            asset.id === removedAsset.id && asset.io === 'output'
+                                    );
+                                });
+
+                                // Delete identified neighbors
+                                neighborsToDelete.forEach((neighborId) => {
+                                    onNodeDelete(neighborId);
+                                });
+                            }
+                        });
+
+                        // Handle new assets
                         const newAssets =
                             newData.assets?.filter(
                                 (newAsset) => !currentAssets.some((oldAsset) => isEqual(newAsset, oldAsset))
@@ -69,7 +94,7 @@ export const useExploreEventHandlers = () => {
 
                                 const newNode = NodeFactory.createNode(newNodePosition, nodeType);
                                 newNode.data.onDataChange = onNodeDataChange;
-                                newNode.data.assets = [asset]; // Keep original asset
+                                newNode.data.assets = [{ ...asset, io: 'output' }];
 
                                 addNode(newNode);
 
@@ -82,8 +107,10 @@ export const useExploreEventHandlers = () => {
                                 };
                                 onConnect(connection);
 
-                                if (!neighbors.includes(newNode.id)) {
-                                    directedNeighborMap.current.set(id, [...neighbors, newNode.id]);
+                                // Refresh neighbors list as it might have changed due to deletions
+                                const currentNeighbors = directedNeighborMap.current.get(id) || [];
+                                if (!currentNeighbors.includes(newNode.id)) {
+                                    directedNeighborMap.current.set(id, [...currentNeighbors, newNode.id]);
                                 }
                             }
                         });

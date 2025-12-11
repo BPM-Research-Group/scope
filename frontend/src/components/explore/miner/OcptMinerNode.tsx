@@ -15,13 +15,13 @@ import { MinerNode } from '~/types/explore/nodes';
 const OcptMinerNode = memo<NodeProps<MinerNode>>((node) => {
     const [fileId, setFileId] = useState<null | string>(null);
     const [fileName, setFileName] = useState<string>('');
-    const [algorithm, setAlgorithm] = useState<string>('DF2');
+    const [algorithm, setAlgorithm] = useState<string>(node.data.algorithm ?? 'DF2');
 
     const hasMinedAsset = useMemo(() => {
         return node.data.assets.some((asset) => asset.io === 'output');
     }, [node.data.assets]);
 
-    const { isLoading, data } = useMineOcpt(fileId, algorithm, !hasMinedAsset);
+    const { isLoading, isFetching, data } = useMineOcpt(node.id, fileId, algorithm, !hasMinedAsset);
 
     useEffect(() => {
         const inputAsset = node.data.assets.find((asset) => asset.io === 'input');
@@ -46,6 +46,20 @@ const OcptMinerNode = memo<NodeProps<MinerNode>>((node) => {
         const updatedAssets = [...node.data.assets, asset];
         node.data.onDataChange(node.id, { assets: updatedAssets });
     }, [data, fileName]);
+
+    useEffect(() => {
+        if (algorithm === node.data.algorithm) return;
+
+        const newAssets = node.data.assets.filter((asset) => asset.io !== 'output');
+
+        const updatedData = {
+            ...node.data,
+            assets: newAssets,
+            algorithm: algorithm,
+        };
+
+        node.data.onDataChange(node.id, updatedData);
+    }, [algorithm]);
 
     const handleExportJson = () => {
         if (!data) {
@@ -112,7 +126,7 @@ const OcptMinerNode = memo<NodeProps<MinerNode>>((node) => {
             ]}
             dropdownOptions={dropdownOptions}
             onDropdownAction={handleDropdownAction}
-            isLoading={isLoading}
+            isLoading={isLoading || isFetching}
             customActions={renderCustomActions()}
         />
     );

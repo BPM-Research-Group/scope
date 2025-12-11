@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { Toaster } from '~/components/ui/sonner';
 import RedirectErrorBoundary from '~/components/RedirectErrorBoundary';
 import '~/index.css';
 import Explore from '~/routes/Explore';
@@ -71,7 +72,15 @@ createRoot(document.getElementById('root')!).render(
           <SidebarTrigger /> */}
             <RouterProvider router={router} />
             {/* </SidebarProvider> */}
-            <ReactQueryDevtools />
+            <Toaster
+                position="top-center"
+                // toastOptions={{
+                //     classNames: {
+                //         // toast: 'data-[type=success]:bg-green-500 data-[type=success]:text-white',
+                //     },
+                // }}
+            />
+            {/* <ReactQueryDevtools /> */}
         </QueryClientProvider>
     </StrictMode>
 );

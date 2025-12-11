@@ -1,9 +1,11 @@
 import axios, { type AxiosResponse } from 'axios';
 import { GetCaseNotionsResponse } from '~/services/response.types';
+import { CaseOcelResponse } from '~/types/api/ocel_collection.api';
 import { CaseNotionApiResponse } from '~/types/case_notion.types';
 import { ExtendedFile } from '~/types/files.types';
 import { JSONSchema } from '~/types/ocpt/ocpt.types';
-import { CaseOcelResponse } from '~/types/api/ocel_collection.api'; // Import the new type
+
+// Import the new type
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_BACKEND_BASE_URL,
@@ -61,6 +63,14 @@ export const setFilteredHistogram = async (fileId: string, payload: any) => {
 export const getTraditionalCN = async (fileId: string, objectType: string, newFileId: string) => {
     const response = await api.get(
         `/v1/case_notion/traditional/${fileId}?object_type=${objectType}&case_notion_file_id=${newFileId}`
+    );
+    return response.data;
+};
+
+export const getGenericCN = async (fileId: string, payload: any, newFileId: string) => {
+    const response = await api.post(
+        `/v1/case_notion/generic_case_notion/${fileId}?case_notion_file_id=${newFileId}`,
+        payload
     );
     return response.data;
 };

@@ -86,9 +86,9 @@ export const useGetHistogram = (fileId: string | undefined) => {
     });
 };
 
-export const useMineOcpt = (fileId: string | null, algorithm: string, shouldFetch: boolean) => {
+export const useMineOcpt = (nodeId: string, fileId: string | null, algorithm: string, shouldFetch: boolean) => {
     return useQuery({
-        queryKey: ['mineOcpt', fileId, algorithm],
+        queryKey: ['mineOcpt', nodeId, fileId, algorithm],
         queryFn: () => mineOcpt(fileId!, algorithm),
         enabled: Boolean(fileId) && shouldFetch,
         refetchOnWindowFocus: false,
