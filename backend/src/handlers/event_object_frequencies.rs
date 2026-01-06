@@ -49,14 +49,16 @@ pub async fn post_ocel_filter(
     let ocel = OCEL::import_from_path(&ocel_file_id).await?;
 
     // 2. Call filtering function
-    let filtered_ocels = match serde_json::to_string(&selection_json) {
-        Ok(json_str) => filter_ocel_histograms(&ocel, &json_str),
-        Err(e) => {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                format!("Failed to serialize selection JSON: {}", e),
-            ));
-        }
+    let json_str = serde_json::to_string(&selection_json).map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            format!("Failed to serialize selection JSON: {}", e),
+        )
+    })?;
+
+    let filtered_ocels = match filter_ocel_histograms(&ocel, &json_str) {
+        Ok(ocels) => ocels,
+        Err(e) => return Err((StatusCode::BAD_REQUEST, e)),
     };
 
     let mut ids = Vec::new();
