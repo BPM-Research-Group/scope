@@ -1,5 +1,6 @@
 use crate::core::event_object_frequencies::{
-    histogram_builder::build_event_object_histograms, histogram_filtering::filter_ocel_histograms,
+    histogram_builder::{build_histograms, HistogramPerspective},
+    histogram_filtering::filter_ocel_histograms,
 };
 
 use crate::models::ocel::OCEL;
@@ -13,17 +14,30 @@ use axum::{
 use tokio::fs as tokio_fs;
 use uuid::Uuid;
 
-/// GET /v1/event_object_frequencies/histogram/:file_id
-/// Returns: JSON object containing event-object frequency histograms
-pub async fn get_event_object_frequencies(
+/// GET /v1/event_object_frequencies/event_perspective_histogram/:file_id
+/// Returns: JSON object containing event-object frequency histograms from the event perspective
+pub async fn get_event_perspective_histogram(
     AxumPath(file_id): AxumPath<String>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let ocel = OCEL::import_from_path(&file_id).await?;
 
-    let histogram = build_event_object_histograms(&ocel);
+    let histogram = build_histograms(&ocel, HistogramPerspective::Event);
 
     Ok(axum::Json(histogram))
 }
+
+/// GET /v1/event_object_frequencies/object_perspective_histogram/:file_id
+/// Returns: JSON object containing event-object frequency histograms from the object perspective
+pub async fn get_object_perspective_histogram(
+    AxumPath(file_id): AxumPath<String>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let ocel = OCEL::import_from_path(&file_id).await?;
+
+    let histogram = build_histograms(&ocel, HistogramPerspective::Object);
+
+    Ok(axum::Json(histogram))
+}
+
 
 /// POST /v1/event_object_frequencies/histogram_filter/:file_id
 /// Body: JSON following the `SelectionPayload` scheme
