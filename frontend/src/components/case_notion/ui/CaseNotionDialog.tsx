@@ -48,7 +48,7 @@ const CaseNotionDialog = ({ node, fileId, fileName, isOpen, onOpenChange, update
     const { data: ocelObjectTypesData } = useGetOcelObjectTypes(fileId);
     const cnGet = useGetCaseNotions(currentCnFileId, makeFinalFetch);
 
-    const { mutate, isPending, data } = useMutation({
+    const { mutate, isPending, data, reset } = useMutation({
         mutationFn: async (algorithm: string) => {
             if (!fileId) {
                 throw new Error('File ID is not available.');
@@ -160,6 +160,7 @@ const CaseNotionDialog = ({ node, fileId, fileName, isOpen, onOpenChange, update
                                 onValueChange={(val) => {
                                     setSelectedAlgorithm(val);
                                     setIsDirty(true);
+                                    reset();
                                 }}
                                 value={selectedAlgorithm}
                             >

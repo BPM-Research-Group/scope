@@ -31,12 +31,19 @@ const GraphPage: React.FC<GraphPageProps> = ({ fileId, caseNotionGraph, editable
     const [startingObjects, setStartingObjects] = useState<string[]>([]);
 
     function pushBidirectional(arr: any[], a: any, b: any) {
-        // forward
+        // We push both directions to make the graph undirected
         arr.push([a, b]);
-
-        // reverse
         arr.push([b, a]);
     }
+
+    // Reset startingObjects when switching away from generic/editable mode
+    useEffect(() => {
+        if (!editable) {
+            setStartingObjects([]);
+        }
+    }, [editable]);
+
+    // 1. Sync React State with Payload (Output)
 
     useEffect(() => {
         if (!editable || !localGraph) return;
@@ -88,6 +95,10 @@ const GraphPage: React.FC<GraphPageProps> = ({ fileId, caseNotionGraph, editable
     useEffect(() => {
         if (!data) return;
 
+        // Prevent resetting the graph when in generic/editable mode if it already exists.
+        // This ensures the user's selections are preserved when the parent component updates (e.g. after mining).
+        if (editable && localGraph) return;
+
         const nodes: any[] = [];
         const links: any[] = [];
 
@@ -122,7 +133,7 @@ const GraphPage: React.FC<GraphPageProps> = ({ fileId, caseNotionGraph, editable
         });
 
         setLocalGraph({ nodes, links });
-    }, [data, caseNotionGraph]);
+    }, [data, caseNotionGraph, editable]);
 
     useEffect(() => {
         if (!localGraph || !svgRef.current || !containerRef.current) return;

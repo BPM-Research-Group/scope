@@ -84,7 +84,7 @@ const OcelVisualization: React.FC<OcelVisualizationD3Props> = ({
             const width = svg.node()?.clientWidth || 250;
             const height = svg.node()?.clientHeight || 200;
 
-            const margin = { top: 20, right: 20, bottom: 50, left: 40 };
+            const margin = { top: 20, right: 20, bottom: 80, left: 40 };
 
             const x = d3
                 .scaleBand()

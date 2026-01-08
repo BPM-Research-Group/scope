@@ -55,9 +55,9 @@ const OcelViewer: React.FC = () => {
 
     return (
         <SidebarProvider>
-            <div className="h-screen w-screen overflow-hidden">
+            <div className="flex flex-col h-screen w-screen overflow-hidden">
                 <BreadcrumbNav />
-                <div className="flex flex-1 h-full w-full">
+                <div className="flex flex-1 h-full w-full overflow-hidden">
                     {fileId ? (
                         <OcelVisualization fileId={fileId} sourceType={sourceType} />
                     ) : (

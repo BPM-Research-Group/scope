@@ -30,6 +30,23 @@ export const useGraphInteractions = (
     const zoomTransformRef = useRef<d3.ZoomTransform | null>(null);
     const expandedNodeIdsRef = useRef<Set<string>>(new Set());
 
+    // --- State Reset on Data Change ---
+    // This hook is required to clear the svg when cycling through the cases
+    // when the Graph is viewed for an OCEL Collection.
+    useEffect(() => {
+        nodesRef.current = [];
+        edgesRef.current = [];
+        positionsRef.current.clear();
+        zoomTransformRef.current = null;
+        expandedNodeIdsRef.current.clear();
+        setCollapsedNodes(new Set());
+        setContextMenu(null);
+
+        if (svgRef.current) {
+            d3.select(svgRef.current).call(d3.zoom().transform as any, d3.zoomIdentity);
+        }
+    }, [data]);
+
     // --- Reliable Map of ID -> Object Type ---
     const objectTypeLookup = useMemo(() => {
         const map = new Map<string, string>();

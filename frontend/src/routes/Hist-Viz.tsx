@@ -255,8 +255,8 @@ export default function HistViz() {
                         <div className="hv-page w-full flex flex-col h-full pb-[80px]">
                             <header className="hv-topbar flex justify-between items-center">
                                 <div>
-                                    <h1 className="hv-h1">Histograms</h1>
-                                    <h2 className="hv-h2">Event wise histograms</h2>
+                                    <h1 className="text-3xl font-bold text-gray-900">Histograms</h1>
+                                    <p className="text-lg text-gray-600 mt-1">Event-wise histograms</p>
                                 </div>
                                 <div className="flex items-center gap-2 mr-6">
                                     {/* Activity Filter: No colors */}
