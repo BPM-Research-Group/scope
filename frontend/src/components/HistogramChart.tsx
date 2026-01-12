@@ -22,9 +22,11 @@ interface Props {
     selectedIdx: number[];
     onSelect: (idx: number[]) => void;
     event_type?: string;
-    object_type?: string; // This is the key to get the color
+    object_type?: string;
+    perspective?: 'event' | 'object';
     disabled?: boolean;
 }
+
 export const HistogramChart: React.FC<Props> = ({
     id,
     fileId,
@@ -34,27 +36,24 @@ export const HistogramChart: React.FC<Props> = ({
     selectedIdx,
     onSelect,
     event_type,
-    object_type = 'unknown', // Default to avoid errors
+    object_type = 'unknown',
+    perspective = 'event',
     disabled = false,
 }) => {
     const [expanded, setExpanded] = useState(false);
 
-    // Global color scheme retrieval
     const { colorMaps } = useExploreFlowStore();
 
     const objectColor = useMemo(() => {
-        // Try to get the saved color from the global map for this specific file
         if (colorMaps[fileId] && colorMaps[fileId][object_type]) {
             return colorMaps[fileId][object_type];
         }
-        // If not found, generate it deterministically.This ensures uniformity across the entire app without relying on store state initialization
         return getDeterministicColor(object_type);
     }, [colorMaps, fileId, object_type]);
 
     const selectedBinColor = objectColor;
-    const deselectedBinColor = '#E5E7EB'; // Grey for unselected bins
+    const deselectedBinColor = '#E5E7EB';
 
-    // Calculate responsive dimensions for expanded modal view
     const vw = typeof window !== 'undefined' ? window.innerWidth : 1280;
     const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
     const bigW = Math.min(Math.floor(vw * 0.85), 1200);
@@ -65,7 +64,6 @@ export const HistogramChart: React.FC<Props> = ({
     const innerW = Math.max(1, chartW - margin.left - margin.right);
     const innerH = Math.max(1, chartH - margin.top - margin.bottom);
 
-    // Convert selectedIdx array to boolean mask for O(1) lookup during bar rendering
     const mask = useMemo(() => {
         const m = bins.map(() => false);
         for (const idx of selectedIdx) {
@@ -76,8 +74,6 @@ export const HistogramChart: React.FC<Props> = ({
         return m;
     }, [bins.length, selectedIdx]);
 
-    // Refs store drag indices synchronously to avoid React's state batching delays
-    // State mirrors refs purely to trigger re-renders for visual drag highlight
     const dragStartRef = useRef<number | null>(null);
     const dragEndRef = useRef<number | null>(null);
     const [dragState, setDragState] = useState<{ start: number | null; end: number | null }>({
@@ -85,7 +81,6 @@ export const HistogramChart: React.FC<Props> = ({
         end: null,
     });
 
-    // Scales for the charts
     const xScale = useMemo(
         () =>
             scaleBand<number>({
@@ -105,10 +100,6 @@ export const HistogramChart: React.FC<Props> = ({
         [bins, innerH]
     );
 
-    /*
-     * Maps mouse X position to nearest bin index by finding the closest band center.
-     * Returns null if cursor is outside the chart's inner bounds.
-     */
     const bandW = xScale.bandwidth();
     const indexAtMouse = (e: React.MouseEvent<SVGSVGElement>) => {
         const pt = localPoint(e);
@@ -148,10 +139,6 @@ export const HistogramChart: React.FC<Props> = ({
         setDragState({ start: dragStartRef.current, end: idx });
     };
 
-    /**
-     * Toggles selection for all bins in the drag range using XOR logic:
-     * selected bins become deselected and vice versa.
-     */
     const onUp = () => {
         if (disabled) {
             dragStartRef.current = null;
@@ -178,19 +165,12 @@ export const HistogramChart: React.FC<Props> = ({
             }
         }
         onSelect(Array.from(currentSelection));
-
-        // Clear refs and state
         dragStartRef.current = null;
         dragEndRef.current = null;
         setDragState({ start: null, end: null });
     };
 
-    const [tip, setTip] = useState<{
-        x: number;
-        y: number;
-        bin: number;
-        value: number;
-    } | null>(null);
+    const [tip, setTip] = useState<{ x: number; y: number; bin: number; value: number } | null>(null);
 
     const onEnter = (e: React.MouseEvent, d: Bin) => {
         if (disabled) return;
@@ -214,6 +194,21 @@ export const HistogramChart: React.FC<Props> = ({
         onSelect([]);
     };
 
+    const chartTitle = useMemo(() => {
+        if (perspective === 'object') {
+            return (
+                <span>
+                    <strong>{object_type}</strong> <span style={{ fontWeight: 400 }}>in</span> {event_type}
+                </span>
+            );
+        }
+        return (
+            <span>
+                {event_type} — <strong>{object_type}</strong>
+            </span>
+        );
+    }, [perspective, event_type, object_type]);
+
     const Chart = (
         <svg
             width={chartW}
@@ -221,7 +216,7 @@ export const HistogramChart: React.FC<Props> = ({
             onMouseDown={onDown}
             onMouseMove={onMove}
             onMouseUp={onUp}
-            onMouseLeave={onUp} // Stop drag if mouse leaves svg
+            onMouseLeave={onUp}
             style={{
                 cursor: disabled ? 'not-allowed' : 'crosshair',
                 display: 'block',
@@ -235,17 +230,12 @@ export const HistogramChart: React.FC<Props> = ({
                     if (x == null) return null;
                     const y = yScale(d.y);
                     const h = innerH - y;
-
                     const inDrag =
                         dragState.start != null &&
                         dragState.end != null &&
                         i >= Math.min(dragState.start, dragState.end) &&
                         i <= Math.max(dragState.start, dragState.end);
-
-                    //Filling colors in the bins
                     const isBinSelected = mask[i];
-
-                    // Color priority: drag highlight > selected > deselected
                     const fill = inDrag ? '#60a5fa' : isBinSelected ? selectedBinColor : deselectedBinColor;
 
                     return (
@@ -287,8 +277,20 @@ export const HistogramChart: React.FC<Props> = ({
             </Group>
         </svg>
     );
+
     const SelectionDisplay = (
-        <div className="hv-selection" style={{ marginTop: 6, fontSize: expanded ? 12 : 13 }}>
+        <div
+            className="hv-selection"
+            style={{
+                marginTop: 6,
+                fontSize: expanded ? 12 : 13,
+                // --- FIX: Add wrapping styles ---
+                whiteSpace: 'normal',
+                wordWrap: 'break-word',
+                overflowWrap: 'anywhere',
+                lineHeight: '1.5',
+            }}
+        >
             Selected: [
             {selectedIdx.map((i, idx) => (
                 <span
@@ -296,8 +298,9 @@ export const HistogramChart: React.FC<Props> = ({
                     onClick={() => toggleBin(i)}
                     style={{
                         cursor: disabled ? 'not-allowed' : 'pointer',
-                        color: disabled ? '#6b7280' : selectedBinColor, // Text color matches bin color
+                        color: disabled ? '#6b7280' : selectedBinColor,
                         fontWeight: 500,
+                        display: 'inline-block', // Keeps comma attached to number
                     }}
                 >
                     {bins[i]?.x ?? '?'}
@@ -307,17 +310,15 @@ export const HistogramChart: React.FC<Props> = ({
             ]
         </div>
     );
+
     return (
         <div className="hv-card">
             <div className="hv-card-head">
-                <strong>
-                    {event_type} — {object_type}
-                </strong>
+                {chartTitle}
                 <button className="hv-btn-ghost" onClick={toggleExpand}>
                     ⤢
                 </button>
             </div>
-            {/* Collapsed view */}
             {!expanded && (
                 <>
                     {Chart}
@@ -327,24 +328,16 @@ export const HistogramChart: React.FC<Props> = ({
                     </button>
                 </>
             )}
-            {/* Expanded modal */}
             {expanded &&
                 ReactDOM.createPortal(
                     <div className="hv-modal">
                         <div className="hv-modal-inner hv-modal-large">
                             <div className="hv-modal-head">
-                                <strong>
-                                    {event_type} — {object_type}
-                                </strong>
+                                {chartTitle}
                                 <button
                                     className="hv-btn-ghost"
                                     onClick={toggleExpand}
-                                    style={{
-                                        position: 'absolute',
-                                        right: 8,
-                                        top: 0,
-                                        fontSize: 18,
-                                    }}
+                                    style={{ position: 'absolute', right: 8, top: 0, fontSize: 18 }}
                                 >
                                     ⤢
                                 </button>
@@ -355,11 +348,7 @@ export const HistogramChart: React.FC<Props> = ({
                                 className="hv-btn-ghost"
                                 onClick={clearAll}
                                 disabled={disabled}
-                                style={{
-                                    marginTop: 10,
-                                    fontSize: 12,
-                                    padding: '3px 8px',
-                                }}
+                                style={{ marginTop: 10, fontSize: 12, padding: '3px 8px' }}
                             >
                                 Clear All
                             </button>
@@ -369,7 +358,7 @@ export const HistogramChart: React.FC<Props> = ({
                 )}
             {tip && (
                 <Tooltip top={tip.y} left={tip.x} style={{ fontSize: 11 }}>
-                    Bin {tip.bin}: {tip.value}
+                    Count {tip.bin}: {tip.value}
                 </Tooltip>
             )}
         </div>
