@@ -910,8 +910,8 @@ export default function HistViz() {
                                                     </TooltipTrigger>
                                                     <TooltipContent className="max-w-[300px]">
                                                         <p>
-                                                            For each event type, shows the distribution of associated
-                                                            objects (e.g., how many 'Items' per 'Create Order').
+                                                            For each <i>(event_type, object_type)</i> pair, it shows how many
+                                                            objects of <i>object_type</i> are associated with events of <i>event_type</i>.
                                                         </p>
                                                     </TooltipContent>
                                                 </Tooltip>
@@ -939,8 +939,8 @@ export default function HistViz() {
                                                     </TooltipTrigger>
                                                     <TooltipContent className="max-w-[300px]">
                                                         <p>
-                                                            For each object type, shows the distribution of associated
-                                                            events (e.g., how many 'Create Order' events per 'Item').
+                                                            For each <i>(object_type, event_type)</i> pair, it shows how many
+                                                            <i>events</i> of <i>event_type</i> an object of <i>object_type</i> is associated with.
                                                         </p>
                                                     </TooltipContent>
                                                 </Tooltip>
