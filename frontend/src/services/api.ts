@@ -51,14 +51,12 @@ export const getOcel = async (fileId: string) => {
 };
 
 export const getHistogramEventPersp = async (fileId: string) => {
-    const response = await api.get(`/v1/event_object_frequencies/histogram/${fileId}`);
-    // const response = await api.get(`/v1/event_object_frequencies/event_perspective_histogram/${fileId}`);
+    const response = await api.get(`/v1/event_object_frequencies/event_perspective_histogram/${fileId}`);
     return response.data;
 };
 
 export const getHistogramObjectPersp = async (fileId: string) => {
-    const response = await api.get(`/v1/event_object_frequencies/histogram/${fileId}`);
-    // const response = await api.get(`/v1/event_object_frequencies/object_perspective_histogram/${fileId}`);
+    const response = await api.get(`/v1/event_object_frequencies/object_perspective_histogram/${fileId}`);
     return response.data;
 };
 
