@@ -1,4 +1,5 @@
 use process_mining::OCEL;
+use crate::models::ocel::OCELUtils;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -89,9 +90,20 @@ pub fn build_histograms(log: &OCEL, perspective: HistogramPerspective) -> Value 
 fn build_event_perspective_histograms(log: &OCEL) -> Vec<HistogramEntry> {
     let object_index = build_object_index(log);
     let mut stats: HashMap<(String, String), HashMap<usize, usize>> = HashMap::new();
+    let relations = log.get_interaction_patterns().2;
+
+    log::debug!("Relations: {:?}", relations);
 
     for event in &log.events {
         let mut objects_by_type: HashMap<&str, usize> = HashMap::new();
+        for otype in log.object_types.iter() {
+            if relations
+                .get(event.event_type.as_str())
+                .map_or(false, |obj_types| obj_types.contains(otype.name.as_str()))
+            {
+                objects_by_type.insert(otype.name.as_str(), 0);
+            }
+        }
 
         for rel in &event.relationships {
             if let Some(&otype) = object_index.get(rel.object_id.as_str()) {
@@ -140,7 +152,7 @@ fn build_event_perspective_histograms(log: &OCEL) -> Vec<HistogramEntry> {
 }
 
 fn build_object_perspective_histograms(log: &OCEL) -> Vec<HistogramEntry> {
-    let mut object_to_events: HashMap<&str, Vec<&str>> = HashMap::new();
+    let mut object_to_events: HashMap<&str, Vec<&str>> = HashMap::new(); // object_id -> list of event_types
     for event in &log.events {
         for rel in &event.relationships {
             object_to_events
@@ -151,9 +163,20 @@ fn build_object_perspective_histograms(log: &OCEL) -> Vec<HistogramEntry> {
     }
 
     let mut stats: HashMap<(String, String), HashMap<usize, usize>> = HashMap::new();
+    let relations = log.get_interaction_patterns().2;
+
 
     for object in &log.objects {
         let mut events_by_type: HashMap<&str, usize> = HashMap::new();
+        for etype in log.event_types.iter() {
+            if relations
+                .get(etype.name.as_str())
+                .map_or(false, |obj_types| obj_types.contains(object.object_type.as_str()))
+            {
+                events_by_type.insert(etype.name.as_str(), 0);
+            }
+        }
+
         if let Some(event_types) = object_to_events.get(object.id.as_str()) {
             for etype in event_types {
                 *events_by_type.entry(etype).or_insert(0) += 1;
