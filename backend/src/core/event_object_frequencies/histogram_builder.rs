@@ -92,8 +92,6 @@ fn build_event_perspective_histograms(log: &OCEL) -> Vec<HistogramEntry> {
     let mut stats: HashMap<(String, String), HashMap<usize, usize>> = HashMap::new();
     let relations = log.get_interaction_patterns().2;
 
-    log::debug!("Relations: {:?}", relations);
-
     for event in &log.events {
         let mut objects_by_type: HashMap<&str, usize> = HashMap::new();
         for otype in log.object_types.iter() {

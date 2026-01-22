@@ -4,7 +4,8 @@
     { "name": "Load materials", "attributes": [] },
     { "name": "Transport materials", "attributes": [] },
     { "name": "Unload materials", "attributes": [] },
-    { "name": "Worker departure", "attributes": [] }
+    { "name": "Worker departure", "attributes": [] },
+    { "name": "Truck arrival", "attributes": [] }
   ],
   "objectTypes": [
     { "name": "worker", "attributes": [] },
