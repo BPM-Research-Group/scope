@@ -99,6 +99,8 @@ pub fn filter_ocel_histograms(log: &OCEL, filters_json: &str) -> Result<Vec<OCEL
         }
     }
 
+    log::debug!("object_event_map: {:?}", object_event_map);
+
     let mut result: Vec<OCEL> = Vec::new();
 
     // 3. Iterate over selections
@@ -196,8 +198,12 @@ pub fn filter_ocel_histograms(log: &OCEL, filters_json: &str) -> Result<Vec<OCEL
                 
 
                 if !object_passed_all_filters {
+                    log::debug!("Object {} of type {} did not pass all filters", object.id, object.object_type);
+
                     continue 'object_loop;
                 }
+
+                log::debug!("Object {} of type {} passed all filters", object.id, object.object_type);
 
                 // Object passed all filters in this selection
                 filtered_objects.push(object.clone());
@@ -208,56 +214,74 @@ pub fn filter_ocel_histograms(log: &OCEL, filters_json: &str) -> Result<Vec<OCEL
             }
         }
 
-        // 4. Filter objects: keep only objects that appear in the filtered events
-        let mut used_objects: std::collections::HashSet<&str> = std::collections::HashSet::new();
+        // 4. filter log to remove unreferenced objects/events
 
-        for event in &filtered_events {
-            for rel in &event.relationships {
-                used_objects.insert(rel.object_id.as_str());
-            }
-        }
+        // Initialize the sets that will be pruned. If a filter perspective was not applied,
+        // start with the full set from the log.
+        let mut events_to_prune = if selection.event_perspective_filters.is_some() {
+            filtered_events
+        } else {
+            log.events.clone()
+        };
 
-        let filtered_objects: Vec<_> = log
-            .objects
+        let mut objects_to_prune = if selection.object_perspective_filters.is_some() {
+            filtered_objects
+        } else {
+            log.objects.clone()
+        };
+
+        // --- Two-way pruning ---
+
+        // 1. Prune objects based on the initial set of events.
+        let used_object_ids_in_events: FxHashSet<&str> = events_to_prune
             .iter()
-            .filter(|obj| used_objects.contains(obj.id.as_str()))
-            .cloned()
+            .flat_map(|event| &event.relationships)
+            .map(|rel| rel.object_id.as_str())
             .collect();
+        objects_to_prune.retain(|obj| used_object_ids_in_events.contains(obj.id.as_str()));
 
-        let mut filtered_object_types = FxHashSet::default();
+        // 2. Prune events based on the now-pruned set of objects.
+        let final_object_ids: FxHashSet<&str> = objects_to_prune
+            .iter()
+            .map(|obj| obj.id.as_str())
+            .collect();
         
-        for obj in &filtered_objects {
-            if !filtered_object_types.contains(&obj.object_type) {
-                filtered_object_types.insert(obj.object_type.clone());
+        // This process requires modifying events, so we build a new Vec.
+        let mut final_events = Vec::new();
+        for mut event in events_to_prune { // takes ownership
+            // Remove relationships to objects that have been filtered out.
+            event.relationships.retain(|rel| final_object_ids.contains(rel.object_id.as_str()));
+            // Keep the event only if it still has relationships.
+            if !event.relationships.is_empty() {
+                final_events.push(event);
             }
         }
+        
+        let final_objects = objects_to_prune;
 
-        // remove events not related to any of the filtered objects
-        let filtered_events: Vec<_> = filtered_events.clone()
-            .into_iter()
-            .filter(|event| {
-                for rel in &event.relationships {
-                    if used_objects.contains(rel.object_id.as_str()) {
-                        return true;
-                    }
-                }
-                false
-            })
+        // Re-calculate used event and object types for the final OCEL
+        let final_event_types: FxHashSet<String> = final_events
+            .iter()
+            .map(|e| e.event_type.clone())
             .collect();
-
+        
+        let final_object_types: FxHashSet<String> = final_objects
+            .iter()
+            .map(|o| o.object_type.clone())
+            .collect();
 
         // 5. Create filtered OCEL
         let filtered_ocel = OCEL {
             event_types: log.event_types.iter()
-                .filter(|et| filtered_event_types.contains(&et.name))
+                .filter(|et| final_event_types.contains(&et.name))
                 .cloned()
                 .collect(),
             object_types: log.object_types.iter()
-                .filter(|ot| filtered_object_types.contains(&ot.name))
+                .filter(|ot| final_object_types.contains(&ot.name))
                 .cloned()
                 .collect(),
-            events: filtered_events,
-            objects: filtered_objects,
+            events: final_events,
+            objects: final_objects,
         };
 
         result.push(filtered_ocel);
