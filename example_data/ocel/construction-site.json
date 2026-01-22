@@ -4,7 +4,8 @@
     { "name": "Load materials", "attributes": [] },
     { "name": "Transport materials", "attributes": [] },
     { "name": "Unload materials", "attributes": [] },
-    { "name": "Worker departure", "attributes": [] }
+    { "name": "Worker departure", "attributes": [] },
+    { "name": "Truck arrival", "attributes": [] }
   ],
   "objectTypes": [
     { "name": "worker", "attributes": [] },
@@ -66,7 +67,8 @@
       "relationships": [
         { "objectId": "t1", "qualifier": "participant" },
         { "objectId": "c1", "qualifier": "participant" },
-        { "objectId": "w2", "qualifier": "participant" }
+        { "objectId": "w2", "qualifier": "participant" },
+        { "objectId": "w1", "qualifier": "participant" }
       ]
     },
     {
