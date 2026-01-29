@@ -218,7 +218,7 @@ pub fn filter_ocel_histograms(log: &OCEL, filters_json: &str) -> Result<Vec<OCEL
 
         // Initialize the sets that will be pruned. If a filter perspective was not applied,
         // start with the full set from the log.
-        let mut events_to_prune = if selection.event_perspective_filters.is_some() {
+        let events_to_prune = if selection.event_perspective_filters.is_some() {
             filtered_events
         } else {
             log.events.clone()
