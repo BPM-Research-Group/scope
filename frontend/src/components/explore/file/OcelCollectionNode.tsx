@@ -5,11 +5,14 @@ import { Grip } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '~/components/ui/button';
 import BaseFileNode from '~/components/explore/file/BaseFileNode';
+import { useGetOcelCollection } from '~/services/queries';
 import { FileNode } from '~/types/explore/nodes';
 
 const OcelCollectionNode = memo<NodeProps<FileNode>>((props) => {
     const navigate = useNavigate();
     const hasFile = props.data.assets.length > 0;
+    const { data } = useGetOcelCollection(props.data.assets[0].id);
+    console.log(data);
 
     const openObjectEventGraph = () => {
         navigate(`/data/pipeline/explore/ocel/${props.id}`);

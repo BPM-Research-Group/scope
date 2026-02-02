@@ -49,6 +49,5 @@ export interface BaseExploreNodeData extends Record<string, unknown> {
     nodeType: ExploreNodeType;
     nodeCategory: ExploreNodeCategory;
     allowedAssetTypes: readonly AssetType[];
-    isStale?: boolean;
-    colorMap: (objectType: string) => string;
+    onDataChange: (id: string, newData: Partial<BaseExploreNodeData>) => void;
 }

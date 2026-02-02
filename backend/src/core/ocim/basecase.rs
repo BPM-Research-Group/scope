@@ -115,7 +115,9 @@ mod tests {
     use crate::core::ocim::algorithm::ocim_init;
     use crate::models::ocpt::{OCPTLeafLabel, OCPTOperatorType};
     use chrono::Utc;
-    use crate::models::ocel::{OCEL, OCELEvent, OCELObject, OCELRelationship, OCELType};
+    use process_mining::ocel::ocel_struct::{
+        OCEL, OCELEvent, OCELObject, OCELRelationship, OCELType,
+    };
     use std::thread;
     use std::time::Duration;
 

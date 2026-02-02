@@ -250,8 +250,5 @@ pub fn split_log(
                 })
                 .collect();
         }
-        OCPTOperatorType::IdentityRelation(_) => {
-            return vec![local_data.clone()];
-        }
     }
 }

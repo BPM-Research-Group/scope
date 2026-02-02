@@ -12,5 +12,4 @@ export interface FileExploreNodeData extends BaseExploreNodeData {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     processedData?: any;
     viewState?: FileNodeViewState;
-    isDownstream: boolean;
 }
