@@ -1,6 +1,10 @@
 use crate::core::df2_miner::ocpt_generator::generate_ocpt_from_fileid;
+use crate::core::identity_relations::get_extended_ocpt;
 use crate::core::struct_converters::ocpt_frontend_backend::{backend_to_frontend, frontend_to_backend};
+use crate::core::utils::relations::build_relations_from_ocels;
+use crate::models::ocel::OCEL;
 use crate::models::ocpt::{OCPT, OcptFE};
+use crate::traits::import_export::ImportableFromPath;
 use axum::{extract::Path, http::StatusCode, response::IntoResponse, Json};
 use serde_json::json;
 use tokio::fs;
@@ -13,7 +17,8 @@ pub async fn apply_df2(Path(file_id): Path<String>) -> Result<impl IntoResponse,
     }
 
     // Run the synchronous miner on a blocking thread; it writes ./temp/ocpt_{id}.json (frontend shape).
-    let generated_id = tokio::task::spawn_blocking(move || generate_ocpt_from_fileid(&file_id))
+    let file_id_for_miner = file_id.clone();
+    let generated_id = tokio::task::spawn_blocking(move || generate_ocpt_from_fileid(&file_id_for_miner))
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("DF2 miner panicked: {e}")))?;
 
@@ -28,12 +33,22 @@ pub async fn apply_df2(Path(file_id): Path<String>) -> Result<impl IntoResponse,
     })?;
 
     // Convert to backend format and validate.
-    let ocpt_backend: OCPT = frontend_to_backend(ocpt_fe).map_err(|e| {
+    let mut ocpt_backend: OCPT = frontend_to_backend(ocpt_fe).map_err(|e| {
         (StatusCode::INTERNAL_SERVER_ERROR, format!("Convert frontend OCPT -> backend failed: {e}"))
     })?;
     if !ocpt_backend.is_valid() {
         return Err((StatusCode::INTERNAL_SERVER_ERROR, "Generated OCPT is invalid".to_string()));
     }
+
+    // Extend backend OCPT with identity relations.
+    let ocel = OCEL::import_from_path(&file_id).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Failed to load OCEL for identity relations: {:?}", e),
+        )
+    })?;
+    let relations = build_relations_from_ocels(&[ocel]);
+    ocpt_backend.root = get_extended_ocpt(ocpt_backend.root, &relations, None);
 
     // Persist backend-normalized OCPT (overwrite the generated file).
     let pretty_backend = serde_json::to_string_pretty(&ocpt_backend).map_err(|e| {

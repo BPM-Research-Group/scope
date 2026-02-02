@@ -27,6 +27,7 @@ pub(crate) struct ArcEntry {
 /// - **object types (O)** are nodes
 /// - **arcs (A)** connect an event type to an object type if there exists at least one event
 ///   of that type with a relationship to an object of that type
+/// - **arcs are bidirectional**: both event->object and object->event entries are emitted
 ///
 /// The output JSON has three sections:
 /// - `event_types`: list of event type names
@@ -82,7 +83,9 @@ pub fn build_log_graph_type_level(log: &OCEL) -> Value {
     for event in &log.events {
         for rel in &event.relationships {
             if let Some(otype) = object_index.get(&rel.object_id) {
+                // Emit both directions to make the graph bidirectional.
                 arcs_set.insert((event.event_type.clone(), otype.clone()));
+                arcs_set.insert((otype.clone(), event.event_type.clone()));
             }
         }
     }

@@ -1,17 +1,21 @@
-import { memo, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { NodeProps } from '@xyflow/react';
 import { Position } from '@xyflow/react';
 import { Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '~/components/ui/button';
 import BaseMinerNode from '~/components/explore/miner/BaseMinerNode';
+import { useExploreFlowStore } from '~/stores/exploreStore';
 import { MinerNode } from '~/types/explore/nodes';
 
 const HistogramMinerNode = memo<NodeProps<MinerNode>>((node) => {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const { id, data: nodeData } = node;
     const { assets } = nodeData;
     const [inputFileId, setInputFileId] = useState<string | null>(null);
+    const { clearHistogramState } = useExploreFlowStore();
 
     useEffect(() => {
         const inputAsset = assets.find((a) => a.io === 'input' && a.type === 'ocelFile');
@@ -27,6 +31,20 @@ const HistogramMinerNode = memo<NodeProps<MinerNode>>((node) => {
             navigate(`/data/pipeline/explore/hist-viz/${id}`);
         }
     };
+
+    const handleReset = useCallback(() => {
+        // 1. Clear React Query Cache
+        if (inputFileId) {
+            queryClient.cancelQueries({ queryKey: ['getHistogram', inputFileId] });
+            queryClient.removeQueries({ queryKey: ['getHistogram', inputFileId] });
+        }
+
+        // 2. Clear Store State
+        clearHistogramState(id);
+
+        // 3. Reset Local State
+        setInputFileId(null);
+    }, [inputFileId, queryClient, clearHistogramState, id]);
 
     const renderActions = () => {
         if (!inputFileId) return null;
@@ -55,6 +73,7 @@ const HistogramMinerNode = memo<NodeProps<MinerNode>>((node) => {
             ]}
             dropdownOptions={[{ label: 'Change Source', action: 'changeSourceFile' as const }]}
             customActions={renderActions()}
+            onReset={handleReset}
         />
     );
 });

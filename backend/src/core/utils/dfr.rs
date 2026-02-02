@@ -1,3 +1,4 @@
+#![allow(dead_code)] // DFR utilities are kept for upcoming algorithms but not wired in yet.
 use std::collections::HashSet;
 /// Object-centric process trees (OCPT)
 /// OCEL object type

@@ -155,9 +155,19 @@ fn frontend_activity_to_leaf(v: &ActivityValue) -> OCPTLeaf {
 /// The converted frontend [HierarchyNode]  
 fn backend_node_to_frontend(node: &OCPTNode) -> HierarchyNode {
     match node {
-        OCPTNode::Operator(op) => HierarchyNode::Operator {
-            value: stringify_operator(&op.operator_type),
-            children: op.children.iter().map(backend_node_to_frontend).collect(),
+        OCPTNode::Operator(op) => match &op.operator_type {
+            OCPTOperatorType::IdentityRelation(_) => op
+                .children
+                .first()
+                .map(backend_node_to_frontend)
+                .unwrap_or_else(|| HierarchyNode::Operator {
+                    value: "identity".to_string(),
+                    children: vec![],
+                }),
+            _ => HierarchyNode::Operator {
+                value: stringify_operator(&op.operator_type),
+                children: op.children.iter().map(backend_node_to_frontend).collect(),
+            },
         },
         OCPTNode::Leaf(leaf) => {
             let value = backend_leaf_to_activity_value(leaf);
@@ -179,6 +189,7 @@ fn stringify_operator(op: &OCPTOperatorType) -> String {
         OCPTOperatorType::ExclusiveChoice => "xor".to_string(),
         OCPTOperatorType::Concurrency => "parallel".to_string(),
         OCPTOperatorType::Loop(_cnt) => "loop".to_string(), // ignore parameter in FE
+        OCPTOperatorType::IdentityRelation(_) => "identity".to_string(),
     }
 }
 

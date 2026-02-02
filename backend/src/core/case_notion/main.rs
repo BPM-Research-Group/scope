@@ -5,7 +5,7 @@ use crate::core::case_notion::{
 };
 use crate::models::ocel::{OCELUtils,build_event_identifiers, build_object_identifiers,map_object_id_to_type};
 use process_mining::OCEL;
-use process_mining::ocel::ocel_struct::{OCELEvent, OCELObject, OCELType};
+use crate::models::ocel::{OCELEvent, OCELObject, OCELType};
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;

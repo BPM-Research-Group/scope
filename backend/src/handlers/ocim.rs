@@ -1,5 +1,7 @@
 use crate::core::ocim::algorithm::ocim_init;
+use crate::core::identity_relations::get_extended_ocpt;
 use crate::core::struct_converters::ocpt_frontend_backend::backend_to_frontend;
+use crate::core::utils::relations::build_relations_from_ocels;
 use crate::models::ocel::OCEL;
 use crate::models::ocel_collection::OCELCollection;
 use crate::traits::import_export::{ExportableToPath, ImportableFromPath};
@@ -18,8 +20,11 @@ pub async fn apply_ocim(
         },
     };
 
-    let ocpt = ocim_init(&ocels);
+    let mut ocpt = ocim_init(&ocels);
     //let ocpt_frontend = backend_to_frontend(&ocpt); //needed to add this step since frontend has a different ocpt format, than we use in the backend
+
+    let relations = build_relations_from_ocels(&ocels);
+    ocpt.root = get_extended_ocpt(ocpt.root, &relations, None);
 
     let id = ocpt.export_to_path().await.map_err(|e| {
         (

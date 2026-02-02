@@ -1,23 +1,31 @@
 import { type XYPosition } from '@xyflow/react';
 import { FileExploreNodeData } from '~/types/explore/nodeData/fileNodeData';
+import { FileNode } from '~/types/explore/nodes';
 import { ExploreFileNodeType } from '~/types/explore/nodeTypesCategories';
 import { AssetType } from '~/types/files.types';
 import { BaseExploreNode } from './base-node.model';
 
-export class FileExploreNode extends BaseExploreNode {
-    declare data: FileExploreNodeData;
+export class FileExploreNode extends BaseExploreNode<FileExploreNodeData> implements FileNode {
+    declare type: ExploreFileNodeType;
+    // Explicitly declare the narrower type for data to satisfy FileNode interface
+    declare data: FileExploreNodeData & { nodeType: ExploreFileNodeType; nodeCategory: 'file' };
 
-    constructor(position: XYPosition, nodeType: ExploreFileNodeType) {
+    constructor(position: XYPosition, nodeType: ExploreFileNodeType, isDownstream: boolean = false) {
         super(position, nodeType);
+        // We set the downstream status after super() because initializeData is called during super()
+        this.data.isDownstream = isDownstream;
     }
 
-    protected initializeData(nodeType: ExploreFileNodeType): FileExploreNodeData {
+    protected initializeData(
+        nodeType: ExploreFileNodeType
+    ): FileExploreNodeData & { nodeType: ExploreFileNodeType; nodeCategory: 'file' } {
         return {
             nodeType,
             nodeCategory: 'file',
             assets: [],
             allowedAssetTypes: this.getAllowedAssetTypes(nodeType),
-            onDataChange: () => {},
+            isDownstream: false, // Defaulted, will be overridden in constructor if necessary
+            colorMap: () => '',
         };
     }
 
@@ -27,6 +35,10 @@ export class FileExploreNode extends BaseExploreNode {
                 return ['ocelFile'] as const;
             case 'ocptFileNode':
                 return ['ocptFile'] as const;
+            case 'ocelCollectionNode':
+                return ['ocelCollectionFile'] as const;
+            default:
+                return [] as const;
         }
     }
 }

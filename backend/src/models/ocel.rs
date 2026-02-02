@@ -2,15 +2,19 @@ use crate::traits::import_export::{ExportableToPath, ImportableFromPath};
 use async_trait::async_trait;
 use axum::http::StatusCode;
 #[allow(unused_imports)] // probably used in the future
-pub use process_mining::ocel::linked_ocel;
-pub use process_mining::ocel::linked_ocel::index_linked_ocel::{EventIndex, ObjectIndex};
-pub use process_mining::ocel::linked_ocel::{IndexLinkedOCEL, LinkedOCELAccess};
+pub use process_mining::core::event_data::object_centric::linked_ocel;
+pub use process_mining::core::event_data::object_centric::linked_ocel::index_linked_ocel::{
+    EventIndex, ObjectIndex,
+};
+pub use process_mining::core::event_data::object_centric::linked_ocel::{
+    IndexLinkedOCEL, LinkedOCELAccess,
+};
 #[allow(unused_imports)] // probably used in the future
-pub use process_mining::ocel::ocel_struct::{
+pub use process_mining::core::event_data::object_centric::{
     OCEL, OCELAttributeType, OCELAttributeValue, OCELEvent, OCELEventAttribute, OCELObject,
     OCELObjectAttribute, OCELRelationship, OCELType, OCELTypeAttribute,
 };
-use process_mining::object_centric::object_centric_dfg_struct::OCDirectlyFollowsGraph;
+use process_mining::core::process_models::object_centric::ocdfg::OCDirectlyFollowsGraph;
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde_json;
 use std::collections::{BTreeMap, BTreeSet};
@@ -601,7 +605,7 @@ pub fn is_convergent_locel(
     let mut object_index_to_event_indices = FxHashSet::default();
 
     for &&(ev_index, ob_index) in ev_ob_type_e2o_relations {
-        if locel.get_ob(ob_index).object_type.eq(ob_type) {
+        if locel.get_full_ob(ob_index).object_type.eq(ob_type) {
             if object_index_to_event_indices.contains(&ev_index) {
                 return true;
             }
@@ -640,7 +644,7 @@ pub fn is_divergent_locel(
                     locel
                         .get_e2o_set(ev_index)
                         .iter()
-                        .filter(|&ob_index| !locel.get_ob(ob_index).object_type.eq(ob_type))
+                        .filter(|&ob_index| !locel.get_full_ob(ob_index).object_type.eq(ob_type))
                         .collect::<FxHashSet<&ObjectIndex>>()
                 })
                 .collect::<Vec<_>>();

@@ -1,13 +1,14 @@
-import { type XYPosition } from '@xyflow/react';
+import { type Node, type XYPosition } from '@xyflow/react';
 import { getNodeCategoryByType } from '~/lib/explore/exploreNodes.utils';
 import { ExploreNodeData } from '~/types/explore/nodes';
 import { ExploreNodeCategory, ExploreNodeType, NodeId } from '~/types/explore/nodeTypesCategories';
 
-export abstract class BaseExploreNode {
-    readonly id: NodeId;
-    readonly type: ExploreNodeType;
-    position: XYPosition;
-    data: ExploreNodeData;
+// We make this generic so subclasses can specify their exact data type
+export abstract class BaseExploreNode<TData extends ExploreNodeData> implements Node<TData> {
+    public id: NodeId;
+    public type: ExploreNodeType; // Specific string literal for the type
+    public position: XYPosition;
+    public data: TData;
 
     protected static idCounter = 0;
 
@@ -24,6 +25,6 @@ export abstract class BaseExploreNode {
         return `${nodeType}_${BaseExploreNode.idCounter++}`;
     }
 
-    // Abstract methods that child classes must implement
-    protected abstract initializeData(nodeType: ExploreNodeType, nodeCategory: ExploreNodeCategory): ExploreNodeData;
+    // Abstract method returns the specific TData
+    protected abstract initializeData(nodeType: ExploreNodeType, nodeCategory: ExploreNodeCategory): TData;
 }

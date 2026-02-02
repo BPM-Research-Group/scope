@@ -232,19 +232,34 @@ pub fn advanced_case_notion_type_level(
             .expect("advanced case notion graph must serialize to JSON");
     }
 
+    let event_type_set: FxHashSet<String> = event_types.iter().cloned().collect();
+    let object_type_set: FxHashSet<String> = object_types.iter().cloned().collect();
+
     let mut event_to_objects: FxHashMap<String, FxHashSet<String>> = FxHashMap::default();
     let mut object_to_events: FxHashMap<String, FxHashSet<String>> = FxHashMap::default();
 
     for arc in &arcs {
-        event_to_objects
-            .entry(arc.source_type.clone())
-            .or_default()
-            .insert(arc.target_type.clone());
-        object_to_events
-            .entry(arc.target_type.clone())
-            .or_default()
-            .insert(arc.source_type.clone());
+        let source_is_event = event_type_set.contains(&arc.source_type);
+        let source_is_object = object_type_set.contains(&arc.source_type);
+        let target_is_event = event_type_set.contains(&arc.target_type);
+        let target_is_object = object_type_set.contains(&arc.target_type);
+
+        if source_is_event && target_is_object {
+            event_to_objects
+                .entry(arc.source_type.clone())
+                .or_default()
+                .insert(arc.target_type.clone());
+        } else if source_is_object && target_is_event {
+            object_to_events
+                .entry(arc.source_type.clone())
+                .or_default()
+                .insert(arc.target_type.clone());
+        }
     }
+
+    let mut oriented_arcs: FxHashSet<(String, String)> = FxHashSet::default();
+    let mut object_level: FxHashMap<String, usize> = FxHashMap::default();
+    let mut event_level: FxHashMap<String, usize> = FxHashMap::default();
 
     let mut visited_objects: FxHashSet<String> = FxHashSet::default();
     let mut non_diverging_objects: FxHashSet<String> = FxHashSet::default();
@@ -255,12 +270,24 @@ pub fn advanced_case_notion_type_level(
     visited_objects.insert(starting_object_type.to_string());
     non_diverging_objects.insert(starting_object_type.to_string());
     frontier_objects.insert(starting_object_type.to_string());
+    object_level.insert(starting_object_type.to_string(), 0);
 
     while !frontier_objects.is_empty() {
         let mut new_events: FxHashSet<String> = FxHashSet::default();
         for object_type in &frontier_objects {
+            let level = *object_level.get(object_type).unwrap_or(&0);
             if let Some(events) = object_to_events.get(object_type) {
                 for event_type in events {
+                    if event_level
+                        .get(event_type)
+                        .map(|ev_level| *ev_level > level)
+                        .unwrap_or(true)
+                    {
+                        oriented_arcs.insert((object_type.clone(), event_type.clone()));
+                    }
+
+                    event_level.entry(event_type.clone()).or_insert(level + 1);
+
                     if visited_events.insert(event_type.clone()) {
                         new_events.insert(event_type.clone());
                     }
@@ -270,11 +297,22 @@ pub fn advanced_case_notion_type_level(
 
         let mut new_frontier_objects: FxHashSet<String> = FxHashSet::default();
         for event_type in &new_events {
+            let level = *event_level.get(event_type).unwrap_or(&0);
             if let Some(objects) = event_to_objects.get(event_type) {
                 for object_type in objects {
-                    if visited_objects.contains(object_type) {
+                    if object_level
+                        .get(object_type)
+                        .map(|obj_level| *obj_level > level)
+                        .unwrap_or(true)
+                    {
+                        oriented_arcs.insert((event_type.clone(), object_type.clone()));
+                    }
+
+                    if object_level.contains_key(object_type) {
                         continue;
                     }
+
+                    object_level.insert(object_type.clone(), level + 1);
                     visited_objects.insert(object_type.clone());
 
                     let diverges = divergence_map
@@ -320,13 +358,21 @@ pub fn advanced_case_notion_type_level(
 
     let mut selected_arcs: Vec<ArcEntry> = Vec::new();
     let mut deselected_arcs: Vec<ArcEntry> = Vec::new();
-    for arc in arcs.into_iter() {
-        if visited_events.contains(&arc.source_type)
-            && non_diverging_objects.contains(&arc.target_type)
-        {
-            selected_arcs.push(arc);
+    for (source_type, target_type) in oriented_arcs.into_iter() {
+        let selected = (non_diverging_objects.contains(&source_type)
+            && visited_events.contains(&target_type))
+            || (visited_events.contains(&source_type)
+                && non_diverging_objects.contains(&target_type));
+        if selected {
+            selected_arcs.push(ArcEntry {
+                source_type,
+                target_type,
+            });
         } else {
-            deselected_arcs.push(arc);
+            deselected_arcs.push(ArcEntry {
+                source_type,
+                target_type,
+            });
         }
     }
 

@@ -80,4 +80,16 @@ curl "http://localhost:3000/v1/event_object_frequencies/histogram/<file_id>"
 
 curl "http://localhost:3000/v1/event_object_frequencies/histogram_filter/<file_id><JSON>"
 
+
+```
+
+### Conformance Checking Examples
+
+
+```bash
+
+curl -sS "http://127.0.0.1:3000/v1/conformance/ocpt/<file_id>/ocel/<file_id>"
+
+curl -sS "http://127.0.0.1:3000/v1/conformance/ocpt_1/<file_id>/ocpt_2/<file_id>"
+
 ```

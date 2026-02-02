@@ -1,9 +1,9 @@
 #![allow(dead_code)] // helper functions which didn't get used yet in the code
 use crate::core::utils::flatten::flatten_ocel_on;
-pub use process_mining::dfg::dfg_struct::DirectlyFollowsGraph;
-use process_mining::event_log::event_log_struct::{EventLog, EventLogClassifier};
-use process_mining::ocel::linked_ocel::LinkedOCELAccess;
-pub use process_mining::ocel::linked_ocel::index_linked_ocel::IndexLinkedOCEL;
+pub use process_mining::core::process_models::case_centric::dfg::DirectlyFollowsGraph;
+use process_mining::core::event_data::case_centric::EventLog;
+use crate::models::ocel::LinkedOCELAccess;
+pub use crate::models::ocel::IndexLinkedOCEL;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -39,8 +39,7 @@ impl OCDirectlyFollowsGraph<'_> {
         locel.get_ob_types().for_each(|ob_type| {
             let event_log: EventLog = flatten_ocel_on(locel, ob_type);
 
-            let object_type_dfg =
-                DirectlyFollowsGraph::create_from_log(&event_log, &EventLogClassifier::default());
+            let object_type_dfg = DirectlyFollowsGraph::discover(&event_log);
 
             result
                 .object_type_to_dfg

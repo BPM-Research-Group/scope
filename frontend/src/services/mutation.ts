@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { setFilteredHistogram, uploadFile } from '~/services/api';
+import { mineCaseNotion, setFilteredHistogram, uploadFile } from '~/services/api';
 import type { ExtendedFile } from '~/types/fileObject.types';
 
 export const useUploadFileMutation = () => {
@@ -34,6 +34,29 @@ export const useSetFilteredHistogramMutation = () => {
         mutationKey: ['setFilteredHistogram'],
         mutationFn: ({ fileId, payload }: FilteredHistogramPayload) => {
             return setFilteredHistogram(fileId, payload);
+        },
+    });
+};
+
+type MineCaseNotionParams = {
+    fileId: string;
+    algorithm: string;
+    objectType: string;
+    newFileId: string;
+    payload?: any;
+};
+
+export const useMineCaseNotionMutation = () => {
+    return useMutation({
+        mutationKey: ['mineCaseNotion'],
+        mutationFn: (params: MineCaseNotionParams) => {
+            return mineCaseNotion(
+                params.fileId,
+                params.algorithm,
+                params.objectType,
+                params.newFileId,
+                params.payload
+            );
         },
     });
 };

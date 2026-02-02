@@ -1,4 +1,4 @@
-use process_mining::ocel::ocel_struct::OCELType;
+use crate::models::ocel::OCELType;
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]

@@ -1,5 +1,5 @@
 use chrono::{DateTime, FixedOffset, NaiveDateTime};
-use process_mining::ocel::ocel_struct::{OCELAttributeType, OCELAttributeValue};
+use crate::models::ocel::{OCELAttributeType, OCELAttributeValue};
 use serde_json::Value;
 
 pub fn parse_time_any(s: &str) -> Option<DateTime<FixedOffset>> {

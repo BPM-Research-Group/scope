@@ -42,8 +42,8 @@ pub fn generate_ocpt_from_fileid(file_id: &str) -> String {
 
     // Filter out unwanted activities
     let remove_list = vec![
-        "failed delivery".to_string(),
-        "payment reminder".to_string(),
+        //"failed delivery".to_string(),
+        //"payment reminder".to_string(),
     ];
     let filtered_dfg = filter_dfg(&dfg, &remove_list);
     let filtered_activities = filter_activities(&all_activities, &remove_list);

@@ -12,8 +12,8 @@ use crate::core::struct_converters::utils::{
     VTy, epoch_fixed_utc, json_to_attr_value, merge_tys, parse_time_any, vty_to_attr_type,
 };
 use crate::models::ocel1::{Ocel1, Ocel1Event, Ocel1Object};
-use process_mining::OCEL;
-use process_mining::ocel::ocel_struct::{
+use crate::models::ocel::OCEL;
+use crate::models::ocel::{
     OCELEvent, OCELEventAttribute, OCELObject, OCELObjectAttribute, OCELRelationship, OCELType,
     OCELTypeAttribute,
 };

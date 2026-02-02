@@ -42,33 +42,6 @@ export const useGetOcel = (fileId: string | null) => {
     });
 };
 
-export const useGetTraditionalCN = (fileId: string | null) => {
-    return useQuery({
-        queryKey: ['traditionalCN', fileId],
-        queryFn: () => getTraditionalCN(fileId!),
-        enabled: Boolean(fileId),
-        refetchOnWindowFocus: false,
-    });
-};
-
-export const useGetConnectedComponentsCN = (fileId: string | null) => {
-    return useQuery({
-        queryKey: ['connectedComponentsCN', fileId],
-        queryFn: () => getConnectedComponentsCN(fileId!),
-        enabled: Boolean(fileId),
-        refetchOnWindowFocus: false,
-    });
-};
-
-export const useGetAdvancedCN = (fileId: string | null) => {
-    return useQuery({
-        queryKey: ['advancedCN', fileId],
-        queryFn: () => getAdvancedCN(fileId!),
-        enabled: Boolean(fileId),
-        refetchOnWindowFocus: false,
-    });
-};
-
 export const useGetOcelObjectTypes = (fileId: string | null) => {
     return useQuery<CaseNotionApiResponse>({
         queryKey: ['getOcelObjectTypes', fileId],

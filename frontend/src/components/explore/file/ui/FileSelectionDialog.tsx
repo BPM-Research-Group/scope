@@ -1,8 +1,9 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '~/components/ui/dialog';
 import FileShowcase from '~/components/explore/file/ui/FileShowcase';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { useFileDialogStore, useStoredFiles } from '~/stores/store';
+import { refocusPipeline } from '~/lib/explore/refocusPipeline';
 import { BaseExploreNodeAsset } from '~/types/explore/nodeData/baseNodeData';
 import { ExtendedFile } from '~/types/files.types';
 
@@ -14,7 +15,20 @@ const FileSelectionDialog: React.FC<FileSelectionDialogProps> = ({ isOpen }) => 
     const [filteredFiles, setFilteredFiles] = useState<ExtendedFile[]>([]);
     const { dialogNodeId, closeDialog } = useFileDialogStore();
     const { files } = useStoredFiles();
-    const { getNode } = useExploreFlowStore();
+    const { getNode, updateNodeData } = useExploreFlowStore();
+
+    // Fix for "Frozen UI" bug: Force cleanup of Radix UI body locks when dialog closes
+    useEffect(() => {
+        if (!isOpen) {
+            // Small timeout to ensure we override Radix's internal logic if it gets stuck
+            const timer = setTimeout(() => {
+                document.body.style.pointerEvents = '';
+                document.body.style.overflow = '';
+                document.body.removeAttribute('data-scroll-locked');
+            }, 50);
+            return () => clearTimeout(timer);
+        }
+    }, [isOpen]);
 
     useMemo(() => {
         if (!dialogNodeId) return;
@@ -30,21 +44,29 @@ const FileSelectionDialog: React.FC<FileSelectionDialogProps> = ({ isOpen }) => 
         (file: ExtendedFile) => {
             if (dialogNodeId) {
                 const node = getNode(dialogNodeId);
-                if (node) {
-                    const newAsset: BaseExploreNodeAsset = {
-                        id: file.id,
-                        name: file.name,
-                        type: file.fileType,
-                        origin: 'preprocessed',
-                        io: 'output',
-                    };
-                    const updatedAssets = [...node.data.assets, newAsset];
-                    node.data.onDataChange(dialogNodeId, { assets: updatedAssets });
+                const hasExistingOutput = node?.data.assets.some((a) => a.io === 'output');
+
+                if (hasExistingOutput) {
+                    refocusPipeline(dialogNodeId);
                 }
+
+                const newAsset: BaseExploreNodeAsset = {
+                    id: file.id,
+                    name: file.name,
+                    type: file.fileType,
+                    origin: 'preprocessed',
+                    io: 'output',
+                };
+
+                // Generate colors here for the event log
+                updateNodeData(dialogNodeId, () => ({
+                    assets: [newAsset],
+                    // colorMap: generatedColrMap
+                }));
             }
             closeDialog();
         },
-        [dialogNodeId, getNode, closeDialog]
+        [dialogNodeId, updateNodeData, closeDialog, getNode]
     );
 
     return (

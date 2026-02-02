@@ -20,6 +20,5 @@ export interface MinerNode extends Node<MinerExploreNodeData> {
     data: MinerExploreNodeData & { nodeType: ExploreMinerNodeType; nodeCategory: 'miner' };
 }
 
-export type ExploreNode = Node<FileExploreNodeData> | Node<VisualizationExploreNodeData> | Node<MinerExploreNodeData>;
-
+export type ExploreNode = FileNode | VisualizationNode | MinerNode;
 export type ExploreNodeData = VisualizationExploreNodeData | FileExploreNodeData | MinerExploreNodeData;

@@ -11,19 +11,18 @@ import OcptFileNode from '~/components/explore/file/OcptFileNode';
 import FileSelectionDialog from '~/components/explore/file/ui/FileSelectionDialog';
 import CaseNotionMinerNode from '~/components/explore/miner/CaseNotionMinerNode';
 import HistogramMinerNode from '~/components/explore/miner/HistogramMinerNode';
-import ObjectEventGraphMinerNode from '~/components/explore/miner/ObjectEventGraphMinerNode';
-import OcelMinerNode from '~/components/explore/miner/OcelMinerNode';
 import OcptMinerNode from '~/components/explore/miner/OcptMinerNode';
-import { useExploreEventHandlers } from '~/hooks/useExploreEventHandlers';
+import { useConnections } from '~/hooks/explore/useConnections';
+import { useDragDrop } from '~/hooks/explore/useDragDrop';
+import { useNodeOperations } from '~/hooks/explore/useNodeOperations';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { useFileDialogStore } from '~/stores/store';
+import { RefocusProgressPanel } from '~/components/explore/RefocusProgressPanel';
 
 const nodeTypes = {
     ocptMinerNode: OcptMinerNode,
     ocelFileNode: OcelFileNode,
     ocptFileNode: OcptFileNode,
-    ocelMinerNode: OcelMinerNode,
-    objectEventGraphMinerNode: ObjectEventGraphMinerNode,
     histogramMinerNode: HistogramMinerNode,
     caseNotionMinerNode: CaseNotionMinerNode,
     ocelCollectionNode: OcelCollectionNode,
@@ -33,8 +32,11 @@ const Explore: React.FC = () => {
     const { nodes, edges, onEdgesChange } = useExploreFlowStore();
     const [type] = useDnD();
     const { dialogNodeId } = useFileDialogStore();
-    const { onNodesChange, onEdgeDelete, onDragOver, onDrop, handleConnect, isValidConnection } =
-        useExploreEventHandlers();
+
+    const { onNodesChange } = useNodeOperations();
+    const { onEdgeDelete, handleConnect, isValidConnection } = useConnections();
+    const { onDragOver, onDrop } = useDragDrop();
+
     const handleDrop = useCallback((event: DragEvent<HTMLElement>) => onDrop(event, type), [onDrop, type]);
 
     useMemo(() => {
@@ -62,6 +64,7 @@ const Explore: React.FC = () => {
                         >
                             <Background />
                             <Controls position="top-left" />
+                            <RefocusProgressPanel />
                         </ReactFlow>
                     </div>
                 </SidebarInset>
