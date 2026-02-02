@@ -9,7 +9,7 @@ const NODE_RADIUS = 20;
 const NODE_GAP = 40;
 
 export const useGraphInteractions = (
-    fileId: string,
+    nodeId: string, // <---Changed from fileId to nodeId
     data: any,
     selectedType: string,
     setSelectedType: React.Dispatch<React.SetStateAction<string>>,
@@ -17,8 +17,8 @@ export const useGraphInteractions = (
     setChunk: React.Dispatch<React.SetStateAction<number>>,
     svgRef: React.RefObject<SVGSVGElement | null>
 ) => {
-    // Extract Store Actions
-    const { getColorForObject, initializeDataState } = useExploreFlowStore();
+    //  Extract New Store Actions
+    const { getColorForNode, initializeDataState } = useExploreFlowStore();
 
     const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set());
     const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
@@ -31,8 +31,6 @@ export const useGraphInteractions = (
     const expandedNodeIdsRef = useRef<Set<string>>(new Set());
 
     // --- State Reset on Data Change ---
-    // This hook is required to clear the svg when cycling through the cases
-    // when the Graph is viewed for an OCEL Collection.
     useEffect(() => {
         nodesRef.current = [];
         edgesRef.current = [];
@@ -193,7 +191,7 @@ export const useGraphInteractions = (
 
     // ---  Color State Initialization ---
     useEffect(() => {
-        if (!data || !fileId) return;
+        if (!data || !nodeId) return; // Checked nodeId
 
         const objectTypes: string[] = [];
 
@@ -215,9 +213,10 @@ export const useGraphInteractions = (
         }
 
         if (objectTypes.length > 0) {
-            initializeDataState(fileId, objectTypes);
+            // 3. Initialize with nodeId
+            initializeDataState(nodeId, objectTypes);
         }
-    }, [data, fileId, initializeDataState, objectTypeLookup]);
+    }, [data, nodeId, initializeDataState, objectTypeLookup]);
 
     // --- Main Render Effect ---
     useEffect(() => {
@@ -435,7 +434,8 @@ export const useGraphInteractions = (
                     return 'white';
                 }
 
-                return getColorForObject(fileId, d.label);
+                // 4. Use getColorForNode with nodeId
+                return getColorForNode(nodeId, d.label);
             })
             .attr('stroke', (d) => {
                 const isInvalidObject = d.type === 'object' && !validObjectTypes.has(d.label);
@@ -503,7 +503,9 @@ export const useGraphInteractions = (
                 .attr('y', (_, i) => offset + i * lineHeight)
                 .text((t) => t);
         });
-    }, [data, chunk, selectedType, collapsedNodes, updateFlag, fileId, getColorForObject]);
+
+        // 5. Updated dependency array
+    }, [data, chunk, selectedType, collapsedNodes, updateFlag, nodeId, getColorForNode]);
 
     return {
         collapsedNodes,

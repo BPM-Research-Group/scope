@@ -4,6 +4,7 @@ import { MousePointer } from 'lucide-react';
 import LegendRect from '~/components/ocpt/ui/LegendRect';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { useGetLogGraphs } from '~/services/queries';
+// getDeterministicColor is no longer strictly needed for logic, but kept if you use it elsewhere
 import { getDeterministicColor } from '~/lib/colors';
 
 interface CaseGraphData {
@@ -14,16 +15,24 @@ interface CaseGraphData {
 
 interface GraphPageProps {
     fileId: string;
+    nodeId: string; // <--- 1. NEW PROP REQUIRED
     caseNotionGraph?: CaseGraphData | null;
     editable?: boolean;
     onGenericPayloadChange?: (payload: any) => void;
 }
 
-const GraphPage: React.FC<GraphPageProps> = ({ fileId, caseNotionGraph, editable = false, onGenericPayloadChange }) => {
+const GraphPage: React.FC<GraphPageProps> = ({
+    fileId,
+    nodeId, // <--- Destructure new prop
+    caseNotionGraph,
+    editable = false,
+    onGenericPayloadChange,
+}) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const svgRef = useRef<SVGSVGElement | null>(null);
 
-    const { getColorForObject } = useExploreFlowStore();
+    // 2. USE NEW STORE ACTIONS
+    const { getColorForNode, initializeDataState } = useExploreFlowStore();
 
     const { data, isLoading, error } = useGetLogGraphs(fileId);
 
@@ -31,12 +40,18 @@ const GraphPage: React.FC<GraphPageProps> = ({ fileId, caseNotionGraph, editable
     const [startingObjects, setStartingObjects] = useState<string[]>([]);
 
     function pushBidirectional(arr: any[], a: any, b: any) {
-        // We push both directions to make the graph undirected
         arr.push([a, b]);
         arr.push([b, a]);
     }
 
-    // Reset startingObjects when switching away from generic/editable mode
+    // --- NEW: Initialize Colors when Data Loads ---
+    useEffect(() => {
+        if (data?.object_types) {
+            initializeDataState(nodeId, data.object_types);
+        }
+    }, [data, nodeId, initializeDataState]);
+    // ----------------------------------------------
+
     useEffect(() => {
         if (!editable) {
             setStartingObjects([]);
@@ -44,7 +59,6 @@ const GraphPage: React.FC<GraphPageProps> = ({ fileId, caseNotionGraph, editable
     }, [editable]);
 
     // 1. Sync React State with Payload (Output)
-
     useEffect(() => {
         if (!editable || !localGraph) return;
 
@@ -55,8 +69,6 @@ const GraphPage: React.FC<GraphPageProps> = ({ fileId, caseNotionGraph, editable
 
         const e2o_relations: any[] = [];
         const o2o_relations: any[] = [];
-        console.log('local graph');
-        console.log(localGraph);
 
         localGraph.links.forEach((l: any) => {
             if (l.deselected) return;
@@ -85,18 +97,12 @@ const GraphPage: React.FC<GraphPageProps> = ({ fileId, caseNotionGraph, editable
             }
         });
 
-        console.log('e20');
-        console.log(e2o_relations);
         const payload = { start_types, e2o_relations, o2o_relations };
-
         onGenericPayloadChange?.(payload);
-    }, [localGraph, startingObjects, editable]);
+    }, [localGraph, startingObjects, editable, onGenericPayloadChange]); // Added onGenericPayloadChange dep
 
     useEffect(() => {
         if (!data) return;
-
-        // Prevent resetting the graph when in generic/editable mode if it already exists.
-        // This ensures the user's selections are preserved when the parent component updates (e.g. after mining).
         if (editable && localGraph) return;
 
         const nodes: any[] = [];
@@ -133,7 +139,7 @@ const GraphPage: React.FC<GraphPageProps> = ({ fileId, caseNotionGraph, editable
         });
 
         setLocalGraph({ nodes, links });
-    }, [data, caseNotionGraph, editable]);
+    }, [data, caseNotionGraph, editable]); // Removed localGraph dep to prevent loops
 
     useEffect(() => {
         if (!localGraph || !svgRef.current || !containerRef.current) return;
@@ -199,21 +205,20 @@ const GraphPage: React.FC<GraphPageProps> = ({ fileId, caseNotionGraph, editable
                 d.deselected = !d.deselected;
                 updateLinkStyles();
             });
+
         // --- NODE STYLING ---
         const getFill = (d: any) => {
             if (d.deselected) return '#C0C0C0';
-            // Objects (Types) get Global Color, Events (Activities) get White
-            return d.group === 'object' ? getColorForObject(fileId, d.id) : 'white';
+            // 3. UPDATE: Use getColorForNode with nodeId
+            return d.group === 'object' ? getColorForNode(nodeId, d.id) : 'white';
         };
 
         const getStroke = (d: any) => {
             if (d.deselected) return '#333';
-            // Events get Black border, Objects get White
             return d.group === 'event' ? 'black' : '#fff';
         };
 
         const getStrokeWidth = (d: any) => {
-            // Thicker border for Events
             return d.group === 'event' ? 2.5 : 1.5;
         };
 
@@ -252,24 +257,20 @@ const GraphPage: React.FC<GraphPageProps> = ({ fileId, caseNotionGraph, editable
 
                 if (d.group === 'object') {
                     if (event.shiftKey) {
-                        // Shift + Click on Object Node: Toggle as Start Node
                         const isCurrentlyStarting = startingObjects.includes(d.id);
                         setStartingObjects((prev) =>
                             isCurrentlyStarting ? prev.filter((x) => x !== d.id) : [...prev, d.id]
                         );
-                        // Update visual feedback immediately
                         self.attr('stroke', isCurrentlyStarting ? getStroke(d) : 'black').attr(
                             'stroke-width',
                             isCurrentlyStarting ? getStrokeWidth(d) : 6
                         );
                     } else {
-                        // Regular Click on Object Node: Toggle Deselection
                         d.deselected = !d.deselected;
                         self.attr('fill', getFill(d)).attr('stroke-opacity', d.deselected ? 0.35 : 1);
                         updateConnectedLinks(d);
                     }
                 } else {
-                    // Event Node (d.group !== 'object'): Regular Click toggles deselection
                     d.deselected = !d.deselected;
                     self.attr('fill', getFill(d)).attr('stroke-opacity', d.deselected ? 0.35 : 1);
                     updateConnectedLinks(d);
@@ -298,11 +299,11 @@ const GraphPage: React.FC<GraphPageProps> = ({ fileId, caseNotionGraph, editable
             node.attr('cx', (d: any) => d.x).attr('cy', (d: any) => d.y);
             label.attr('x', (d: any) => d.x).attr('y', (d: any) => d.y);
         });
-    }, [localGraph, editable, startingObjects, fileId, getColorForObject]);
+
+        // Add nodeId and getColorForNode to dependencies so D3 updates if colors change
+    }, [localGraph, editable, startingObjects, fileId, nodeId, getColorForNode]);
 
     if (isLoading) return <div className="flex w-full h-full justify-center items-center">Loading graph...</div>;
-
-    if (isLoading) return <div className="flex w-full h-full justify-center items-center">Loading...</div>;
     if (error)
         return <div className="flex w-full h-full justify-center items-center text-red-500">Failed to load graph</div>;
 
@@ -310,7 +311,6 @@ const GraphPage: React.FC<GraphPageProps> = ({ fileId, caseNotionGraph, editable
         <div className="w-full h-full p-2">
             {editable && (
                 <div className="mt-2 flex flex-col gap-2">
-                    {/* Section 1: Active State with Badges */}
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <span className="font-semibold text-foreground/90">Starting Object Types:</span>
                         {startingObjects.length > 0 ? (
@@ -320,7 +320,8 @@ const GraphPage: React.FC<GraphPageProps> = ({ fileId, caseNotionGraph, editable
                                         key={obj}
                                         className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-0.5 text-xs text-foreground"
                                     >
-                                        <LegendRect size={8} fill={getDeterministicColor(obj)} />
+                                        {/* 4. UPDATE: Use store color in Legend */}
+                                        <LegendRect size={8} fill={getColorForNode(nodeId, obj)} />
                                         {obj}
                                     </span>
                                 ))}
@@ -330,7 +331,6 @@ const GraphPage: React.FC<GraphPageProps> = ({ fileId, caseNotionGraph, editable
                         )}
                     </div>
 
-                    {/* Section 2: Horizontal Control Legend */}
                     <div className="flex items-center gap-4 border-t border-border/50 pt-2 text-xs text-muted-foreground">
                         <div className="flex items-center gap-2">
                             <MousePointer className="h-3 w-3" />

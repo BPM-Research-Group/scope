@@ -7,15 +7,19 @@ import { Bar } from '@visx/shape';
 import { Tooltip } from '@visx/tooltip';
 import ReactDOM from 'react-dom';
 import { useExploreFlowStore } from '~/stores/exploreStore';
-import { getDeterministicColor } from '~/lib/colors';
+
+// getDeterministicColor is no longer needed here as it's handled inside the store's getColorForNode
+// but you can keep it if used elsewhere.
 
 interface Bin {
     x: number;
     y: number;
 }
+
 interface Props {
     id: string;
     fileId: string;
+    nodeId: string; // <--- 1. NEW PROP ADDED
     width?: number;
     height?: number;
     bins?: Bin[];
@@ -30,6 +34,7 @@ interface Props {
 export const HistogramChart: React.FC<Props> = ({
     id,
     fileId,
+    nodeId, // <--- 2. DESTRUCTURE NODE ID
     width = 360,
     height = 220,
     bins = [],
@@ -42,18 +47,18 @@ export const HistogramChart: React.FC<Props> = ({
 }) => {
     const [expanded, setExpanded] = useState(false);
 
-    const { colorMaps } = useExploreFlowStore();
+    // 3. USE NEW STORE ACTION
+    const { getColorForNode } = useExploreFlowStore();
 
+    // 4. UPDATE COLOR MEMO
     const objectColor = useMemo(() => {
-        if (colorMaps[fileId] && colorMaps[fileId][object_type]) {
-            return colorMaps[fileId][object_type];
-        }
-        return getDeterministicColor(object_type);
-    }, [colorMaps, fileId, object_type]);
+        return getColorForNode(nodeId, object_type);
+    }, [getColorForNode, nodeId, object_type]);
 
     const selectedBinColor = objectColor;
     const deselectedBinColor = '#E5E7EB';
 
+    // ... Rest of the component remains exactly the same ...
     const vw = typeof window !== 'undefined' ? window.innerWidth : 1280;
     const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
     const bigW = Math.min(Math.floor(vw * 0.85), 1200);
@@ -284,7 +289,6 @@ export const HistogramChart: React.FC<Props> = ({
             style={{
                 marginTop: 6,
                 fontSize: expanded ? 12 : 13,
-                // --- FIX: Add wrapping styles ---
                 whiteSpace: 'normal',
                 wordWrap: 'break-word',
                 overflowWrap: 'anywhere',
@@ -300,7 +304,7 @@ export const HistogramChart: React.FC<Props> = ({
                         cursor: disabled ? 'not-allowed' : 'pointer',
                         color: disabled ? '#6b7280' : selectedBinColor,
                         fontWeight: 500,
-                        display: 'inline-block', // Keeps comma attached to number
+                        display: 'inline-block',
                     }}
                 >
                     {bins[i]?.x ?? '?'}
