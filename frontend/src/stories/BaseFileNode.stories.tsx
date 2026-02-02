@@ -37,6 +37,7 @@ const commonData = {
     nodeType: 'ocelFileNode' as const,
     nodeCategory: 'file' as const,
     allowedAssetTypes: [],
+    onDataChange: () => {},
 };
 
 const baseNodeProps: Partial<NodeProps<TFileNode>> = {

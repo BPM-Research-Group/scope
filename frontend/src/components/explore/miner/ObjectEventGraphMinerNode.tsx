@@ -2,39 +2,41 @@ import { memo, useEffect, useMemo, useState } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import { Position } from '@xyflow/react';
 import { Eye } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '~/components/ui/button';
-import CaseNotionDialog from '~/components/case_notion/ui/CaseNotionDialog';
 import BaseMinerNode from '~/components/explore/miner/BaseMinerNode';
-import { useExploreFlowStore } from '~/stores/exploreStore';
 import { BaseExploreNodeDropdownOption } from '~/types/explore/nodeData/baseNodeData';
 import { MinerNode } from '~/types/explore/nodes';
 
-const CaseNotionMinerNode = memo<NodeProps<MinerNode>>((node) => {
+const ObjectEventGraphMinerNode = memo<NodeProps<MinerNode>>((node) => {
+    const navigate = useNavigate();
     const { id, data: nodeData } = node;
     const { assets } = nodeData;
-    const [fileId, setFileId] = useState<string | null>(null);
-    const [fileName, setFileName] = useState<string>('');
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const { updateNodeData } = useExploreFlowStore();
+    const [inputFileId, setInputFileId] = useState<string | null>(null);
 
     useEffect(() => {
-        const inputAsset = assets.find((a) => a.io === 'input');
-        setFileId(inputAsset?.id ?? null);
-        setFileName(inputAsset?.name ?? '');
+        const inputAsset = assets.find((a) => a.io === 'input' && a.type === 'ocelFile');
+        setInputFileId(inputAsset?.id ?? null);
     }, [assets]);
 
     const hasMinedAsset = useMemo(() => {
         return assets.some((asset) => asset.io === 'output' && asset.origin === 'mined');
     }, [assets]);
 
+    const openMinerInterface = () => {
+        if (inputFileId) {
+            navigate(`/data/pipeline/explore/ocel/${id}`);
+        }
+    };
+
     const renderActions = () => {
-        if (!fileId) return null;
+        if (!inputFileId) return null;
         return (
             <div className="flex items-center">
                 <Button
-                    onClick={() => setIsDialogOpen(true)}
+                    onClick={openMinerInterface}
                     className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md"
-                    aria-label="Configure case notion mining"
+                    aria-label="Configure object event graph"
                 >
                     <Eye className="h-3.5 w-3.5 mr-1 text-blue-600" />
                     <span className="text-xs text-blue-600">{hasMinedAsset ? 'View/Edit' : 'Configure'}</span>
@@ -50,26 +52,16 @@ const CaseNotionMinerNode = memo<NodeProps<MinerNode>>((node) => {
     return (
         <BaseMinerNode
             {...node}
-            title="Case Notion Miner"
-            iconName="waves"
+            title="Object Event-Graph Miner"
+            iconName="grip"
             handleOptions={[
                 { position: Position.Left, type: 'target' as const },
                 { position: Position.Right, type: 'source' as const },
             ]}
             dropdownOptions={dropdownOptions}
-            isLoading={false}
             customActions={renderActions()}
-        >
-            <CaseNotionDialog
-                node={node}
-                fileId={fileId}
-                fileName={fileName}
-                isOpen={isDialogOpen}
-                onOpenChange={setIsDialogOpen}
-                updateNodeData={updateNodeData}
-            />
-        </BaseMinerNode>
+        />
     );
 });
 
-export default CaseNotionMinerNode;
+export default ObjectEventGraphMinerNode;

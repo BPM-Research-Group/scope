@@ -1,22 +1,18 @@
 import { memo, useEffect, useMemo, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import type { NodeProps } from '@xyflow/react';
 import { Position } from '@xyflow/react';
 import { Pickaxe } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
 import BaseMinerNode from '~/components/explore/miner/BaseMinerNode';
-import { useExploreFlowStore } from '~/stores/exploreStore';
 import { useMineOcpt } from '~/services/queries';
-import { handleMinerOutput } from '~/lib/explore/flowActions';
 import {
+    BaseExploreNodeAsset,
     BaseExploreNodeDropdownActionType,
     BaseExploreNodeDropdownOption,
 } from '~/types/explore/nodeData/baseNodeData';
 import { MinerNode } from '~/types/explore/nodes';
 
 const OcptMinerNode = memo<NodeProps<MinerNode>>((node) => {
-    const queryClient = useQueryClient();
-    const { updateNodeData } = useExploreFlowStore();
     const [fileId, setFileId] = useState<null | string>(null);
     const [fileName, setFileName] = useState<string>('');
     const [algorithm, setAlgorithm] = useState<string>(node.data.algorithm ?? 'DF2');
@@ -36,28 +32,34 @@ const OcptMinerNode = memo<NodeProps<MinerNode>>((node) => {
     }, [node.data.assets]);
 
     useEffect(() => {
-        if (!data?.file_id || !fileName) return;
+        const outputAssets = node.data.assets.filter((asset) => asset.io === 'output');
+        if (!data || !fileName || outputAssets.length > 0) return;
 
-        handleMinerOutput({
-            nodeId: node.id,
-            outputAssetId: data.file_id,
-            outputAssetType: 'ocptAsset',
-            outputNodeType: 'ocptFileNode',
-            inputFileName: fileName,
-        });
-    }, [data?.file_id, fileName, node.id]);
+        const asset: BaseExploreNodeAsset = {
+            id: data.file_id,
+            io: 'output',
+            origin: 'mined',
+            type: 'ocptAsset',
+            name: `ocpt_${fileName}`,
+        };
+
+        const updatedAssets = [...node.data.assets, asset];
+        node.data.onDataChange(node.id, { assets: updatedAssets });
+    }, [data, fileName]);
 
     useEffect(() => {
         if (algorithm === node.data.algorithm) return;
 
-        updateNodeData(node.id, (prev) => {
-            const newAssets = prev.assets.filter((asset) => asset.io !== 'output');
-            return {
-                assets: newAssets,
-                algorithm: algorithm,
-            };
-        });
-    }, [algorithm, node.data.algorithm, node.id, updateNodeData]);
+        const newAssets = node.data.assets.filter((asset) => asset.io !== 'output');
+
+        const updatedData = {
+            ...node.data,
+            assets: newAssets,
+            algorithm: algorithm,
+        };
+
+        node.data.onDataChange(node.id, updatedData);
+    }, [algorithm]);
 
     const handleExportJson = () => {
         if (!data) {
@@ -113,12 +115,6 @@ const OcptMinerNode = memo<NodeProps<MinerNode>>((node) => {
         </div>
     );
 
-    const handleReset = () => {
-        setFileId(null);
-        setFileName('');
-        queryClient.removeQueries({ queryKey: ['mineOcpt', node.id] });
-    };
-
     return (
         <BaseMinerNode
             {...node}
@@ -132,7 +128,6 @@ const OcptMinerNode = memo<NodeProps<MinerNode>>((node) => {
             onDropdownAction={handleDropdownAction}
             isLoading={isLoading || isFetching}
             customActions={renderCustomActions()}
-            onReset={handleReset}
         />
     );
 });

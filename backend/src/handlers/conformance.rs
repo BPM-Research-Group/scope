@@ -2,14 +2,15 @@ use axum::{Json, extract::Path as AxumPath, http::StatusCode, response::IntoResp
 use serde_json::json;
 use tokio::fs as tokio_fs;
 
-use process_mining::conformance::object_centric::object_centric_language_abstraction::{
+use crate::core::conformance::object_centric_language_abstraction_struct::{
     OCLanguageAbstraction, compute_fitness_precision,
 };
 use crate::models::ocel::{IndexLinkedOCEL, OCEL};
 
 // OCPT backend + (optionally) FE type & converter if needed
 use crate::core::struct_converters::ocpt_frontend_backend::frontend_to_backend;
-use crate::models::ocpt::{OCPT as BackendOCPT, OcptFE as FrontendOcpt};
+use crate::models::ocpt::OCPT as BackendOCPT;
+use crate::models::ocpt::OcptFE as FrontendOcpt;
 
 /// Helper: Load an OCPT from disk, accepting either FE or BE JSON.
 /// Always returns the **backend** OCPT.
@@ -19,18 +20,16 @@ async fn load_backend_ocpt(path: &str) -> Result<BackendOCPT, String> {
         .map_err(|e| format!("read {}: {e}", path))?;
 
     // Try backend first
-    let backend_ocpt = if let Ok(be) = serde_json::from_str::<BackendOCPT>(&content) {
-        be
-    } else {
-        // Try frontend -> convert to backend
-        let fe = serde_json::from_str::<FrontendOcpt>(&content)
-            .map_err(|e| format!("parse OCPT (backend or frontend) failed at {}: {e}", path))?;
+    if let Ok(be) = serde_json::from_str::<BackendOCPT>(&content) {
+        return Ok(be);
+    }
 
-        frontend_to_backend(fe)
-            .map_err(|e| format!("frontend->backend OCPT conversion failed at {}: {e}", path))?
-    };
+    // Try frontend -> convert to backend
+    let fe = serde_json::from_str::<FrontendOcpt>(&content)
+        .map_err(|e| format!("parse OCPT (backend or frontend) failed at {}: {e}", path))?;
 
-    Ok(backend_ocpt)
+    frontend_to_backend(fe)
+        .map_err(|e| format!("frontend→backend OCPT conversion failed at {}: {e}", path))
 }
 
 /// GET /v1/conformance/ocpt/{ocpt_id}/ocel/{ocel_id}"

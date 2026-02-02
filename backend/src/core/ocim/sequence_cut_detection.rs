@@ -1,4 +1,4 @@
-use std::collections::{HashSet};
+use std::collections::{HashMap, HashSet};
 
 use petgraph::algo::toposort;
 use petgraph::graph::DiGraph;
@@ -306,7 +306,7 @@ mod tests {
     use crate::core::ocim::algorithm::ocim_init;
     use crate::models::ocpt::{OCPTLeafLabel, OCPTOperatorType, OCPTNode};
     use chrono::Utc;
-    use crate::models::ocel::{
+    use process_mining::ocel::ocel_struct::{
         OCEL, OCELEvent, OCELObject, OCELRelationship, OCELType,
     };
     use std::path::Path;

@@ -1,5 +1,5 @@
+use process_mining::OCEL;
 use crate::models::ocpt::{OCPTNode, OCPT, OCPTOperatorType};
-use crate::models::ocel::OCEL;
 use crate::core::ocim::{
     common_data::{LocalData, GlobalData},
     basecase::basecase,
@@ -123,8 +123,8 @@ pub fn find_strict_cut(local_data: &LocalData, global_data: &GlobalData) -> Opti
 mod tests {
     use super::*;
     use crate::core::ocim::common_data::{GlobalData, LocalData};
-    use crate::models::ocpt::{OCPTNode, OCPTOperatorType, OCPTPretty};
-    use crate::models::ocel::OCEL;
+    use crate::models::ocpt::{OCPTNode, OCPTOperatorType};
+    use process_mining::ocel::ocel_struct::OCEL;
     use std::path::Path;
 
     #[test]

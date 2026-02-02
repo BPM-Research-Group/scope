@@ -1,4 +1,8 @@
+import { useEffect, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { NodeProps } from '@xyflow/react';
 import { FileSymlink, Loader2, Pickaxe } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid';
 import { Button } from '~/components/ui/button';
 import {
     Dialog,
@@ -18,51 +22,109 @@ import {
     SelectValue,
 } from '~/components/ui/select';
 import GraphPage from '~/components/graph_visualization/GraphPage';
+import { getAdvancedCN, getConnectedComponentsCN, getGenericCN, getTraditionalCN } from '~/services/api';
+import { useGetCaseNotions, useGetOcelObjectTypes } from '~/services/queries';
+import { BaseExploreNodeAsset, BaseExploreNodeData } from '~/types/explore/nodeData/baseNodeData';
+import { MinerNode } from '~/types/explore/nodes';
 
 interface CaseNotionDialogProps {
+    node: NodeProps<MinerNode>;
+    fileId: string | null;
+    fileName: string;
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
-    fileId: string | null;
-
-    // Form State
-    algorithm: string;
-    onAlgorithmChange: (val: string) => void;
-    objectType: string;
-    onObjectTypeChange: (val: string) => void;
-    genericPayload: any;
-    onGenericPayloadChange: (val: any) => void;
-
-    // Data
-    objectTypes: { name: string }[] | undefined;
-    caseNotionData: any;
-
-    // Status
-    isMining: boolean;
-    isExporting: boolean;
-    hasUnminedChanges: boolean; // If settings changed since last mine
-
-    // Actions
-    onMine: () => void;
-    onExport: () => void;
+    updateNodeData: (nodeId: string, data: Partial<BaseExploreNodeData>) => void;
 }
 
-const CaseNotionDialog = ({
-    isOpen,
-    onOpenChange,
-    fileId,
-    algorithm,
-    onAlgorithmChange,
-    objectType,
-    onObjectTypeChange,
-    onGenericPayloadChange,
-    objectTypes,
-    caseNotionData,
-    isMining,
-    isExporting,
-    hasUnminedChanges,
-    onMine,
-    onExport,
-}: CaseNotionDialogProps) => {
+const CaseNotionDialog = ({ node, fileId, fileName, isOpen, onOpenChange, updateNodeData }: CaseNotionDialogProps) => {
+    const [selectedAlgorithm, setSelectedAlgorithm] = useState<string>('traditional');
+    const [selectedObjectType, setSelectedObjectType] = useState<string>('default');
+    const [currentCnFileId, setCurrentCnFileId] = useState<string>('');
+    const [makeFinalFetch, setMakeFinalFetch] = useState<boolean>(false);
+    const [isDirty, setIsDirty] = useState<boolean>(false);
+
+    const [genericPayload, setGenericPayload] = useState<any>(null);
+
+    const { data: ocelObjectTypesData } = useGetOcelObjectTypes(fileId);
+    const cnGet = useGetCaseNotions(currentCnFileId, makeFinalFetch);
+
+    const { mutate, isPending, data, reset } = useMutation({
+        mutationFn: async (algorithm: string) => {
+            if (!fileId) {
+                throw new Error('File ID is not available.');
+            }
+            const newCaseNotionFileId = uuidv4();
+            setCurrentCnFileId(newCaseNotionFileId);
+            console.log('generic pay load');
+            console.log(genericPayload);
+
+            switch (algorithm) {
+                case 'traditional':
+                    return getTraditionalCN(fileId, selectedObjectType, newCaseNotionFileId);
+                case 'connected-component':
+                    return getConnectedComponentsCN(fileId, selectedObjectType, newCaseNotionFileId);
+                case 'advanced':
+                    return getAdvancedCN(fileId, selectedObjectType, newCaseNotionFileId);
+                case 'generic':
+                    if (genericPayload.start_types.length === 0) {
+                        return;
+                    }
+
+                    return getGenericCN(fileId, genericPayload, newCaseNotionFileId);
+                default:
+                    throw new Error(`Unknown or unsupported algorithm: ${algorithm}`);
+            }
+        },
+        onSuccess: (data) => {
+            console.log('Mining successful:', data);
+            setIsDirty(false);
+        },
+        onError: (error) => {
+            console.error('Mining failed:', error);
+        },
+    });
+
+    const handleMineClick = async () => {
+        if (ocelObjectTypesData) {
+            console.log(ocelObjectTypesData.object_types);
+        }
+
+        if (selectedAlgorithm) {
+            setMakeFinalFetch(false);
+            mutate(selectedAlgorithm);
+        } else {
+            console.warn('No algorithm selected.');
+        }
+    };
+
+    const handleFinalMineClick = () => {
+        setMakeFinalFetch(true);
+    };
+
+    useEffect(() => {
+        if (!cnGet.data || !fileName) return;
+
+        let currentAssets = [...node.data.assets];
+        const outputAssets = currentAssets.filter((asset) => asset.io === 'output');
+
+        if (outputAssets.length > 0) {
+            // Filter out existing output assets to replace them
+            currentAssets = currentAssets.filter((asset) => asset.io !== 'output');
+        }
+
+        const asset: BaseExploreNodeAsset = {
+            id: cnGet.data.case_ocels_file_id,
+            io: 'output',
+            origin: 'mined',
+            type: 'ocelCollectionFile',
+            name: `cn_${cnGet.data.case_ocels_file_id}`,
+        };
+
+        const updatedAssets = [...currentAssets, asset];
+        node.data.onDataChange(node.id, { assets: updatedAssets });
+        onOpenChange(false);
+    }, [cnGet.data]);
+
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[800px] md:max-w-[1000px] lg:max-w-[1200px] h-[80vh] w-full flex flex-col">
@@ -78,9 +140,9 @@ const CaseNotionDialog = ({
                                 {fileId ? (
                                     <GraphPage
                                         fileId={fileId}
-                                        caseNotionGraph={caseNotionData?.type_level_graph}
-                                        editable={algorithm === 'generic'}
-                                        onGenericPayloadChange={onGenericPayloadChange}
+                                        caseNotionGraph={data?.type_level_graph}
+                                        editable={selectedAlgorithm === 'generic'}
+                                        onGenericPayloadChange={setGenericPayload}
                                     />
                                 ) : (
                                     <div className="flex flex-1 items-center justify-center">
@@ -94,8 +156,15 @@ const CaseNotionDialog = ({
                     <div className="flex flex-col w-1/3">
                         <p className="font-bold">Settings</p>
                         <div className="flex mt-2 ">
-                            <Select onValueChange={onAlgorithmChange} value={algorithm}>
-                                <SelectTrigger className={algorithm === 'connected-component' ? 'w-full' : ''}>
+                            <Select
+                                onValueChange={(val) => {
+                                    setSelectedAlgorithm(val);
+                                    setIsDirty(true);
+                                    reset();
+                                }}
+                                value={selectedAlgorithm}
+                            >
+                                <SelectTrigger className={selectedAlgorithm === 'connected-component' ? 'w-full' : ''}>
                                     <SelectValue placeholder="Select an algorithm" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -108,11 +177,14 @@ const CaseNotionDialog = ({
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
-                            {algorithm !== 'connected-component' && algorithm !== 'generic' && (
+                            {selectedAlgorithm !== 'connected-component' && selectedAlgorithm !== 'generic' && (
                                 <Select
-                                    value={objectType}
-                                    onValueChange={onObjectTypeChange}
-                                    disabled={algorithm === 'connected-component'}
+                                    value={selectedObjectType}
+                                    onValueChange={(val) => {
+                                        setSelectedObjectType(val);
+                                        setIsDirty(true);
+                                    }}
+                                    disabled={selectedAlgorithm === 'connected-component'}
                                 >
                                     <SelectTrigger className="ml-2">
                                         <SelectValue placeholder="Select an object type" />
@@ -123,9 +195,9 @@ const CaseNotionDialog = ({
                                             <SelectItem key="default" value="default">
                                                 Default (slow)
                                             </SelectItem>
-                                            {objectTypes?.map((ot) => (
-                                                <SelectItem key={ot.name} value={ot.name}>
-                                                    {ot.name}
+                                            {ocelObjectTypesData?.object_types.map((objectType) => (
+                                                <SelectItem key={objectType.name} value={objectType.name}>
+                                                    {objectType.name}
                                                 </SelectItem>
                                             ))}
                                         </SelectGroup>
@@ -134,14 +206,16 @@ const CaseNotionDialog = ({
                             )}
                             <Button
                                 variant="outline"
-                                onClick={onMine}
-                                disabled={!algorithm || isMining}
+                                onClick={() => {
+                                    handleMineClick();
+                                }}
+                                disabled={!selectedAlgorithm || isPending}
                                 className="h-10 w-10 ml-2"
                             >
-                                {isMining ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pickaxe />}
+                                {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pickaxe />}
                             </Button>
                         </div>
-                        {caseNotionData && caseNotionData.measures && caseNotionData.measures.length > 0 && (
+                        {data && data.measures && data.measures.length > 0 && (
                             <>
                                 <p className="font-bold mt-6">Measures</p>
 
@@ -158,7 +232,7 @@ const CaseNotionDialog = ({
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {caseNotionData.measures.map(
+                                            {data.measures.map(
                                                 (measure: { name: string; value: number }, index: number) => (
                                                     <tr
                                                         key={index}
@@ -178,10 +252,14 @@ const CaseNotionDialog = ({
                         )}
                     </div>
                 </div>
-                {caseNotionData && caseNotionData.measures && caseNotionData.measures.length > 0 && (
+                {data && data.measures && data.measures.length > 0 && (
                     <DialogFooter className="flex justify-end">
-                        <Button variant={'outline'} onClick={onExport} disabled={isExporting || hasUnminedChanges}>
-                            {isExporting ? (
+                        <Button
+                            variant={'outline'}
+                            onClick={handleFinalMineClick}
+                            disabled={(makeFinalFetch && cnGet.isFetching) || isDirty}
+                        >
+                            {makeFinalFetch && cnGet.isFetching ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                     Exporting...
@@ -199,4 +277,5 @@ const CaseNotionDialog = ({
         </Dialog>
     );
 };
+
 export default CaseNotionDialog;
