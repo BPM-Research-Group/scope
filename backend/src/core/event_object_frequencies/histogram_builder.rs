@@ -1,7 +1,14 @@
 use process_mining::OCEL;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
+
+#[derive(Deserialize, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
+pub enum HistogramPerspective {
+    Event,
+    Object,
+}
 
 #[derive(Serialize)]
 struct HistogramBin {
@@ -18,6 +25,7 @@ struct HistogramEntry {
 
 #[derive(Serialize)]
 struct HistogramResult {
+    perspective: String,
     histograms: Vec<HistogramEntry>,
 }
 
@@ -29,47 +37,56 @@ fn build_object_index(log: &OCEL) -> HashMap<&str, &str> {
 }
 
 /// Build event-object frequency histograms for an [`OCEL`].
-/// Each histogram corresponds to a unique (event_type, object_type) pair
-/// and shows how many objects of that type are associated with events of that type.
 ///
-/// # Example JSON output:
-/// one histogram per (event_type, object_type) pair
-///    - histogram x: count
-///    - histogram y: frequency
+/// The function can generate histograms from two perspectives:
+/// 1. Event Perspective: For each (event_type, object_type) pair, it shows how many
+///    objects of `object_type` are associated with events of `event_type`.
+///    - `count`: Number of objects of `object_type` in an event.
+///    - `frequency`: Number of events of `event_type` with that many objects.
 ///
+/// 2. Object Perspective: For each (object_type, event_type) pair, it shows how many
+///    events of `event_type` an object of `object_type` is associated with.
+///    - `count`: Number of events of `event_type` an object is in.
+///    - `frequency`: Number of objects of `object_type` in that many events.
 ///
+/// # Example JSON output (event perspective):
 /// ```json
 /// {
+///   "perspective": "event",
 ///   "histograms": [
 ///     {
 ///       "event_type": "Depart",
 ///       "object_type": "Container",
 ///       "histogram": [
 ///         { "count": 2, "frequency": 5 },
-///         { "count": 3, "frequency": 2 },
-///         { "count": 5, "frequency": 1 }
-///       ]
-///     },
-///     {
-///       "event_type": "Arrive",
-///       "object_type": "Truck",
-///       "histogram": [
-///         { "count": 1, "frequency": 7 },
-///         { "count": 2, "frequency": 4 }
+///         { "count": 3, "frequency": 2 }
 ///       ]
 ///     }
 ///   ]
 /// }
 /// ```
-///     
-///
 ///
 /// # Arguments
 /// * `log` - A reference to an [`OCEL`] log instance.
+/// * `perspective` - The [`HistogramPerspective`] to use for building the histograms.
 ///
 /// # Returns
 /// A [`serde_json::Value`] containing the JSON representation of the histograms.
-pub fn build_event_object_histograms(log: &OCEL) -> Value {
+pub fn build_histograms(log: &OCEL, perspective: HistogramPerspective) -> Value {
+    let (histograms, perspective_str) = match perspective {
+        HistogramPerspective::Event => (build_event_perspective_histograms(log), "event"),
+        HistogramPerspective::Object => (build_object_perspective_histograms(log), "object"),
+    };
+
+    let result = HistogramResult {
+        perspective: perspective_str.to_string(),
+        histograms,
+    };
+
+    serde_json::to_value(&result).unwrap()
+}
+
+fn build_event_perspective_histograms(log: &OCEL) -> Vec<HistogramEntry> {
     let object_index = build_object_index(log);
     let mut stats: HashMap<(String, String), HashMap<usize, usize>> = HashMap::new();
 
@@ -119,10 +136,70 @@ pub fn build_event_object_histograms(log: &OCEL) -> Value {
             .then_with(|| a.object_type.cmp(&b.object_type))
     });
 
-    let result = HistogramResult { histograms };
-
-    serde_json::to_value(&result).unwrap()
+    histograms
 }
+
+fn build_object_perspective_histograms(log: &OCEL) -> Vec<HistogramEntry> {
+    let mut object_to_events: HashMap<&str, Vec<&str>> = HashMap::new();
+    for event in &log.events {
+        for rel in &event.relationships {
+            object_to_events
+                .entry(rel.object_id.as_str())
+                .or_default()
+                .push(event.event_type.as_str());
+        }
+    }
+
+    let mut stats: HashMap<(String, String), HashMap<usize, usize>> = HashMap::new();
+
+    for object in &log.objects {
+        let mut events_by_type: HashMap<&str, usize> = HashMap::new();
+        if let Some(event_types) = object_to_events.get(object.id.as_str()) {
+            for etype in event_types {
+                *events_by_type.entry(etype).or_insert(0) += 1;
+            }
+        }
+
+        for (etype, count) in events_by_type {
+            let key = (object.object_type.clone(), etype.to_string());
+            let histogram = stats.entry(key).or_insert_with(HashMap::new);
+            *histogram.entry(count).or_insert(0) += 1;
+        }
+    }
+
+    // Convert to serializable structures
+    let mut histograms: Vec<HistogramEntry> = stats
+        .into_iter()
+        .map(|((otype, etype), hist)| {
+            let mut bins: Vec<HistogramBin> = hist
+                .into_iter()
+                .map(|(count, freq)| HistogramBin {
+                    count,
+                    frequency: freq,
+                })
+                .collect();
+
+            // sort bins numerically by count
+            bins.sort_by_key(|bin| bin.count);
+
+            HistogramEntry {
+                event_type: etype,
+                object_type: otype,
+                histogram: bins,
+            }
+        })
+        .collect();
+
+    // Optional: sort outer vector for deterministic output
+    histograms.sort_by(|a, b| {
+        a.object_type
+            .cmp(&b.object_type)
+            .then_with(|| a.event_type.cmp(&b.event_type))
+    });
+
+    histograms
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -132,9 +209,9 @@ mod tests {
     use tokio::fs as tokio_fs;
 
     #[tokio::test]
-    async fn test_build_event_object_histograms() {
+    async fn test_build_histograms() {
         // 1. Build the path to your OCEL JSON
-        let ocel_path = PathBuf::from("../example_data/ocel/ocel_v2_123.json");
+        let ocel_path = PathBuf::from("../example_data/ocel/construction-site.json");
 
         // 2. Read the file
         let ocel_data = tokio_fs::read_to_string(&ocel_path)
@@ -144,14 +221,18 @@ mod tests {
         // 3. Deserialize into OCEL
         let ocel: OCEL = serde_json::from_str(&ocel_data).expect("failed to parse OCEL JSON");
 
-        // 4. Build the histogram
-        let histogram = build_event_object_histograms(&ocel);
-
-        // 5. Serialize to pretty JSON string
-        let json_str =
-            serde_json::to_string_pretty(&histogram).expect("failed to serialize histogram");
-
-        // 6. Print to console
-        println!("{}", json_str);
+        // 4. Build and print event perspective histogram
+        println!("--- Event Perspective ---");
+        let event_histogram = build_histograms(&ocel, HistogramPerspective::Event);
+        let event_json_str =
+            serde_json::to_string_pretty(&event_histogram).expect("failed to serialize histogram");
+        println!("{}", event_json_str);
+        
+        // 5. Build and print object perspective histogram
+        println!("\n--- Object Perspective ---");
+        let object_histogram = build_histograms(&ocel, HistogramPerspective::Object);
+        let object_json_str =
+            serde_json::to_string_pretty(&object_histogram).expect("failed to serialize histogram");
+        println!("{}", object_json_str);
     }
 }

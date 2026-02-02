@@ -3,7 +3,8 @@ import {
     getAdvancedCN,
     getCaseNotions,
     getConnectedComponentsCN,
-    getHistogram,
+    getHistogramEventPersp,
+    getHistogramObjectPersp,
     getLogGraphs,
     getOcelCollection,
     getOcelObjectTypes,
@@ -50,10 +51,19 @@ export const useGetOcelObjectTypes = (fileId: string | null) => {
     });
 };
 
-export const useGetHistogram = (fileId: string | undefined) => {
+export const useGetHistogramEventPersp = (fileId: string | undefined) => {
     return useQuery({
         queryKey: ['getHistogram', fileId],
-        queryFn: () => getHistogram(fileId!),
+        queryFn: () => getHistogramEventPersp(fileId!),
+        enabled: Boolean(fileId),
+        refetchOnWindowFocus: false,
+    });
+};
+
+export const useGetHistogramObjectPersp = (fileId: string | undefined) => {
+    return useQuery({
+        queryKey: ['getHistogramObjectPersp', fileId],
+        queryFn: () => getHistogramObjectPersp(fileId!),
         enabled: Boolean(fileId),
         refetchOnWindowFocus: false,
     });
