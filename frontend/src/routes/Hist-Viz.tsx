@@ -1167,18 +1167,12 @@ export default function HistViz() {
 
     const node = nodeId ? getNode(nodeId) : undefined;
 
-    useEffect(() => {
+    useMemo(() => {
         if (node) {
             const inputFile = node.data.assets.find((asset) => asset.io === 'input');
-            if (inputFile) {
-                setFileId(inputFile.id);
-                setFileName(inputFile.name || '');
-            }
-            // Don't clear fileId/fileName if input is temporarily missing (e.g., during stale state)
-            // This allows the submit flow to complete even if assets are cleared mid-operation
+            setFileId(inputFile?.id);
         } else {
             setFileId(undefined);
-            setFileName('');
         }
     }, [node]);
 

@@ -1,31 +1,23 @@
 import { type XYPosition } from '@xyflow/react';
 import { FileExploreNodeData } from '~/types/explore/nodeData/fileNodeData';
-import { FileNode } from '~/types/explore/nodes';
 import { ExploreFileNodeType } from '~/types/explore/nodeTypesCategories';
 import { AssetType } from '~/types/files.types';
 import { BaseExploreNode } from './base-node.model';
 
-export class FileExploreNode extends BaseExploreNode<FileExploreNodeData> implements FileNode {
-    declare type: ExploreFileNodeType;
-    // Explicitly declare the narrower type for data to satisfy FileNode interface
-    declare data: FileExploreNodeData & { nodeType: ExploreFileNodeType; nodeCategory: 'file' };
+export class FileExploreNode extends BaseExploreNode {
+    declare data: FileExploreNodeData;
 
-    constructor(position: XYPosition, nodeType: ExploreFileNodeType, isDownstream: boolean = false) {
+    constructor(position: XYPosition, nodeType: ExploreFileNodeType) {
         super(position, nodeType);
-        // We set the downstream status after super() because initializeData is called during super()
-        this.data.isDownstream = isDownstream;
     }
 
-    protected initializeData(
-        nodeType: ExploreFileNodeType
-    ): FileExploreNodeData & { nodeType: ExploreFileNodeType; nodeCategory: 'file' } {
+    protected initializeData(nodeType: ExploreFileNodeType): FileExploreNodeData {
         return {
             nodeType,
             nodeCategory: 'file',
             assets: [],
             allowedAssetTypes: this.getAllowedAssetTypes(nodeType),
-            isDownstream: false, // Defaulted, will be overridden in constructor if necessary
-            colorMap: () => '',
+            onDataChange: () => {},
         };
     }
 
@@ -35,10 +27,6 @@ export class FileExploreNode extends BaseExploreNode<FileExploreNodeData> implem
                 return ['ocelFile'] as const;
             case 'ocptFileNode':
                 return ['ocptFile'] as const;
-            case 'ocelCollectionNode':
-                return ['ocelCollectionFile'] as const;
-            default:
-                return [] as const;
         }
     }
 }
