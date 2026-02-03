@@ -9,12 +9,12 @@ import {
     type NodeChange,
 } from '@xyflow/react';
 import { create } from 'zustand';
-// Imports from the colors.ts for the color state management
 import { getDeterministicColor, getSequentialColor } from '~/lib/colors';
 import type { FileExploreNodeData } from '~/types/explore/nodeData/fileNodeData';
 import type { VisualizationExploreNodeData } from '~/types/explore/nodeData/visualizationNodeData';
 
 type ExploreNode = Node<FileExploreNodeData> | Node<VisualizationExploreNodeData>;
+
 export interface SavedPipeline {
     id: string;
     name: string;
@@ -22,10 +22,12 @@ export interface SavedPipeline {
     edges: Edge[];
     savedAt: string;
 }
+
 export interface HistogramState {
     selections: Record<string, number[]>;
     isSubmitted: boolean;
 }
+
 interface ExploreFlowStore {
     nodes: ExploreNode[];
     edges: Edge[];
@@ -60,6 +62,7 @@ interface ExploreFlowStore {
     histogramStates: Record<string, HistogramState>;
     setHistogramState: (nodeId: string, state: HistogramState) => void;
 }
+
 export const useExploreFlowStore = create<ExploreFlowStore>((set, get) => ({
     nodes: [],
     edges: [],
@@ -234,6 +237,7 @@ export const useExploreFlowStore = create<ExploreFlowStore>((set, get) => ({
                     currentIndex++;
                     attempts++;
                 } while (usedColors.has(color) && attempts < 100);
+
                 currentMap[type] = color;
                 usedColors.add(color);
                 hasChanges = true;
