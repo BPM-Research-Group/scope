@@ -10,6 +10,7 @@ import OcelFileNode from '~/components/explore/file/OcelFileNode';
 import OcptFileNode from '~/components/explore/file/OcptFileNode';
 import FileSelectionDialog from '~/components/explore/file/ui/FileSelectionDialog';
 import CaseNotionMinerNode from '~/components/explore/miner/CaseNotionMinerNode';
+import ResourceMinerNode from '~/components/explore/miner/ResourceMinerNode';
 import HistogramMinerNode from '~/components/explore/miner/HistogramMinerNode';
 import OcptMinerNode from '~/components/explore/miner/OcptMinerNode';
 import { useConnections } from '~/hooks/explore/useConnections';
@@ -25,6 +26,7 @@ const nodeTypes = {
     ocptFileNode: OcptFileNode,
     histogramMinerNode: HistogramMinerNode,
     caseNotionMinerNode: CaseNotionMinerNode,
+    resourceMinerNode: ResourceMinerNode,
     ocelCollectionNode: OcelCollectionNode,
 };
 

@@ -51,6 +51,9 @@ const ExploreSidebar: React.FC = () => {
                                 <DndCard title="Case Notions" Icon={iconMap.waves} nodeType="caseNotionMinerNode" />
                             </SidebarMenuItem>
                         </SidebarMenu>
+                        <SidebarMenuItem className="ml-1">
+                                <DndCard title="Resource Miner" Icon={iconMap.waves} nodeType="resourceMinerNode" />
+                            </SidebarMenuItem>
                     </SidebarGroupContent>
                 </SidebarGroup>
             </SidebarContent>

@@ -13,6 +13,7 @@ import OcelViewer from '~/routes/OcelViewer';
 import OcptViewer from '~/routes/OcptViewer';
 import Pipeline from '~/routes/Pipeline';
 import Upload from '~/routes/Upload';
+import ResourceViewer from './routes/ResourceViewer';
 
 // Create a client
 const queryClient = new QueryClient();
@@ -51,6 +52,14 @@ const router = createBrowserRouter([
         element: (
             <RedirectErrorBoundary>
                 <OcelViewer />
+            </RedirectErrorBoundary>
+        ),
+    },
+    {
+        path: '/data/pipeline/explore/resource_graph/:nodeId',
+        element: (
+            <RedirectErrorBoundary>
+                <ResourceViewer />
             </RedirectErrorBoundary>
         ),
     },
