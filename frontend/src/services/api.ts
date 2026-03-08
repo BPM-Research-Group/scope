@@ -269,3 +269,8 @@ export const getOcpn = async (fileId: string) => {
     const response = await api.get(`/v1/objects/ocpn/${fileId}`);
     return response.data;
 };
+
+export const getEventStreamInit = async (fileId: string): Promise<{ first_event: string; last_event: string; event_count: number }> => {
+    const response = await api.get(`v1/event_stream/init/${fileId}`);
+    return response.data;
+};

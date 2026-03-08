@@ -5,6 +5,7 @@ import { SidebarInset, SidebarProvider } from '~/components/ui/sidebar';
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 import { DnDProvider, useDnD } from '~/components/explore/DndContext';
 import ExploreSidebar from '~/components/explore/ExploreSidebar';
+import EventStreamNode from '~/components/explore/file/EventStreamNode';
 import OcelCollectionNode from '~/components/explore/file/OcelCollectionNode';
 import OcelFileNode from '~/components/explore/file/OcelFileNode';
 import OcpnFileNode from '~/components/explore/file/OcpnFileNode';
@@ -47,6 +48,7 @@ const nodeTypes = {
     abstractionFileNode: AbstractionFileNode,
     resourceMinerNode: ResourceMinerNode,
     conformanceFileNode: ConformanceFileNode,
+    eventStreamNode: EventStreamNode,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } satisfies Record<keyof typeof nodeRegistry, React.ComponentType<NodeProps<any>>>;
 
