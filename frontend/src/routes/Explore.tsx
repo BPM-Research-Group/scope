@@ -19,6 +19,7 @@ import ConformanceMinerNode from '~/components/explore/miner/ConformanceMinerNod
 import CaseNotionMinerNode from '~/components/explore/miner/CaseNotionMinerNode';
 import ExtendWithIdentityNode from '~/components/explore/miner/ExtendWithIdentityNode';
 import FlowVisualizationNode from '~/components/explore/miner/FlowVisualizationNode';
+import Df2StreamMinerNode from '~/components/explore/miner/Df2StreamMinerNode';
 import HistogramMinerNode from '~/components/explore/miner/HistogramMinerNode';
 import OcpnMinerNode from '~/components/explore/miner/OcpnMinerNode';
 import ResourceMinerNode from '~/components/explore/miner/ResourceMinerNode';
@@ -49,6 +50,7 @@ const nodeTypes = {
     resourceMinerNode: ResourceMinerNode,
     conformanceFileNode: ConformanceFileNode,
     eventStreamNode: EventStreamNode,
+    df2StreamMinerNode: Df2StreamMinerNode,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } satisfies Record<keyof typeof nodeRegistry, React.ComponentType<NodeProps<any>>>;
 

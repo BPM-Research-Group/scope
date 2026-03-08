@@ -3,5 +3,7 @@ use axum::Router;
 use axum::routing::get;
 
 pub fn router() -> Router {
-    Router::new().route("/init/{file_id}", get(event_stream_mining::event_stream_init))
+    Router::new()
+        .route("/init/{file_id}", get(event_stream_mining::event_stream_init))
+        .route("/ws/{file_id}", get(event_stream_mining::event_stream_ws))
 }
