@@ -1,7 +1,5 @@
-use simplelog::*;
 use std::collections::{HashMap, HashSet};
 use std::fs as stdfs;
-use std::fs::File;
 
 use crate::core::df2_miner::convert_to_json_tree::build_output; // << your new module
 use crate::core::df2_miner::{
@@ -11,22 +9,6 @@ use crate::models::ocel_sid_df2_miner::OcelJson;
 use uuid::Uuid;
 
 pub fn generate_ocpt_from_fileid(file_id: &str) -> String {
-    // Setup logging (ignore if already initialized)
-    CombinedLogger::init(vec![
-        TermLogger::new(
-            LevelFilter::Info,
-            Config::default(),
-            TerminalMode::Mixed,
-            ColorChoice::Auto,
-        ),
-        WriteLogger::new(
-            LevelFilter::Info,
-            Config::default(),
-            File::create("process.log").unwrap(),
-        ),
-    ])
-    .ok();
-
     // Load OCEL from temp
     let file_path = format!("./temp/ocel_v2_{}.json", file_id);
     let file_content = stdfs::read_to_string(&file_path).unwrap();
@@ -37,8 +19,42 @@ pub fn generate_ocpt_from_fileid(file_id: &str) -> String {
     let (div, con, _rel, defi, all_activities, _all_object_types) =
         interaction_patterns::get_interaction_patterns(&relations, &ocel);
 
+    // Sort divergence map for easy comparison
+    let mut sorted_div: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+    for (act, ots) in &div {
+        let mut ots_sorted = ots.clone();
+        ots_sorted.sort();
+        sorted_div.insert(format!("{}: {:?}", act, ots_sorted));
+    }
+
+    log::info!("OFFLINE DIVERGENCE (Sorted):");
+    for entry in sorted_div {
+        log::info!("  {}", entry);
+    }
+
+    // Serialize and write divergence for comparison
+    let div_json = serde_json::to_string_pretty(&div).unwrap();
+    let _ = stdfs::write("./temp/offline_divergence.json", div_json);
+
     let (dfg, start_acts, end_acts) =
         divergence_free_dfg::get_divergence_free_graph_v2(&relations, &div);
+
+    // DUMP OFFLINE EDGES
+    // The offline DFG is HashMap<(from, to), count> but the relations logic iterates by object.
+    // However, the divergence_free_dfg returns the final unique pairs.
+    let mut offline_edges: Vec<String> = dfg.keys()
+        .map(|(f, t)| format!("{}|{}", f, t))
+        .collect();
+    offline_edges.sort();
+    let edge_json = serde_json::to_string_pretty(&offline_edges).unwrap();
+    let _ = stdfs::write("./temp/offline_edges.json", edge_json);
+
+    log::info!(
+        "OFFLINE FINAL DFG: {} edges, {} start activities, {} total activities",
+        dfg.len(),
+        start_acts.len(),
+        all_activities.len()
+    );
 
     // Filter out unwanted activities
     let remove_list = vec![

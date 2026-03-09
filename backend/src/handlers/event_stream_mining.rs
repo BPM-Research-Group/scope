@@ -14,6 +14,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, FixedOffset};
 use tokio::sync::mpsc;
+use std::collections::HashMap;
 
 #[derive(Serialize)]
 pub struct EventStreamInitResponse {
@@ -71,21 +72,27 @@ async fn handle_socket(mut socket: WebSocket, file_id: String, replay_speed: u64
         }
     };
 
-    // 2. Setup channels
+    // 2. Build object to type mapping
+    let mut object_to_type = HashMap::new();
+    for obj in &ocel.objects {
+        object_to_type.insert(obj.id.clone(), obj.object_type.clone());
+    }
+
+    // 3. Setup channels
     // Events from Replayer -> Miner
     let (tx_event, rx_event) = mpsc::channel(100);
     // Model updates from Miner -> This WebSocket handler
     let (tx_model, mut rx_model) = mpsc::channel(10);
 
-    // 3. Spawn Replayer
+    // 4. Spawn Replayer
     let replayer = Replayer::new(ocel, replay_speed);
     tokio::spawn(replayer.start(tx_event));
 
-    // 4. Spawn Miner
-    let miner = IncrementalMiner::new();
+    // 5. Spawn Miner with mapping
+    let miner = IncrementalMiner::new(object_to_type);
     tokio::spawn(miner.run(rx_event, tx_model));
 
-    // 5. Forward miner updates to the WebSocket
+    // 6. Forward miner updates to the WebSocket
     while let Some(model) = rx_model.recv().await {
         let json = serde_json::to_string(&model).unwrap();
         if let Err(_) = socket.send(Message::Text(json.into())).await {

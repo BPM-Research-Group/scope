@@ -7,6 +7,7 @@ interface LiveDf2GraphProps {
         ocdfg: Record<string, number>;
         activity_counts: Record<string, number>;
         start_activities: Record<string, number>;
+        edge_types?: Record<string, string>;
     } | null;
     width?: number;
     height?: number;
@@ -34,7 +35,9 @@ const LiveDf2Graph: React.FC<LiveDf2GraphProps> = ({ data, width = 400, height =
     const scaleFactor = useMemo(() => Math.max(0.8, width / 400), [width]);
 
     const { nodes, links, startLinks } = useMemo(() => {
-        if (!data) return { nodes: [], links: [], startLinks: [] };
+        if (!data || !data.activity_counts || !data.ocdfg) {
+            return { nodes: [], links: [], startLinks: [] };
+        }
 
         const nodes: Node[] = Object.entries(data.activity_counts).map(([id, count]) => ({
             id,
@@ -42,8 +45,15 @@ const LiveDf2Graph: React.FC<LiveDf2GraphProps> = ({ data, width = 400, height =
             count,
         }));
 
+        // Links are now un-typed activity pairs from the backend
         const links: Edge[] = Object.entries(data.ocdfg).map(([key, count]) => {
-            const [from, to, ot] = key.split('|');
+            const parts = key.split('|');
+            const from = parts[0] || 'unknown';
+            const to = parts[1] || 'unknown';
+            
+            // Resolve object type from the new edge_types map (if exists)
+            const ot = (data.edge_types && data.edge_types[key]) || 'unknown';
+            
             return {
                 id: key,
                 source: from,
@@ -53,8 +63,10 @@ const LiveDf2Graph: React.FC<LiveDf2GraphProps> = ({ data, width = 400, height =
             };
         });
 
-        const startLinks = Object.entries(data.start_activities).map(([key, count]) => {
-            const [act, ot] = key.split('|');
+        const startLinks = Object.entries(data.start_activities || {}).map(([key, count]) => {
+            const parts = key.split('|');
+            const act = parts[0] || 'unknown';
+            const ot = parts[1] || 'unknown';
             return { id: key, target: act, ot, count };
         });
 
@@ -70,22 +82,18 @@ const LiveDf2Graph: React.FC<LiveDf2GraphProps> = ({ data, width = 400, height =
             g = svg.append('g').attr('class', 'main-container');
             const defs = svg.append('defs');
             
-            // Standard arrowhead
             defs.append('marker')
                 .attr('id', `arrowhead-${instanceId}`)
                 .attr('viewBox', '-0 -3 6 6')
-                .attr('refX', 6) // Points to the very end of path
+                .attr('refX', 6)
                 .attr('refY', 0)
                 .attr('orient', 'auto')
                 .attr('markerWidth', 3)
                 .attr('markerHeight', 3)
-                .attr('xoverflow', 'visible')
                 .append('svg:path')
                 .attr('d', 'M 0,-3 L 6,0 L 0,3')
-                .attr('fill', '#999')
-                .style('stroke', 'none');
+                .attr('fill', '#999');
 
-            // Start marker - entering from left
             defs.append('marker')
                 .attr('id', `start-marker-${instanceId}`)
                 .attr('viewBox', '0 0 10 10')
@@ -95,7 +103,7 @@ const LiveDf2Graph: React.FC<LiveDf2GraphProps> = ({ data, width = 400, height =
                 .attr('markerWidth', 5)
                 .attr('markerHeight', 5)
                 .append('path')
-                .attr('d', 'M 0,0 L 10,5 L 0,10 Z') // Triangle pointing right
+                .attr('d', 'M 0,0 L 10,5 L 0,10 Z')
                 .attr('fill', '#4ade80');
         }
 
@@ -110,18 +118,25 @@ const LiveDf2Graph: React.FC<LiveDf2GraphProps> = ({ data, width = 400, height =
         }
 
         const simulation = simulationRef.current;
-
-        simulation
-            .force('center', d3.forceCenter(width / 2, height / 2))
-            .force<d3.ForceLink<Node, Edge>>('link')!
-                .distance(120 * scaleFactor)
-                .strength(0.5);
         
-        simulation.force<d3.ForceManyBody<Node>>('charge')!
-            .strength(-500 * scaleFactor);
+        // FIX: Break the chain. .force() returns the simulation, 
+        // but methods like .distance() or .strength() return the FORCE object.
+        simulation.force('center', d3.forceCenter(width / 2, height / 2));
         
-        simulation.force<d3.ForceCollide<Node>>('collision')!
-            .radius(50 * scaleFactor);
+        const linkForce = simulation.force<d3.ForceLink<Node, Edge>>('link');
+        if (linkForce) {
+            linkForce.distance(120 * scaleFactor).strength(0.5);
+        }
+        
+        const chargeForce = simulation.force<d3.ForceManyBody<Node>>('charge');
+        if (chargeForce) {
+            chargeForce.strength(-500 * scaleFactor);
+        }
+        
+        const collisionForce = simulation.force<d3.ForceCollide<Node>>('collision');
+        if (collisionForce) {
+            collisionForce.radius(50 * scaleFactor);
+        }
 
         const oldNodes = new Map(simulation.nodes().map(d => [d.id, d]));
         const updatedNodes = nodes.map(d => {
@@ -134,15 +149,12 @@ const LiveDf2Graph: React.FC<LiveDf2GraphProps> = ({ data, width = 400, height =
         });
 
         simulation.nodes(updatedNodes);
-        simulation.force<d3.ForceLink<Node, Edge>>('link')!.links(links);
+        if (linkForce) {
+            linkForce.links(links);
+        }
         simulation.alpha(0.3).restart();
 
-        // --- DRAWING ---
-
-        // 1. Draw Start Links
-        const sLink = container.selectAll<SVGPathElement, any>('path.start-link')
-            .data(startLinks, d => d.id);
-        
+        const sLink = container.selectAll<SVGPathElement, any>('path.start-link').data(startLinks, d => d.id);
         sLink.exit().remove();
         sLink.enter().append('path')
             .attr('class', 'start-link')
@@ -152,12 +164,8 @@ const LiveDf2Graph: React.FC<LiveDf2GraphProps> = ({ data, width = 400, height =
             .attr('fill', 'none')
             .attr('marker-end', `url(#start-marker-${instanceId})`);
 
-        // 2. Draw Regular Links
-        const link = container.selectAll<SVGGElement, Edge>('g.link-group')
-            .data(links, d => d.id);
-
+        const link = container.selectAll<SVGGElement, Edge>('g.link-group').data(links, d => d.id);
         link.exit().remove();
-
         const linkEnter = link.enter().append('g').attr('class', 'link-group');
 
         linkEnter.append('path')
@@ -184,40 +192,17 @@ const LiveDf2Graph: React.FC<LiveDf2GraphProps> = ({ data, width = 400, height =
             .style('font-size', `${Math.max(8, 8 * scaleFactor)}px`)
             .text(d => d.count > 1 ? d.count : '');
 
-        // 3. Draw Nodes
-        const node = container.selectAll<SVGGElement, Node>('g.node')
-            .data(updatedNodes, d => d.id);
-
+        const node = container.selectAll<SVGGElement, Node>('g.node').data(updatedNodes, d => d.id);
         node.exit().remove();
-
-        const nodeEnter = node.enter().append('g')
-            .attr('class', 'node')
+        const nodeEnter = node.enter().append('g').attr('class', 'node')
             .call(d3.drag<SVGGElement, Node>()
-                .on('start', (event, d) => {
-                    if (!event.active) simulation.alphaTarget(0.3).restart();
-                    d.fx = d.x;
-                    d.fy = d.y;
-                })
-                .on('drag', (event, d) => {
-                    d.fx = event.x;
-                    d.fy = event.y;
-                })
-                .on('end', (event, d) => {
-                    if (!event.active) simulation.alphaTarget(0);
-                    d.fx = null;
-                    d.fy = null;
-                })
+                .on('start', (event, d) => { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+                .on('drag', (event, d) => { d.fx = event.x; d.fy = event.y; })
+                .on('end', (event, d) => { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; })
             );
 
-        nodeEnter.append('circle')
-            .attr('fill', '#fff')
-            .attr('stroke', '#3b82f6')
-            .attr('stroke-width', 2 * scaleFactor);
-
-        nodeEnter.append('text')
-            .attr('text-anchor', 'middle')
-            .attr('font-weight', 'bold')
-            .attr('class', 'label');
+        nodeEnter.append('circle').attr('fill', '#fff').attr('stroke', '#3b82f6').attr('stroke-width', 2 * scaleFactor);
+        nodeEnter.append('text').attr('text-anchor', 'middle').attr('font-weight', 'bold').attr('class', 'label');
 
         const nodeMerged = nodeEnter.merge(node as any);
         const nodeRadius = 15 * scaleFactor;
@@ -227,45 +212,23 @@ const LiveDf2Graph: React.FC<LiveDf2GraphProps> = ({ data, width = 400, height =
             .style('font-size', `${10 * scaleFactor}px`)
             .text(d => d.label);
 
-        // Update positions
         simulation.on('tick', () => {
-            // Update regular links with border-to-border math
             linkMerged.select('path.link').attr('d', (d: any) => {
-                const dx = d.target.x - d.source.x;
-                const dy = d.target.y - d.source.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                
-                // Direction vectors
-                const offsetX = (dx / dist) * nodeRadius;
-                const offsetY = (dy / dist) * nodeRadius;
-
-                const sx = d.source.x + offsetX;
-                const sy = d.source.y + offsetY;
-                const tx = d.target.x - offsetX;
-                const ty = d.target.y - offsetY;
-
+                const dx = d.target.x - d.source.x, dy = d.target.y - d.source.y, dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist === 0) return '';
+                const ox = (dx / dist) * nodeRadius, oy = (dy / dist) * nodeRadius;
                 const dr = dist * 2.5; 
-                return `M${sx},${sy}A${dr},${dr} 0 0,1 ${tx},${ty}`;
+                return `M${d.source.x + ox},${d.source.y + oy}A${dr},${dr} 0 0,1 ${d.target.x - ox},${d.target.y - oy}`;
             });
-
-            // Update start links: Always enter from left
             container.selectAll<SVGPathElement, any>('path.start-link').attr('d', (d: any) => {
                 const targetNode = updatedNodes.find(n => n.id === d.target);
                 if (!targetNode) return '';
-                const tx = targetNode.x! - nodeRadius;
-                const ty = targetNode.y!;
-                return `M${tx - 30 * scaleFactor},${ty} L${tx},${ty}`;
+                return `M${targetNode.x! - nodeRadius - 30 * scaleFactor},${targetNode.y!} L${targetNode.x! - nodeRadius},${targetNode.y!}`;
             });
-
             nodeMerged.attr('transform', d => `translate(${d.x},${d.y})`);
         });
 
-        svg.call(d3.zoom<SVGSVGElement, unknown>()
-            .scaleExtent([0.1, 4])
-            .on('zoom', (event) => {
-                container.attr('transform', event.transform);
-            }));
-
+        svg.call(d3.zoom<SVGSVGElement, unknown>().scaleExtent([0.1, 4]).on('zoom', (event) => container.attr('transform', event.transform)));
     }, [nodes, links, startLinks, width, height, scaleFactor, instanceId]);
 
     return (
