@@ -1,8 +1,8 @@
-use crate::models::streaming::{StreamingModel, StreamingOcptModel};
+use crate::models::streaming::{StreamingModel, StreamUpdate};
 use crate::models::ocel::OCELEvent;
 use crate::models::ocpt::OcptFE;
 use crate::core::df2_miner::{start_cuts_opti, convert_to_json_tree};
-use tokio::sync::{mpsc, RwLock};
+use tokio::sync::{mpsc, RwLock, Notify};
 use tokio::time::{interval, Duration};
 use std::collections::{HashMap, HashSet, BTreeSet};
 use std::sync::Arc;
@@ -17,7 +17,6 @@ struct MinerState {
     processed_count: usize,
     last_timestamp: Option<String>,
     
-    // Pattern state
     divergence_index: HashMap<(String, String), HashMap<BTreeSet<String>, HashSet<BTreeSet<String>>>>,
     divergent_activities: HashMap<String, HashSet<String>>,
     seen_objects_per_act_type: HashMap<(String, String), HashSet<String>>,
@@ -30,6 +29,7 @@ struct MinerState {
 
 pub struct IncrementalMiner {
     state: Arc<RwLock<MinerState>>,
+    new_dfg_signal: Arc<Notify>,
 }
 
 impl IncrementalMiner {
@@ -42,56 +42,84 @@ impl IncrementalMiner {
                 object_to_type,
                 ..Default::default()
             })),
+            new_dfg_signal: Arc::new(Notify::new()),
         }
     }
 
     pub async fn run(
         self,
         mut rx: mpsc::Receiver<serde_json::Value>,
-        tx_ws: mpsc::Sender<StreamingOcptModel>,
+        tx_ws: mpsc::Sender<StreamUpdate>,
     ) {
         let state_for_proc = Arc::clone(&self.state);
-        let state_for_worker = Arc::clone(&self.state);
+        let dfg_signal_for_proc = Arc::clone(&self.new_dfg_signal);
 
-        // Task 1: Fast Event Processor
+        // 1. Task: Event Ingestion
         tokio::spawn(async move {
             while let Some(event_val) = rx.recv().await {
                 if let Ok(event) = serde_json::from_value::<OCELEvent>(event_val) {
                     let mut s = state_for_proc.write().await;
                     s.process_event(event);
+                    dfg_signal_for_proc.notify_one();
                 }
             }
-            log::info!("Event Processor: Finished.");
+            log::info!("Event Ingestion: Finished.");
         });
 
-        // Task 2: Lazy OCPT Worker
-        // This task runs discovery at its own pace and skips updates if it's busy.
-        let mut update_interval = interval(Duration::from_millis(500)); // Slightly slower OCPT updates
-        loop {
-            update_interval.tick().await;
-            
-            // Take a snapshot/read the state
-            let model = {
-                let s = state_for_worker.read().await;
-                if s.processed_count == 0 {
-                    continue;
+        let state_for_dfg = Arc::clone(&self.state);
+        let dfg_signal_for_dfg = Arc::clone(&self.new_dfg_signal);
+        let tx_ws_dfg = tx_ws.clone();
+
+        // 2. Task: High-Frequency DFG Updates (100ms)
+        tokio::spawn(async move {
+            let mut interval = interval(Duration::from_millis(100));
+            loop {
+                tokio::select! {
+                    _ = interval.tick() => {
+                        // We check if there's anything to send
+                    }
+                    _ = dfg_signal_for_dfg.notified() => {
+                        // There's a new update, wait for interval or send now?
+                        // Let's just send on tick to throttle.
+                    }
                 }
-                s.get_ocpt_model()
-            };
+                
+                let dfg_model = {
+                    let s = state_for_dfg.read().await;
+                    if s.processed_count == 0 { continue; }
+                    s.get_base_model()
+                };
 
-            // Dump debug info (can be slow, so we do it here)
-            let div_json = serde_json::to_string_pretty(&model.base.divergent_activities).unwrap();
-            let _ = fs::write("./temp/stream_divergence.json", div_json);
-            let mut edges: Vec<_> = model.base.ocdfg.keys().cloned().collect();
-            edges.sort();
-            let edge_json = serde_json::to_string_pretty(&edges).unwrap();
-            let _ = fs::write("./temp/stream_edges.json", edge_json);
-
-            if let Err(_) = tx_ws.send(model).await {
-                // WebSocket closed
-                break;
+                if let Err(_) = tx_ws_dfg.send(StreamUpdate::Dfg(dfg_model)).await {
+                    break;
+                }
             }
-        }
+        });
+
+        // 3. Task: Lazy OCPT Discovery
+        let state_for_ocpt = Arc::clone(&self.state);
+        let dfg_signal_for_ocpt = Arc::clone(&self.new_dfg_signal);
+        let tx_ws_ocpt = tx_ws;
+
+        tokio::spawn(async move {
+            loop {
+                // Wait for a DFG change
+                dfg_signal_for_ocpt.notified().await;
+
+                // Discovery might take time
+                let ocpt_fe = {
+                    let s = state_for_ocpt.read().await;
+                    s.get_ocpt_only()
+                };
+
+                if let Err(_) = tx_ws_ocpt.send(StreamUpdate::Ocpt(ocpt_fe)).await {
+                    break;
+                }
+                
+                // Throttle OCPT mining slightly so it doesn't consume 100% CPU
+                tokio::time::sleep(Duration::from_millis(200)).await;
+            }
+        });
     }
 }
 
@@ -114,33 +142,30 @@ impl MinerState {
         for (oid, ot) in &unique_oids_with_type {
             objects_by_type.entry(ot.clone()).or_default().insert(oid.clone());
         }
-for (ot, ot_set) in objects_by_type {
-    let key = (activity.clone(), ot.clone());
 
-    // a) Divergence
-    let group_map = self.divergence_index.entry(key.clone()).or_default();
-    if let Some(full_sets) = group_map.get_mut(&ot_set) {
-        if !full_sets.contains(&full_object_set) {
-            self.divergent_activities.entry(activity.clone()).or_default().insert(ot.clone());
-            full_sets.insert(full_object_set.clone());
+        for (ot, ot_set) in objects_by_type {
+            let key = (activity.clone(), ot.clone());
+            let group_map = self.divergence_index.entry(key.clone()).or_default();
+            if let Some(full_sets) = group_map.get_mut(&ot_set) {
+                if !full_sets.contains(&full_object_set) {
+                    self.divergent_activities.entry(activity.clone()).or_default().insert(ot.clone());
+                    full_sets.insert(full_object_set.clone());
+                }
+            } else {
+                let mut sets = HashSet::new();
+                sets.insert(full_object_set.clone());
+                group_map.insert(ot_set.clone(), sets);
+            }
+
+            let seen_objects = self.seen_objects_per_act_type.entry(key.clone()).or_default();
+            for oid in &ot_set {
+                if seen_objects.contains(oid) {
+                    self.convergent_activities.entry(activity.clone()).or_default().insert(ot.clone());
+                }
+                seen_objects.insert(oid.clone());
+            }
+            *self.activity_otype_event_counts.entry(key).or_insert(0) += 1;
         }
-    } else {
-        let mut sets = HashSet::new();
-        sets.insert(full_object_set.clone());
-        group_map.insert(ot_set.clone(), sets);
-    }
-
-    // b) Convergence
-    let seen_objects = self.seen_objects_per_act_type.entry(key.clone()).or_default();
-    for oid in &ot_set {
-        if seen_objects.contains(oid) {
-            self.convergent_activities.entry(activity.clone()).or_default().insert(ot.clone());
-        }
-        seen_objects.insert(oid.clone());
-    }
-
-    *self.activity_otype_event_counts.entry(key).or_insert(0) += 1;
-}
 
         for (object_id, object_type) in unique_oids_with_type {
             if let Some((prev_activity, _)) = self.last_event_per_object.get(&object_id) {
@@ -154,7 +179,7 @@ for (ot, ot_set) in objects_by_type {
         }
     }
 
-    fn get_ocpt_model(&self) -> StreamingOcptModel {
+    fn get_ocpt_only(&self) -> OcptFE {
         let base = self.get_base_model();
         let mut con = HashMap::new();
         let mut defi = HashMap::new();
@@ -189,21 +214,10 @@ for (ot, ot_set) in objects_by_type {
             end_acts.insert(act.clone());
         }
 
-        let process_forest = start_cuts_opti::find_cuts_start(
-            &dfg_for_miner,
-            &all_activities,
-            &start_acts,
-            &end_acts,
-        );
-
+        let process_forest = start_cuts_opti::find_cuts_start(&dfg_for_miner, &all_activities, &start_acts, &end_acts);
         let output_json = convert_to_json_tree::build_output(&process_forest, &con, &defi, &div);
         let json = serde_json::to_string(&output_json).unwrap();
-        let ocpt_fe: OcptFE = serde_json::from_str(&json).unwrap();
-
-        StreamingOcptModel {
-            base,
-            ocpt: Some(ocpt_fe),
-        }
+        serde_json::from_str(&json).unwrap()
     }
 
     fn get_base_model(&self) -> StreamingModel {

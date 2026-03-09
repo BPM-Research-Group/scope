@@ -2,7 +2,7 @@ use crate::models::ocel::OCEL;
 use crate::traits::import_export::ImportableFromPath;
 use crate::core::event_stream::replayer::Replayer;
 use crate::core::event_stream::miner::IncrementalMiner;
-use crate::models::streaming::StreamingOcptModel;
+use crate::models::streaming::StreamUpdate;
 use axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
@@ -86,7 +86,7 @@ async fn handle_socket(mut socket: WebSocket, file_id: String, replay_speed: u64
     }
 
     let (tx_event, rx_event) = mpsc::channel(100);
-    let (tx_model, mut rx_model) = mpsc::channel::<StreamingOcptModel>(10);
+    let (tx_model, mut rx_model) = mpsc::channel::<StreamUpdate>(10);
 
     let replayer = Replayer::new(ocel, replay_speed);
     tokio::spawn(replayer.start(tx_event));

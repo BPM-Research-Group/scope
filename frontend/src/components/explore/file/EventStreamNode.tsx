@@ -35,7 +35,6 @@ const EventStreamNode = memo<NodeProps<FileNode>>((props) => {
         enabled: !!fileId,
     });
 
-    // Replay speed in seconds. Default: 60 (1 minute)
     const replaySpeed = (data as any).replaySpeed ?? 60;
 
     const handleSpeedChange = (value: number[]) => {
@@ -60,12 +59,27 @@ const EventStreamNode = memo<NodeProps<FileNode>>((props) => {
 
             socket.onmessage = (event) => {
                 try {
-                    const model = JSON.parse(event.data);
-                    setStreamingData(model);
-                    // Also update the node data so downstream nodes can react
-                    updateNodeData(id, { processedData: model });
+                    const update = JSON.parse(event.data);
+                    if (update.type === 'dfg') {
+                        const dfgData = update.data;
+                        setStreamingData(dfgData);
+                        updateNodeData(id, (prev: any) => ({
+                            processedData: {
+                                ...(prev.processedData || {}),
+                                ...dfgData, // DFG parts (ocdfg, edge_types, etc.)
+                            }
+                        }));
+                    } else if (update.type === 'ocpt') {
+                        const ocptData = update.data;
+                        updateNodeData(id, (prev: any) => ({
+                            processedData: {
+                                ...(prev.processedData || {}),
+                                ocpt: ocptData,
+                            }
+                        }));
+                    }
                 } catch (e) {
-                    console.error('Failed to parse streaming model', e);
+                    console.error('Failed to parse streaming update', e);
                 }
             };
 
