@@ -89,8 +89,8 @@ const Df2StreamMinerNode = memo<NodeProps<MinerNode>>((props) => {
     return (
         <BaseMinerNode
             {...props}
-            title="DF^2 Stream Miner"
-            iconName="network"
+            title="DF2 live"
+            iconName="activity"
             handleOptions={[
                 { id: 'target', position: Position.Left, type: 'target' as const },
                 { id: 'source', position: Position.Right, type: 'source' as const },

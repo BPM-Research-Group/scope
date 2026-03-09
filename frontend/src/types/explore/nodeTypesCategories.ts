@@ -12,6 +12,7 @@ export const minerNodeTypes = [
     'resourceMinerNode',
     'conformanceMinerNode',
     'df2StreamMinerNode',
+    'ocptStreamMinerNode',
 ] as const;
 export type ExploreMinerNodeType = (typeof minerNodeTypes)[number];
 

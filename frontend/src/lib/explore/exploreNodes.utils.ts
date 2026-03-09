@@ -10,6 +10,8 @@ import {
     minerNodeTypes,
 } from '~/types/explore/nodeTypesCategories';
 import { AssetType } from '~/types/files.types';
+import type { VisualizationExploreNode } from '~/model/explore/visualization-node.model';
+import { Edge } from '@xyflow/react';
 
 export const getNodeCategoryByType = (type: ExploreNodeType): ExploreNodeCategory => {
     return getNodeCategory[type];
@@ -49,4 +51,26 @@ export const assetTypeToNodeType = (assetType: AssetType): ExploreFileNodeType |
         return 'ocpnFileNode';
     }
     return null;
+};
+
+/**
+ * Recursively searches upstream for an eventStreamNode and returns its processedData.
+ */
+export const getUpstreamStreamingData = (
+    nodeId: string,
+    nodes: ExploreNode[],
+    edges: Edge[]
+): any | null => {
+    const incomingEdge = edges.find((e) => e.target === nodeId);
+    if (!incomingEdge) return null;
+
+    const sourceNode = nodes.find((n) => n.id === incomingEdge.source);
+    if (!sourceNode) return null;
+
+    if (sourceNode.data.nodeType === 'eventStreamNode') {
+        return sourceNode.data.processedData;
+    }
+
+    // Recurse
+    return getUpstreamStreamingData(sourceNode.id, nodes, edges);
 };

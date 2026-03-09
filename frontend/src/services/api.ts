@@ -274,3 +274,8 @@ export const getEventStreamInit = async (fileId: string): Promise<{ first_event:
     const response = await api.get(`v1/event_stream/init/${fileId}`);
     return response.data;
 };
+
+export const saveOcpt = async (ocpt: any): Promise<{ file_id: string }> => {
+    const response = await api.post('v1/event_stream/save', ocpt);
+    return response.data;
+};

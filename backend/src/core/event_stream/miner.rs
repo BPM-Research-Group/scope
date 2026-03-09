@@ -1,23 +1,35 @@
-use crate::models::streaming::StreamingModel;
+use crate::models::streaming::{StreamingModel, StreamingOcptModel};
 use crate::models::ocel::OCELEvent;
-use tokio::sync::mpsc;
+use crate::models::ocpt::OcptFE;
+use crate::core::df2_miner::{start_cuts_opti, convert_to_json_tree};
+use tokio::sync::{mpsc, RwLock};
 use tokio::time::{interval, Duration};
 use std::collections::{HashMap, HashSet, BTreeSet};
+use std::sync::Arc;
 use std::fs;
 
-pub struct IncrementalMiner {
-    // Internal rich state (typed edges)
-    internal_ocdfg: HashMap<String, usize>, // "from|to|ot" -> count
+/// Internal state that is updated as events arrive
+#[derive(Default)]
+struct MinerState {
+    internal_ocdfg: HashMap<String, usize>,
+    internal_start_activities: HashMap<String, usize>,
     activity_counts: HashMap<String, usize>,
-    start_activities: HashMap<String, usize>, // "activity|ot" -> count
-    divergent_activities: HashMap<String, HashSet<String>>,
     processed_count: usize,
     last_timestamp: Option<String>,
-
-    // Helper state
-    last_event_per_object: HashMap<String, (String, String)>,
+    
+    // Pattern state
     divergence_index: HashMap<(String, String), HashMap<BTreeSet<String>, HashSet<BTreeSet<String>>>>,
+    divergent_activities: HashMap<String, HashSet<String>>,
+    seen_objects_per_act_type: HashMap<(String, String), HashSet<String>>,
+    convergent_activities: HashMap<String, HashSet<String>>,
+    activity_otype_event_counts: HashMap<(String, String), usize>,
+    
+    last_event_per_object: HashMap<String, (String, String)>,
     object_to_type: HashMap<String, String>,
+}
+
+pub struct IncrementalMiner {
+    state: Arc<RwLock<MinerState>>,
 }
 
 impl IncrementalMiner {
@@ -26,69 +38,66 @@ impl IncrementalMiner {
         let _ = fs::remove_file("./temp/stream_edges.json");
 
         Self {
-            internal_ocdfg: HashMap::new(),
-            activity_counts: HashMap::new(),
-            start_activities: HashMap::new(),
-            divergent_activities: HashMap::new(),
-            processed_count: 0,
-            last_timestamp: None,
-            last_event_per_object: HashMap::new(),
-            divergence_index: HashMap::new(),
-            object_to_type,
+            state: Arc::new(RwLock::new(MinerState {
+                object_to_type,
+                ..Default::default()
+            })),
         }
     }
 
     pub async fn run(
-        mut self,
+        self,
         mut rx: mpsc::Receiver<serde_json::Value>,
-        tx_ws: mpsc::Sender<StreamingModel>,
+        tx_ws: mpsc::Sender<StreamingOcptModel>,
     ) {
-        let mut update_interval = interval(Duration::from_millis(100));
-        let mut dirty = false;
+        let state_for_proc = Arc::clone(&self.state);
+        let state_for_worker = Arc::clone(&self.state);
 
+        // Task 1: Fast Event Processor
+        tokio::spawn(async move {
+            while let Some(event_val) = rx.recv().await {
+                if let Ok(event) = serde_json::from_value::<OCELEvent>(event_val) {
+                    let mut s = state_for_proc.write().await;
+                    s.process_event(event);
+                }
+            }
+            log::info!("Event Processor: Finished.");
+        });
+
+        // Task 2: Lazy OCPT Worker
+        // This task runs discovery at its own pace and skips updates if it's busy.
+        let mut update_interval = interval(Duration::from_millis(500)); // Slightly slower OCPT updates
         loop {
-            tokio::select! {
-                Some(event_val) = rx.recv() => {
-                    if let Ok(event) = serde_json::from_value::<OCELEvent>(event_val) {
-                        self.process_event(event);
-                        dirty = true;
-                    }
+            update_interval.tick().await;
+            
+            // Take a snapshot/read the state
+            let model = {
+                let s = state_for_worker.read().await;
+                if s.processed_count == 0 {
+                    continue;
                 }
-                _ = update_interval.tick() => {
-                    if dirty {
-                        let pruned_model = self.get_pruned_model();
-                        self.dump_debug_info(&pruned_model);
+                s.get_ocpt_model()
+            };
 
-                        if let Err(_) = tx_ws.send(pruned_model).await {
-                            // socket closed
-                        }
-                        dirty = false;
-                    }
-                }
-                else => {
-                    log::info!("Streaming Miner: Finished.");
-                    let final_model = self.get_pruned_model();
-                    self.dump_debug_info(&final_model);
-                    log::info!("FINAL STREAM EDGES: {} unique activity pairs.", final_model.ocdfg.len());
-                    break;
-                }
+            // Dump debug info (can be slow, so we do it here)
+            let div_json = serde_json::to_string_pretty(&model.base.divergent_activities).unwrap();
+            let _ = fs::write("./temp/stream_divergence.json", div_json);
+            let mut edges: Vec<_> = model.base.ocdfg.keys().cloned().collect();
+            edges.sort();
+            let edge_json = serde_json::to_string_pretty(&edges).unwrap();
+            let _ = fs::write("./temp/stream_edges.json", edge_json);
+
+            if let Err(_) = tx_ws.send(model).await {
+                // WebSocket closed
+                break;
             }
         }
     }
+}
 
-    fn dump_debug_info(&self, model: &StreamingModel) {
-        let div_json = serde_json::to_string_pretty(&model.divergent_activities).unwrap();
-        let _ = fs::write("./temp/stream_divergence.json", div_json);
-
-        let mut edges: Vec<_> = model.ocdfg.keys().cloned().collect();
-        edges.sort();
-        let edge_json = serde_json::to_string_pretty(&edges).unwrap();
-        let _ = fs::write("./temp/stream_edges.json", edge_json);
-    }
-
+impl MinerState {
     fn process_event(&mut self, event: OCELEvent) {
         let activity = event.event_type.clone();
-        
         *self.activity_counts.entry(activity.clone()).or_insert(0) += 1;
         self.last_timestamp = Some(event.time.to_rfc3339());
         self.processed_count += 1;
@@ -100,82 +109,150 @@ impl IncrementalMiner {
             }
         }
 
-        // 1. Divergence
         let full_object_set: BTreeSet<String> = unique_oids_with_type.keys().cloned().collect();
         let mut objects_by_type: HashMap<String, BTreeSet<String>> = HashMap::new();
         for (oid, ot) in &unique_oids_with_type {
             objects_by_type.entry(ot.clone()).or_default().insert(oid.clone());
         }
+for (ot, ot_set) in objects_by_type {
+    let key = (activity.clone(), ot.clone());
 
-        for (ot, ot_set) in objects_by_type {
-            let key = (activity.clone(), ot.clone());
-            let group_map = self.divergence_index.entry(key).or_default();
-            if let Some(full_sets) = group_map.get_mut(&ot_set) {
-                if !full_sets.contains(&full_object_set) {
-                    self.divergent_activities.entry(activity.clone()).or_default().insert(ot.clone());
-                    full_sets.insert(full_object_set.clone());
-                }
-            } else {
-                let mut sets = HashSet::new();
-                sets.insert(full_object_set.clone());
-                group_map.insert(ot_set, sets);
-            }
+    // a) Divergence
+    let group_map = self.divergence_index.entry(key.clone()).or_default();
+    if let Some(full_sets) = group_map.get_mut(&ot_set) {
+        if !full_sets.contains(&full_object_set) {
+            self.divergent_activities.entry(activity.clone()).or_default().insert(ot.clone());
+            full_sets.insert(full_object_set.clone());
         }
+    } else {
+        let mut sets = HashSet::new();
+        sets.insert(full_object_set.clone());
+        group_map.insert(ot_set.clone(), sets);
+    }
 
-        // 2. Internal Typed OC-DFG
+    // b) Convergence
+    let seen_objects = self.seen_objects_per_act_type.entry(key.clone()).or_default();
+    for oid in &ot_set {
+        if seen_objects.contains(oid) {
+            self.convergent_activities.entry(activity.clone()).or_default().insert(ot.clone());
+        }
+        seen_objects.insert(oid.clone());
+    }
+
+    *self.activity_otype_event_counts.entry(key).or_insert(0) += 1;
+}
+
         for (object_id, object_type) in unique_oids_with_type {
             if let Some((prev_activity, _)) = self.last_event_per_object.get(&object_id) {
-                // Keep transition typed internally for pruning
                 let key = format!("{}|{}|{}", prev_activity, activity, object_type);
                 *self.internal_ocdfg.entry(key).or_insert(0) += 1;
             } else {
                 let key = format!("{}|{}", activity, object_type);
-                *self.start_activities.entry(key).or_insert(0) += 1;
+                *self.internal_start_activities.entry(key).or_insert(0) += 1;
             }
             self.last_event_per_object.insert(object_id, (activity.clone(), event.time.to_rfc3339()));
         }
     }
 
-    fn get_pruned_model(&self) -> StreamingModel {
+    fn get_ocpt_model(&self) -> StreamingOcptModel {
+        let base = self.get_base_model();
+        let mut con = HashMap::new();
+        let mut defi = HashMap::new();
+        let mut div = HashMap::new();
+
+        for (act, ots) in &self.convergent_activities {
+            con.insert(act.clone(), ots.iter().cloned().collect::<Vec<_>>());
+        }
+        for (act, ots) in &self.divergent_activities {
+            div.insert(act.clone(), ots.iter().cloned().collect::<Vec<_>>());
+        }
+
+        for ((act, ot), count) in &self.activity_otype_event_counts {
+            let total = *self.activity_counts.get(act).unwrap_or(&0);
+            if *count > 0 && *count < total {
+                defi.entry(act.clone()).or_insert_with(Vec::new).push(ot.clone());
+            }
+        }
+
+        let mut dfg_for_miner: HashMap<(String, String), usize> = HashMap::new();
+        for (key, count) in &base.ocdfg {
+            let parts: Vec<&str> = key.split('|').collect();
+            if parts.len() == 2 {
+                dfg_for_miner.insert((parts[0].to_string(), parts[1].to_string()), *count);
+            }
+        }
+
+        let all_activities: HashSet<String> = self.activity_counts.keys().cloned().collect();
+        let start_acts: HashSet<String> = base.start_activities.keys().cloned().collect();
+        let mut end_acts = HashSet::new();
+        for (act, _) in self.last_event_per_object.values() {
+            end_acts.insert(act.clone());
+        }
+
+        let process_forest = start_cuts_opti::find_cuts_start(
+            &dfg_for_miner,
+            &all_activities,
+            &start_acts,
+            &end_acts,
+        );
+
+        let output_json = convert_to_json_tree::build_output(&process_forest, &con, &defi, &div);
+        let json = serde_json::to_string(&output_json).unwrap();
+        let ocpt_fe: OcptFE = serde_json::from_str(&json).unwrap();
+
+        StreamingOcptModel {
+            base,
+            ocpt: Some(ocpt_fe),
+        }
+    }
+
+    fn get_base_model(&self) -> StreamingModel {
         let mut model = StreamingModel {
             activity_counts: self.activity_counts.clone(),
-            start_activities: self.start_activities.clone(),
             divergent_activities: self.divergent_activities.clone(),
             processed_count: self.processed_count,
             last_timestamp: self.last_timestamp.clone(),
-            ocdfg: HashMap::new(),
-            edge_types: HashMap::new(),
+            ..Default::default()
         };
 
-        // Aggregation map: "f|t" -> (count, HashMap<ot, ot_count>)
-        let mut aggregated: HashMap<String, (usize, HashMap<String, usize>)> = HashMap::new();
-
+        let mut aggregated_edges: HashMap<String, (usize, HashMap<String, usize>)> = HashMap::new();
         for (key, count) in &self.internal_ocdfg {
             let parts: Vec<&str> = key.split('|').collect();
             if parts.len() != 3 { continue; }
-            let a = parts[0];
-            let b = parts[1];
-            let ot = parts[2];
+            let (a, b, ot) = (parts[0], parts[1], parts[2]);
 
-            // Pruning condition
             let a_div = self.divergent_activities.get(a).map(|s| s.contains(ot)).unwrap_or(false);
             let b_div = self.divergent_activities.get(b).map(|s| s.contains(ot)).unwrap_or(false);
 
             if !(a_div && b_div) {
                 let pair_key = format!("{}|{}", a, b);
-                let entry = aggregated.entry(pair_key).or_default();
+                let entry = aggregated_edges.entry(pair_key).or_default();
                 entry.0 += count;
                 *entry.1.entry(ot.to_string()).or_insert(0) += count;
             }
         }
 
-        // Finalize model ocdfg and edge_types
-        for (pair_key, (total_count, ot_counts)) in aggregated {
+        for (pair_key, (total_count, ot_counts)) in aggregated_edges {
             model.ocdfg.insert(pair_key.clone(), total_count);
-            
-            // Pick most frequent type for coloring
             if let Some((best_ot, _)) = ot_counts.into_iter().max_by_key(|(_, c)| *c) {
                 model.edge_types.insert(pair_key, best_ot);
+            }
+        }
+
+        let mut aggregated_starts: HashMap<String, (usize, HashMap<String, usize>)> = HashMap::new();
+        for (key, count) in &self.internal_start_activities {
+            let parts: Vec<&str> = key.split('|').collect();
+            if parts.len() != 2 { continue; }
+            let (act, ot) = (parts[0], parts[1]);
+            let entry = aggregated_starts.entry(act.to_string()).or_default();
+            entry.0 += count;
+            *entry.1.entry(ot.to_string()).or_insert(0) += count;
+        }
+
+        for (act, (total_count, ot_counts)) in aggregated_starts {
+            model.start_activities.insert(act.clone(), total_count);
+            if let Some((best_ot, _)) = ot_counts.into_iter().max_by_key(|(_, c)| *c) {
+                model.start_activity_types.insert(act, best_ot);
             }
         }
 

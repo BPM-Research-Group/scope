@@ -236,3 +236,29 @@ impl ExportableToPath for OCPT {
         Ok(export_id)
     }
 }
+
+#[async_trait]
+impl ExportableToPath for OcptFE {
+    async fn export_to_path(&self) -> Result<String, (StatusCode, String)> {
+        let export_id = Uuid::new_v4().to_string();
+        let filename = format!("./temp/ocpt_{}.json", &export_id);
+
+        let data = serde_json::to_string_pretty(self).map_err(|err| {
+            eprintln!("serialize OcptFE failed: {err}");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to serialize OcptFE".to_string(),
+            )
+        })?;
+
+        fs::write(&filename, data).await.map_err(|err| {
+            eprintln!("write OcptFE failed: {err}");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to persist OcptFE".to_string(),
+            )
+        })?;
+
+        Ok(export_id)
+    }
+}

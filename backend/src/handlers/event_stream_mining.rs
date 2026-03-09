@@ -2,6 +2,7 @@ use crate::models::ocel::OCEL;
 use crate::traits::import_export::ImportableFromPath;
 use crate::core::event_stream::replayer::Replayer;
 use crate::core::event_stream::miner::IncrementalMiner;
+use crate::models::streaming::StreamingOcptModel;
 use axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
@@ -62,8 +63,15 @@ pub async fn event_stream_ws(
     ws.on_upgrade(move |socket| handle_socket(socket, file_id, params.replay_speed.unwrap_or(60)))
 }
 
+pub async fn save_ocpt(
+    Json(ocpt): Json<crate::models::ocpt::OcptFE>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    use crate::traits::import_export::ExportableToPath;
+    let file_id = ocpt.export_to_path().await?;
+    Ok(Json(serde_json::json!({ "file_id": file_id })))
+}
+
 async fn handle_socket(mut socket: WebSocket, file_id: String, replay_speed: u64) {
-    // 1. Load OCEL
     let ocel = match OCEL::import_from_path(&file_id).await {
         Ok(o) => o,
         Err(_) => {
@@ -72,31 +80,23 @@ async fn handle_socket(mut socket: WebSocket, file_id: String, replay_speed: u64
         }
     };
 
-    // 2. Build object to type mapping
     let mut object_to_type = HashMap::new();
     for obj in &ocel.objects {
         object_to_type.insert(obj.id.clone(), obj.object_type.clone());
     }
 
-    // 3. Setup channels
-    // Events from Replayer -> Miner
     let (tx_event, rx_event) = mpsc::channel(100);
-    // Model updates from Miner -> This WebSocket handler
-    let (tx_model, mut rx_model) = mpsc::channel(10);
+    let (tx_model, mut rx_model) = mpsc::channel::<StreamingOcptModel>(10);
 
-    // 4. Spawn Replayer
     let replayer = Replayer::new(ocel, replay_speed);
     tokio::spawn(replayer.start(tx_event));
 
-    // 5. Spawn Miner with mapping
     let miner = IncrementalMiner::new(object_to_type);
     tokio::spawn(miner.run(rx_event, tx_model));
 
-    // 6. Forward miner updates to the WebSocket
     while let Some(model) = rx_model.recv().await {
         let json = serde_json::to_string(&model).unwrap();
         if let Err(_) = socket.send(Message::Text(json.into())).await {
-            // Client disconnected
             break;
         }
     }
