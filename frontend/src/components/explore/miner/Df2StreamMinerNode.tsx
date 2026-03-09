@@ -46,7 +46,7 @@ const Df2StreamMinerNode = memo<NodeProps<MinerNode>>((props) => {
 
             {totalEvents > 0 && (
                 <div className="h-[200px] w-full">
-                    <LiveDf2Graph data={streamingData} width={250} height={200} />
+                    <LiveDf2Graph data={streamingData} width={250} height={200} isMinimized={true} />
                 </div>
             )}
 
@@ -71,15 +71,15 @@ const Df2StreamMinerNode = memo<NodeProps<MinerNode>>((props) => {
             )}
 
             <Dialog open={isMaximized} onOpenChange={setIsMaximized}>
-                <DialogContent className="max-w-[90vw] w-[800px] h-[700px] flex flex-col">
-                    <DialogHeader>
+                <DialogContent className="max-w-[95vw] w-[1000px] h-[80vh] flex flex-col p-0 gap-0 overflow-hidden">
+                    <DialogHeader className="p-4 border-b bg-white">
                         <DialogTitle className="flex items-center gap-2">
                             <Network className="h-5 w-5 text-blue-600" />
-                            Live DF^2 Miner Graph
+                            Live DF^2 Miner Analysis
                         </DialogTitle>
                     </DialogHeader>
                     <div className="flex-1 min-h-0 w-full relative">
-                        <LiveDf2Graph data={streamingData} width={800} height={600} />
+                        <LiveDf2Graph data={streamingData} width={1000} height={600} isMinimized={false} />
                     </div>
                 </DialogContent>
             </Dialog>
