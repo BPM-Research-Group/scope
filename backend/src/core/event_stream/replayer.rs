@@ -2,6 +2,7 @@ use crate::models::ocel::OCEL;
 use std::time::Duration as StdDuration;
 use tokio::sync::mpsc;
 use tokio::time::sleep;
+use tokio_util::sync::CancellationToken;
 
 pub struct Replayer {
     ocel: OCEL,
@@ -16,13 +17,10 @@ impl Replayer {
         }
     }
 
-    pub async fn start(self, tx: mpsc::Sender<serde_json::Value>) {
+    pub async fn start(self, tx: mpsc::Sender<serde_json::Value>, cancel_token: CancellationToken) {
         let mut events = self.ocel.events.clone();
         
-        // Exact Offline Sorting Match:
-        // 1. Sort by ID (unstable is fine for first pass)
         events.sort_by(|a, b| a.id.cmp(&b.id));
-        // 2. Stable sort by Timestamp (standard sort() in Rust is stable)
         events.sort_by(|a, b| a.time.cmp(&b.time));
 
         if events.is_empty() {
@@ -35,22 +33,32 @@ impl Replayer {
         let last_time = events.last().unwrap().time;
         let total_log_duration = (last_time - first_time).num_milliseconds() as f64;
 
-        if total_log_duration <= 0.0 {
-            for event in events {
-                let _ = tx.send(serde_json::to_value(&event).unwrap()).await;
-            }
-            return;
-        }
+        let speed_factor = if total_log_duration <= 0.0 {
+            0.0
+        } else {
+            (self.replay_speed_seconds as f64 * 1000.0) / total_log_duration
+        };
 
-        let speed_factor = (self.replay_speed_seconds as f64 * 1000.0) / total_log_duration;
         let mut last_event_time = first_time;
 
         for event in events {
-            let time_diff = (event.time - last_event_time).num_milliseconds() as f64;
-            let wait_ms = (time_diff * speed_factor) as u64;
+            if cancel_token.is_cancelled() {
+                log::info!("Replayer: Cancellation received, stopping.");
+                return;
+            }
 
-            if wait_ms > 0 {
-                sleep(StdDuration::from_millis(wait_ms)).await;
+            if speed_factor > 0.0 {
+                let time_diff = (event.time - last_event_time).num_milliseconds() as f64;
+                let wait_ms = (time_diff * speed_factor) as u64;
+                if wait_ms > 0 {
+                    tokio::select! {
+                        _ = sleep(StdDuration::from_millis(wait_ms)) => {}
+                        _ = cancel_token.cancelled() => {
+                            log::info!("Replayer: Cancellation received during sleep, stopping.");
+                            return;
+                        }
+                    }
+                }
             }
 
             if let Err(_) = tx.send(serde_json::to_value(&event).unwrap()).await {
@@ -59,6 +67,8 @@ impl Replayer {
             last_event_time = event.time;
         }
         
-        log::info!("Replayer: Finished emission");
+        // Signal End of Stream
+        let _ = tx.send(serde_json::json!({ "control": "end" })).await;
+        log::info!("Replayer: Finished emission.");
     }
 }

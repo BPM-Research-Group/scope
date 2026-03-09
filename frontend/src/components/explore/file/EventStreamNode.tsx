@@ -55,18 +55,28 @@ const EventStreamNode = memo<NodeProps<FileNode>>((props) => {
             socket.onopen = () => {
                 setIsReplaying(true);
                 setStreamingData(null);
+                // Clear any previous "isLast" state
+                updateNodeData(id, (prev: any) => ({
+                    processedData: {
+                        ...(prev.processedData || {}),
+                        isLast: false,
+                    }
+                }));
             };
 
             socket.onmessage = (event) => {
                 try {
                     const update = JSON.parse(event.data);
+                    const isLast = update.is_last;
+
                     if (update.type === 'dfg') {
                         const dfgData = update.data;
                         setStreamingData(dfgData);
                         updateNodeData(id, (prev: any) => ({
                             processedData: {
                                 ...(prev.processedData || {}),
-                                ...dfgData, // DFG parts (ocdfg, edge_types, etc.)
+                                ...dfgData,
+                                isLast: isLast || prev.processedData?.isLast,
                             }
                         }));
                     } else if (update.type === 'ocpt') {
@@ -75,6 +85,7 @@ const EventStreamNode = memo<NodeProps<FileNode>>((props) => {
                             processedData: {
                                 ...(prev.processedData || {}),
                                 ocpt: ocptData,
+                                isLast: isLast || prev.processedData?.isLast,
                             }
                         }));
                     }

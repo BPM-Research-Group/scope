@@ -1,14 +1,30 @@
-use crate::models::streaming::{StreamingModel, StreamUpdate};
+use crate::models::streaming::{StreamingModel, StreamUpdate, StreamType};
 use crate::models::ocel::OCELEvent;
 use crate::models::ocpt::OcptFE;
 use crate::core::df2_miner::{start_cuts_opti, convert_to_json_tree};
 use tokio::sync::{mpsc, RwLock, Notify};
 use tokio::time::{interval, Duration};
+use tokio_util::sync::CancellationToken;
 use std::collections::{HashMap, HashSet, BTreeSet};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::fs;
 
-/// Internal state that is updated as events arrive
+#[derive(Default, Clone)]
+struct MinerSnapshot {
+    dfg: HashMap<(String, String), usize>,
+    activity_counts: HashMap<String, usize>,
+    start_acts: HashSet<String>,
+    end_acts: HashSet<String>,
+    convergent: HashMap<String, Vec<String>>,
+    divergent: HashMap<String, Vec<String>>,
+    deficient: HashMap<String, Vec<String>>,
+    _processed_count: usize,
+    _last_timestamp: Option<String>,
+    _start_activity_types: HashMap<String, String>,
+    _edge_types: HashMap<String, String>,
+}
+
 #[derive(Default)]
 struct MinerState {
     internal_ocdfg: HashMap<String, usize>,
@@ -25,11 +41,14 @@ struct MinerState {
     
     last_event_per_object: HashMap<String, (String, String)>,
     object_to_type: HashMap<String, String>,
+
+    dirty_dfg: bool,
+    dirty_ocpt: bool,
 }
 
 pub struct IncrementalMiner {
     state: Arc<RwLock<MinerState>>,
-    new_dfg_signal: Arc<Notify>,
+    new_data_signal: Arc<Notify>,
 }
 
 impl IncrementalMiner {
@@ -42,7 +61,7 @@ impl IncrementalMiner {
                 object_to_type,
                 ..Default::default()
             })),
-            new_dfg_signal: Arc::new(Notify::new()),
+            new_data_signal: Arc::new(Notify::new()),
         }
     }
 
@@ -50,80 +69,198 @@ impl IncrementalMiner {
         self,
         mut rx: mpsc::Receiver<serde_json::Value>,
         tx_ws: mpsc::Sender<StreamUpdate>,
+        cancel_token: CancellationToken,
     ) {
+        let ingestion_done = Arc::new(AtomicBool::new(false));
+        
         let state_for_proc = Arc::clone(&self.state);
-        let dfg_signal_for_proc = Arc::clone(&self.new_dfg_signal);
+        let signal_for_proc = Arc::clone(&self.new_data_signal);
+        let ingestion_done_for_proc = Arc::clone(&ingestion_done);
+        let token_for_proc = cancel_token.clone();
 
-        // 1. Task: Event Ingestion
+        // 1. Task: Event Ingestion (High Speed)
         tokio::spawn(async move {
-            while let Some(event_val) = rx.recv().await {
-                if let Ok(event) = serde_json::from_value::<OCELEvent>(event_val) {
-                    let mut s = state_for_proc.write().await;
-                    s.process_event(event);
-                    dfg_signal_for_proc.notify_one();
+            loop {
+                tokio::select! {
+                    _ = token_for_proc.cancelled() => break,
+                    msg_opt = rx.recv() => {
+                        let msg: serde_json::Value = match msg_opt {
+                            Some(m) => m,
+                            None => break,
+                        };
+                        
+                        if let Some(control) = msg.get("control") {
+                            if control == "end" { break; }
+                        }
+
+                        if let Ok(event) = serde_json::from_value::<OCELEvent>(msg) {
+                            let mut s = state_for_proc.write().await;
+                            s.process_event(event);
+                            s.dirty_dfg = true;
+                            s.dirty_ocpt = true;
+                            signal_for_proc.notify_waiters();
+                        }
+                    }
                 }
             }
-            log::info!("Event Ingestion: Finished.");
+            log::info!("Ingestion Task: Stopped.");
+            ingestion_done_for_proc.store(true, Ordering::SeqCst);
+            signal_for_proc.notify_waiters();
         });
 
         let state_for_dfg = Arc::clone(&self.state);
-        let dfg_signal_for_dfg = Arc::clone(&self.new_dfg_signal);
+        let token_for_dfg = cancel_token.clone();
+        let ingestion_done_for_dfg = Arc::clone(&ingestion_done);
         let tx_ws_dfg = tx_ws.clone();
 
-        // 2. Task: High-Frequency DFG Updates (100ms)
+        // 2. Task: DFG Updates (100ms)
         tokio::spawn(async move {
             let mut interval = interval(Duration::from_millis(100));
             loop {
                 tokio::select! {
+                    _ = token_for_dfg.cancelled() => break,
                     _ = interval.tick() => {
-                        // We check if there's anything to send
-                    }
-                    _ = dfg_signal_for_dfg.notified() => {
-                        // There's a new update, wait for interval or send now?
-                        // Let's just send on tick to throttle.
-                    }
-                }
-                
-                let dfg_model = {
-                    let s = state_for_dfg.read().await;
-                    if s.processed_count == 0 { continue; }
-                    s.get_base_model()
-                };
+                        let done = ingestion_done_for_dfg.load(Ordering::SeqCst);
+                        let (dfg_model, should_exit) = {
+                            let mut s = state_for_dfg.write().await;
+                            if !s.dirty_dfg {
+                                (None, done)
+                            } else {
+                                s.dirty_dfg = false;
+                                (Some(s.get_base_model()), done)
+                            }
+                        };
 
-                if let Err(_) = tx_ws_dfg.send(StreamUpdate::Dfg(dfg_model)).await {
-                    break;
+                        if let Some(model) = dfg_model {
+                            let update = StreamUpdate { update: StreamType::Dfg(model), is_last: should_exit };
+                            if tx_ws_dfg.send(update).await.is_err() { break; }
+                        }
+                        if should_exit { break; }
+                    }
                 }
             }
+            log::info!("DFG Task: Stopped.");
         });
 
-        // 3. Task: Lazy OCPT Discovery
+        // 3. Task: Lazy OCPT Worker (Heavy Discovery)
         let state_for_ocpt = Arc::clone(&self.state);
-        let dfg_signal_for_ocpt = Arc::clone(&self.new_dfg_signal);
+        let signal_for_ocpt = Arc::clone(&self.new_data_signal);
+        let ingestion_done_for_ocpt = Arc::clone(&ingestion_done);
+        let token_for_ocpt = cancel_token;
         let tx_ws_ocpt = tx_ws;
 
         tokio::spawn(async move {
             loop {
-                // Wait for a DFG change
-                dfg_signal_for_ocpt.notified().await;
+                // Wait for signal
+                tokio::select! {
+                    _ = token_for_ocpt.cancelled() => break,
+                    _ = signal_for_ocpt.notified() => {}
+                }
 
-                // Discovery might take time
-                let ocpt_fe = {
-                    let s = state_for_ocpt.read().await;
-                    s.get_ocpt_only()
+                let done = ingestion_done_for_ocpt.load(Ordering::SeqCst);
+                
+                // Get a snapshot while holding the lock briefly
+                let (snapshot, should_exit) = {
+                    let mut s = state_for_ocpt.write().await;
+                    if !s.dirty_ocpt && !done {
+                        (None, false)
+                    } else {
+                        s.dirty_ocpt = false;
+                        (Some(s.get_snapshot()), done)
+                    }
                 };
 
-                if let Err(_) = tx_ws_ocpt.send(StreamUpdate::Ocpt(ocpt_fe)).await {
-                    break;
+                if let Some(snap) = snapshot {
+                    // Run discovery in blocking thread so we don't block the async executor
+                    let ocpt_res = tokio::task::spawn_blocking(move || {
+                        snap.run_inductive_miner()
+                    }).await;
+
+                    if let Ok(ocpt_fe) = ocpt_res {
+                        let update = StreamUpdate { update: StreamType::Ocpt(ocpt_fe), is_last: should_exit };
+                        if tx_ws_ocpt.send(update).await.is_err() { break; }
+                    }
                 }
+
+                if should_exit { break; }
                 
-                // Throttle OCPT mining slightly so it doesn't consume 100% CPU
+                // Minimum cooling period for CPU
                 tokio::time::sleep(Duration::from_millis(200)).await;
             }
+            log::info!("OCPT Task: Stopped.");
         });
     }
 }
 
+impl MinerSnapshot {
+    fn run_inductive_miner(self) -> OcptFE {
+        let all_activities: HashSet<String> = self.activity_counts.keys().cloned().collect();
+        let process_forest = start_cuts_opti::find_cuts_start(
+            &self.dfg, 
+            &all_activities, 
+            &self.start_acts, 
+            &self.end_acts
+        );
+        let output_json = convert_to_json_tree::build_output(
+            &process_forest, 
+            &self.convergent, 
+            &self.deficient, 
+            &self.divergent
+        );
+        let json = serde_json::to_string(&output_json).unwrap();
+        serde_json::from_str(&json).unwrap()
+    }
+}
+
 impl MinerState {
+    fn get_snapshot(&self) -> MinerSnapshot {
+        let base = self.get_base_model();
+        
+        let mut dfg = HashMap::new();
+        for (key, count) in &base.ocdfg {
+            let parts: Vec<&str> = key.split('|').collect();
+            if parts.len() == 2 {
+                dfg.insert((parts[0].to_string(), parts[1].to_string()), *count);
+            }
+        }
+
+        let mut con = HashMap::new();
+        let mut div = HashMap::new();
+        let mut defi = HashMap::new();
+
+        for (act, ots) in &self.convergent_activities {
+            con.insert(act.clone(), ots.iter().cloned().collect());
+        }
+        for (act, ots) in &self.divergent_activities {
+            div.insert(act.clone(), ots.iter().cloned().collect());
+        }
+        for ((act, ot), count) in &self.activity_otype_event_counts {
+            let total = *self.activity_counts.get(act).unwrap_or(&0);
+            if *count > 0 && *count < total {
+                defi.entry(act.clone()).or_insert_with(Vec::new).push(ot.clone());
+            }
+        }
+
+        let mut end_acts = HashSet::new();
+        for (act, _) in self.last_event_per_object.values() {
+            end_acts.insert(act.clone());
+        }
+
+        MinerSnapshot {
+            dfg,
+            activity_counts: self.activity_counts.clone(),
+            start_acts: base.start_activities.keys().cloned().collect(),
+            end_acts,
+            convergent: con,
+            divergent: div,
+            deficient: defi,
+            processed_count: self.processed_count,
+            last_timestamp: self.last_timestamp.clone(),
+            start_activity_types: base.start_activity_types,
+            edge_types: base.edge_types,
+        }
+    }
+
     fn process_event(&mut self, event: OCELEvent) {
         let activity = event.event_type.clone();
         *self.activity_counts.entry(activity.clone()).or_insert(0) += 1;
@@ -177,47 +314,6 @@ impl MinerState {
             }
             self.last_event_per_object.insert(object_id, (activity.clone(), event.time.to_rfc3339()));
         }
-    }
-
-    fn get_ocpt_only(&self) -> OcptFE {
-        let base = self.get_base_model();
-        let mut con = HashMap::new();
-        let mut defi = HashMap::new();
-        let mut div = HashMap::new();
-
-        for (act, ots) in &self.convergent_activities {
-            con.insert(act.clone(), ots.iter().cloned().collect::<Vec<_>>());
-        }
-        for (act, ots) in &self.divergent_activities {
-            div.insert(act.clone(), ots.iter().cloned().collect::<Vec<_>>());
-        }
-
-        for ((act, ot), count) in &self.activity_otype_event_counts {
-            let total = *self.activity_counts.get(act).unwrap_or(&0);
-            if *count > 0 && *count < total {
-                defi.entry(act.clone()).or_insert_with(Vec::new).push(ot.clone());
-            }
-        }
-
-        let mut dfg_for_miner: HashMap<(String, String), usize> = HashMap::new();
-        for (key, count) in &base.ocdfg {
-            let parts: Vec<&str> = key.split('|').collect();
-            if parts.len() == 2 {
-                dfg_for_miner.insert((parts[0].to_string(), parts[1].to_string()), *count);
-            }
-        }
-
-        let all_activities: HashSet<String> = self.activity_counts.keys().cloned().collect();
-        let start_acts: HashSet<String> = base.start_activities.keys().cloned().collect();
-        let mut end_acts = HashSet::new();
-        for (act, _) in self.last_event_per_object.values() {
-            end_acts.insert(act.clone());
-        }
-
-        let process_forest = start_cuts_opti::find_cuts_start(&dfg_for_miner, &all_activities, &start_acts, &end_acts);
-        let output_json = convert_to_json_tree::build_output(&process_forest, &con, &defi, &div);
-        let json = serde_json::to_string(&output_json).unwrap();
-        serde_json::from_str(&json).unwrap()
     }
 
     fn get_base_model(&self) -> StreamingModel {

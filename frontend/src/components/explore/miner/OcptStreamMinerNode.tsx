@@ -1,7 +1,7 @@
 import { memo, useState, useMemo } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import { Position } from '@xyflow/react';
-import { TreePine, Maximize2, Save, Pickaxe, Loader2 } from 'lucide-react';
+import { TreePine, Maximize2, Save, Pickaxe, Loader2, CheckCircle2 } from 'lucide-react';
 import BaseMinerNode from '~/components/explore/miner/BaseMinerNode';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { MinerNode } from '~/types/explore/nodes';
@@ -27,6 +27,7 @@ const OcptStreamMinerNode = memo<NodeProps<MinerNode>>((props) => {
     const streamingData = useMemo(() => getUpstreamStreamingData(id, nodes, edges), [id, nodes, edges]);
     const ocptData = streamingData?.ocpt;
     const totalEvents = streamingData?.processed_count ?? 0;
+    const isFinal = streamingData?.isLast ?? false;
 
     const idTree = useMemo(() => {
         if (!ocptData?.hierarchy) return null;
@@ -51,7 +52,7 @@ const OcptStreamMinerNode = memo<NodeProps<MinerNode>>((props) => {
                 outputAssetId: file_id,
                 outputAssetType: 'ocptAsset',
                 outputNodeType: 'ocptFileNode',
-                inputFileName: `Live_OCPT_${new Date().toLocaleTimeString()}`,
+                inputFileName: `Mined_OCPT_${new Date().toLocaleTimeString()}`,
             });
             
             toast.success('OCPT model saved successfully');
@@ -81,10 +82,19 @@ const OcptStreamMinerNode = memo<NodeProps<MinerNode>>((props) => {
         <div className="mt-2 border-t pt-2 space-y-3">
             <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
-                    <div className={`h-2 w-2 rounded-full ${totalEvents > 0 ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />
-                    <span className="text-[10px] font-bold text-gray-600 uppercase tracking-tight">
-                        {totalEvents > 0 ? 'Inductive Mining Active' : 'Waiting for Stream'}
-                    </span>
+                    {isFinal ? (
+                        <>
+                            <CheckCircle2 className="h-2 w-2 text-green-500" />
+                            <span className="text-[10px] font-bold text-green-600 uppercase tracking-tight">Final Model</span>
+                        </>
+                    ) : (
+                        <>
+                            <div className={`h-2 w-2 rounded-full ${totalEvents > 0 ? 'bg-blue-500 animate-pulse' : 'bg-gray-300'}`} />
+                            <span className="text-[10px] font-bold text-gray-600 uppercase tracking-tight">
+                                {totalEvents > 0 ? 'Discovering...' : 'Waiting for Stream'}
+                            </span>
+                        </>
+                    )}
                 </div>
                 {ocptData && (
                     <Button 
@@ -115,12 +125,12 @@ const OcptStreamMinerNode = memo<NodeProps<MinerNode>>((props) => {
                 <Button 
                     variant="outline" 
                     size="sm" 
-                    className="w-full h-7 text-[10px] gap-1.5 font-semibold bg-white hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors"
+                    className={`w-full h-7 text-[10px] gap-1.5 font-semibold transition-colors ${isFinal ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' : 'bg-white hover:bg-blue-50 hover:text-blue-600'}`}
                     onClick={handleSaveModel}
                     disabled={isSaving}
                 >
                     {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                    Save Current Model
+                    {isFinal ? 'Save Final Model' : 'Save Current Model'}
                 </Button>
             )}
 

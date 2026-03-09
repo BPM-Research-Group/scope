@@ -15,6 +15,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, FixedOffset};
 use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
 use std::collections::HashMap;
 
 #[derive(Serialize)]
@@ -85,18 +86,21 @@ async fn handle_socket(mut socket: WebSocket, file_id: String, replay_speed: u64
         object_to_type.insert(obj.id.clone(), obj.object_type.clone());
     }
 
+    let cancel_token = CancellationToken::new();
     let (tx_event, rx_event) = mpsc::channel(100);
     let (tx_model, mut rx_model) = mpsc::channel::<StreamUpdate>(10);
 
     let replayer = Replayer::new(ocel, replay_speed);
-    tokio::spawn(replayer.start(tx_event));
+    tokio::spawn(replayer.start(tx_event, cancel_token.clone()));
 
     let miner = IncrementalMiner::new(object_to_type);
-    tokio::spawn(miner.run(rx_event, tx_model));
+    tokio::spawn(miner.run(rx_event, tx_model, cancel_token.clone()));
 
     while let Some(model) = rx_model.recv().await {
         let json = serde_json::to_string(&model).unwrap();
         if let Err(_) = socket.send(Message::Text(json.into())).await {
+            // socket closed
+            cancel_token.cancel();
             break;
         }
     }
