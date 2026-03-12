@@ -19,10 +19,10 @@ struct MinerSnapshot {
     convergent: HashMap<String, Vec<String>>,
     divergent: HashMap<String, Vec<String>>,
     deficient: HashMap<String, Vec<String>>,
-    _processed_count: usize,
-    _last_timestamp: Option<String>,
-    _start_activity_types: HashMap<String, String>,
-    _edge_types: HashMap<String, String>,
+    processed_count: usize,
+    last_timestamp: Option<String>,
+    start_activity_types: HashMap<String, String>,
+    edge_types: HashMap<String, String>,
 }
 
 #[derive(Default)]
