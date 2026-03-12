@@ -1,5 +1,5 @@
 use crate::models::ocel_sid_df2_miner::OcelJson;
-use crate::models::ocel::{OCELEvent, OCELRelationship, OCEL, OCELType, OCELObject};
+use crate::models::ocel::{OCELEvent, OCELRelationship};
 use crate::core::event_stream::miner::{MinerState};
 use crate::core::df2_miner::{build_relations_fns, interaction_patterns, divergence_free_dfg};
 use std::collections::{HashMap, HashSet};
@@ -108,7 +108,10 @@ async fn validate_incremental_correctness(path: &str, step_size: usize) {
 }
 
 #[tokio::test]
-async fn test_order_management_correctness() {
+async fn test_online_df2_correctness() {
     // Using step_size 50 to keep the test fast
-    validate_incremental_correctness("../example_data/ocel/order-management.json", 50).await;
+    // validate_incremental_correctness("../example_data/ocel/order-management.json", 50).await;
+    // validate_incremental_correctness("../example_data/ocel/logistics.json", 50).await;
+    validate_incremental_correctness("../example_data/ocel/lrmsCollection.json", 50).await;
+    // validate_incremental_correctness("../example_data/ocel/procureToPay.json", 50).await;
 }
