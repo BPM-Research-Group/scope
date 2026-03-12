@@ -11,44 +11,44 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::fs;
 
 #[derive(Default, Clone)]
-struct MinerSnapshot {
-    dfg: HashMap<(String, String), usize>,
-    activity_counts: HashMap<String, usize>,
-    start_acts: HashSet<String>,
-    end_acts: HashSet<String>,
-    convergent: HashMap<String, Vec<String>>,
-    divergent: HashMap<String, Vec<String>>,
-    deficient: HashMap<String, Vec<String>>,
-    processed_count: usize,
-    last_timestamp: Option<String>,
-    start_activity_types: HashMap<String, String>,
-    edge_types: HashMap<String, String>,
+pub struct MinerSnapshot {
+    pub dfg: HashMap<(String, String), usize>,
+    pub activity_counts: HashMap<String, usize>,
+    pub start_acts: HashSet<String>,
+    pub end_acts: HashSet<String>,
+    pub convergent: HashMap<String, Vec<String>>,
+    pub divergent: HashMap<String, Vec<String>>,
+    pub deficient: HashMap<String, Vec<String>>,
+    pub _processed_count: usize,
+    pub _last_timestamp: Option<String>,
+    pub _start_activity_types: HashMap<String, String>,
+    pub _edge_types: HashMap<String, String>,
 }
 
 #[derive(Default)]
-struct MinerState {
-    internal_ocdfg: HashMap<String, usize>,
-    internal_start_activities: HashMap<String, usize>,
-    activity_counts: HashMap<String, usize>,
-    processed_count: usize,
-    last_timestamp: Option<String>,
-    
-    divergence_index: HashMap<(String, String), HashMap<BTreeSet<String>, HashSet<BTreeSet<String>>>>,
-    divergent_activities: HashMap<String, HashSet<String>>,
-    seen_objects_per_act_type: HashMap<(String, String), HashSet<String>>,
-    convergent_activities: HashMap<String, HashSet<String>>,
-    activity_otype_event_counts: HashMap<(String, String), usize>,
-    
-    last_event_per_object: HashMap<String, (String, String)>,
-    object_to_type: HashMap<String, String>,
+pub struct MinerState {
+    pub internal_ocdfg: HashMap<String, usize>,
+    pub internal_start_activities: HashMap<String, usize>,
+    pub activity_counts: HashMap<String, usize>,
+    pub _processed_count: usize,
+    pub _last_timestamp: Option<String>,
 
-    dirty_dfg: bool,
-    dirty_ocpt: bool,
+    pub divergence_index: HashMap<(String, String), HashMap<BTreeSet<String>, HashSet<BTreeSet<String>>>>,
+    pub divergent_activities: HashMap<String, HashSet<String>>,
+    pub seen_objects_per_act_type: HashMap<(String, String), HashSet<String>>,
+    pub convergent_activities: HashMap<String, HashSet<String>>,
+    pub activity_otype_event_counts: HashMap<(String, String), usize>,
+    
+    pub last_event_per_object: HashMap<String, (String, String)>,
+    pub object_to_type: HashMap<String, String>,
+
+    pub dirty_dfg: bool,
+    pub dirty_ocpt: bool,
 }
 
 pub struct IncrementalMiner {
-    state: Arc<RwLock<MinerState>>,
-    new_data_signal: Arc<Notify>,
+    pub state: Arc<RwLock<MinerState>>,
+    pub new_data_signal: Arc<Notify>,
 }
 
 impl IncrementalMiner {
@@ -193,7 +193,7 @@ impl IncrementalMiner {
 }
 
 impl MinerSnapshot {
-    fn run_inductive_miner(self) -> OcptFE {
+    pub fn run_inductive_miner(self) -> OcptFE {
         let all_activities: HashSet<String> = self.activity_counts.keys().cloned().collect();
         let process_forest = start_cuts_opti::find_cuts_start(
             &self.dfg, 
@@ -213,7 +213,7 @@ impl MinerSnapshot {
 }
 
 impl MinerState {
-    fn get_snapshot(&self) -> MinerSnapshot {
+    pub fn get_snapshot(&self) -> MinerSnapshot {
         let base = self.get_base_model();
         
         let mut dfg = HashMap::new();
@@ -254,18 +254,18 @@ impl MinerState {
             convergent: con,
             divergent: div,
             deficient: defi,
-            processed_count: self.processed_count,
-            last_timestamp: self.last_timestamp.clone(),
-            start_activity_types: base.start_activity_types,
-            edge_types: base.edge_types,
+            _processed_count: self._processed_count,
+            _last_timestamp: self._last_timestamp.clone(),
+            _start_activity_types: base.start_activity_types,
+            _edge_types: base.edge_types,
         }
     }
 
-    fn process_event(&mut self, event: OCELEvent) {
+    pub fn process_event(&mut self, event: OCELEvent) {
         let activity = event.event_type.clone();
         *self.activity_counts.entry(activity.clone()).or_insert(0) += 1;
-        self.last_timestamp = Some(event.time.to_rfc3339());
-        self.processed_count += 1;
+        self._last_timestamp = Some(event.time.to_rfc3339());
+        self._processed_count += 1;
 
         let mut unique_oids_with_type = HashMap::new();
         for rel in &event.relationships {
@@ -316,12 +316,12 @@ impl MinerState {
         }
     }
 
-    fn get_base_model(&self) -> StreamingModel {
+    pub fn get_base_model(&self) -> StreamingModel {
         let mut model = StreamingModel {
             activity_counts: self.activity_counts.clone(),
             divergent_activities: self.divergent_activities.clone(),
-            processed_count: self.processed_count,
-            last_timestamp: self.last_timestamp.clone(),
+            processed_count: self._processed_count,
+            last_timestamp: self._last_timestamp.clone(),
             ..Default::default()
         };
 

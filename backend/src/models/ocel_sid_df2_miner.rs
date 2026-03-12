@@ -3,7 +3,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 // OCEL 2.0 structures
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct OcelJson {
     #[serde(rename = "objectTypes")]
     pub object_types: Vec<ObjectType>,
@@ -13,26 +13,26 @@ pub struct OcelJson {
     pub objects: Vec<Object>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct ObjectType {
     pub name: String,
     pub attributes: Vec<AttributeDefinition>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct EventType {
     pub name: String,
     pub attributes: Vec<AttributeDefinition>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct AttributeDefinition {
     pub name: String,
     #[serde(rename = "type")]
     pub attr_type: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Event {
     pub id: String,
     #[serde(rename = "type")]
@@ -42,7 +42,7 @@ pub struct Event {
     pub relationships: Vec<Relationship>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Object {
     pub id: String,
     #[serde(rename = "type")]
@@ -50,21 +50,21 @@ pub struct Object {
     pub attributes: Option<Vec<Attribute>>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Attribute {
     pub name: String,
     pub value: serde_json::Value, // it handle both strings and numbers
     pub time: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Relationship {
     #[serde(rename = "objectId")]
     pub object_id: String,
     pub qualifier: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TreeNode {
     pub label: String,
     pub children: Vec<TreeNode>,
@@ -73,13 +73,13 @@ pub struct TreeNode {
 pub type ProcessForest = Vec<TreeNode>;
 
 // For format conversion of DFG to be sent a JSON response
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub struct Node {
     pub id: String,
     pub label: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub struct Edge {
     pub id: String,
     pub source: String,
@@ -87,7 +87,7 @@ pub struct Edge {
     pub label: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub struct Graph {
     pub nodes: Vec<Node>,
     pub edges: Vec<Edge>,
