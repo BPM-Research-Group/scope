@@ -36,3 +36,8 @@ backend/tools/conformance_compare/debug_control_precision_diff.py
 comparison_inputs/
 comparison_outputs/
 scripts/
+
+# Local comparison artifacts and helper scripts
+comparison_inputs/
+comparison_outputs/
+scripts/

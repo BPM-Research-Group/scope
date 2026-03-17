@@ -1,35 +1,51 @@
-use crate::models::ocel_sid_df2_miner::{OcelJson, Event};
+use crate::models::ocel_sid_df2_miner::OcelJson;
 use crate::models::ocel::{OCELEvent, OCELRelationship};
 use crate::core::event_stream::miner::MinerState;
 use crate::core::df2_miner::{build_relations_fns, interaction_patterns, divergence_free_dfg};
 use std::collections::HashMap;
 use std::fs::{self, File};
-use std::io::Write;
+use std::io::{Write, BufReader};
 use std::time::Instant;
 use chrono::DateTime;
 
 #[tokio::test]
 #[ignore] // Run manually with: cargo test --release run_full_evaluation -- --ignored --nocapture
 async fn run_full_evaluation() {
-    let logs = vec![
-        "../example_data/ocel/order-management.json",
-        "../example_data/ocel/logistics.json",
-        "../example_data/ocel/lrmsCollection.json",
-        "../example_data/ocel/procureToPay.json",
-    ];
+    let eval_dir = "../evaluation_ocels";
+    let mut logs = Vec::new();
+    if let Ok(entries) = fs::read_dir(eval_dir) {
+        for entry in entries {
+            if let Ok(entry) = entry {
+                let path = entry.path();
+                if path.is_file() {
+                    let extension = path.extension().and_then(|s| s.to_str()).unwrap_or("");
+                    if extension == "json" || extension == "jsonocel" {
+                        if let Some(path_str) = path.to_str() {
+                            logs.push(path_str.to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Sort logs to have a deterministic order
+    logs.sort();
 
     let mut csv_file = File::create("evaluation_results.csv").expect("Unable to create results file");
     writeln!(csv_file, "log,event_index,offline_ns,online_ns").unwrap();
 
     for log_path in logs {
-        if !fs::metadata(log_path).is_ok() {
-            println!("Skipping {}, file not found", log_path);
-            continue;
-        }
-        
         println!("Evaluating: {}", log_path);
-        let content = fs::read_to_string(log_path).expect("Failed to read OCEL");
-        let ocel_sid: OcelJson = serde_json::from_str(&content).expect("Failed to parse OCEL");
+        let file = File::open(&log_path).expect("Failed to open OCEL");
+        let reader = BufReader::new(file);
+        let ocel_sid: OcelJson = match serde_json::from_reader(reader) {
+            Ok(ocel) => ocel,
+            Err(e) => {
+                println!("Skipping {}, parse error: {}", log_path, e);
+                continue;
+            }
+        };
 
         let mut sorted_events = ocel_sid.events.clone();
         sorted_events.sort_by(|a, b| a.id.cmp(&b.id));
@@ -47,30 +63,39 @@ async fn run_full_evaluation() {
         };
 
         let n_total = sorted_events.len();
+        let offline_sample_rate = 0.02; // 2%
+        let offline_every_n = (1.0 / offline_sample_rate) as usize; // every 50th
         
         for i in 1..=n_total {
             let current_event_sid = &sorted_events[i-1];
             
             // --- 1. Measure OFFLINE ---
-            let offline_start = Instant::now();
+            // Only measure every 50th, and always the first and last
+            let should_run_offline = (i == 1) || (i == n_total) || ((i - 1) % offline_every_n == 0);
             
-            // Prepare prefix sub-log
-            let prefix_events = &sorted_events[0..i];
-            let prefix_vec = prefix_events.to_vec();
-            let relations = build_relations_fns::build_relations(&prefix_vec, &ocel_sid.objects);
-            
-            // We need a dummy OcelJson for the patterns call
-            let ocel_prefix = OcelJson {
-                events: prefix_events.to_vec(),
-                objects: ocel_sid.objects.clone(),
-                event_types: ocel_sid.event_types.clone(),
-                object_types: ocel_sid.object_types.clone(),
+            let offline_duration_str = if should_run_offline {
+                let offline_start = Instant::now();
+                
+                // Prepare prefix sub-log
+                let prefix_events = &sorted_events[0..i];
+                let prefix_vec = prefix_events.to_vec();
+                let relations = build_relations_fns::build_relations(&prefix_vec, &ocel_sid.objects);
+                
+                // We need a dummy OcelJson for the patterns call
+                let ocel_prefix = OcelJson {
+                    events: prefix_vec,
+                    objects: ocel_sid.objects.clone(),
+                    event_types: ocel_sid.event_types.clone(),
+                    object_types: ocel_sid.object_types.clone(),
+                };
+                
+                let (div, _con, _rel, _defi, _all_acts, _all_ots) = interaction_patterns::get_interaction_patterns(&relations, &ocel_prefix);
+                let (_dfg, _, _) = divergence_free_dfg::get_divergence_free_graph_v2(&relations, &div);
+                
+                offline_start.elapsed().as_nanos().to_string()
+            } else {
+                "".to_string()
             };
-            
-            let (div, _con, _rel, _defi, _all_acts, _all_ots) = interaction_patterns::get_interaction_patterns(&relations, &ocel_prefix);
-            let (_dfg, _, _) = divergence_free_dfg::get_divergence_free_graph_v2(&relations, &div);
-            
-            let offline_duration = offline_start.elapsed().as_nanos();
 
             // --- 2. Measure ONLINE ---
             let event_pm = OCELEvent {
@@ -96,7 +121,7 @@ async fn run_full_evaluation() {
                 "{},{},{},{}",
                 log_path.split('/').last().unwrap(),
                 i,
-                offline_duration,
+                offline_duration_str,
                 online_duration
             ).unwrap();
 
