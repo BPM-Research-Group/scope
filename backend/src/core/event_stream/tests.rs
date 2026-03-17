@@ -112,6 +112,6 @@ async fn test_online_df2_correctness() {
     // Using step_size 50 to keep the test fast
     // validate_incremental_correctness("../example_data/ocel/order-management.json", 50).await;
     // validate_incremental_correctness("../example_data/ocel/logistics.json", 50).await;
-    validate_incremental_correctness("../example_data/ocel/lrmsCollection.json", 50).await;
-    // validate_incremental_correctness("../example_data/ocel/procureToPay.json", 50).await;
+    // validate_incremental_correctness("../example_data/ocel/lrmsCollection.json", 50).await;
+    validate_incremental_correctness("../example_data/ocel/procureToPay.json", 50).await;
 }
