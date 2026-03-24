@@ -44,5 +44,3 @@ To use SCOPE, you'll need to run both the backend and frontend servers.
     -   Navigate to the `frontend` directory.
     -   Start the development server: `npm run dev`
     -   You can now access the SCOPE application in your browser at `http://localhost:5173`.
-
-    test
