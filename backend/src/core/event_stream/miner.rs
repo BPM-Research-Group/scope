@@ -44,6 +44,7 @@ pub struct MinerState {
 
     pub dirty_dfg: bool,
     pub dirty_ocpt: bool,
+    pub free_memory: bool,
 }
 
 pub struct IncrementalMiner {
@@ -52,13 +53,14 @@ pub struct IncrementalMiner {
 }
 
 impl IncrementalMiner {
-    pub fn new(object_to_type: HashMap<String, String>) -> Self {
+    pub fn new(object_to_type: HashMap<String, String>, free_memory: bool) -> Self {
         let _ = fs::remove_file("./temp/stream_divergence.json");
         let _ = fs::remove_file("./temp/stream_edges.json");
 
         Self {
             state: Arc::new(RwLock::new(MinerState {
                 object_to_type,
+                free_memory,
                 ..Default::default()
             })),
             new_data_signal: Arc::new(Notify::new()),
@@ -282,16 +284,29 @@ impl MinerState {
 
         for (ot, ot_set) in objects_by_type {
             let key = (activity.clone(), ot.clone());
-            let group_map = self.divergence_index.entry(key.clone()).or_default();
-            if let Some(full_sets) = group_map.get_mut(&ot_set) {
-                if !full_sets.contains(&full_object_set) {
-                    self.divergent_activities.entry(activity.clone()).or_default().insert(ot.clone());
-                    full_sets.insert(full_object_set.clone());
+            
+            let is_already_divergent = self.divergent_activities.get(&activity).map(|s| s.contains(&ot)).unwrap_or(false);
+            if !is_already_divergent {
+                let mut should_remove = false;
+                {
+                    let group_map = self.divergence_index.entry(key.clone()).or_default();
+                    if let Some(full_sets) = group_map.get_mut(&ot_set) {
+                        if !full_sets.contains(&full_object_set) {
+                            self.divergent_activities.entry(activity.clone()).or_default().insert(ot.clone());
+                            full_sets.insert(full_object_set.clone());
+                            if self.free_memory {
+                                should_remove = true;
+                            }
+                        }
+                    } else {
+                        let mut sets = HashSet::new();
+                        sets.insert(full_object_set.clone());
+                        group_map.insert(ot_set.clone(), sets);
+                    }
                 }
-            } else {
-                let mut sets = HashSet::new();
-                sets.insert(full_object_set.clone());
-                group_map.insert(ot_set.clone(), sets);
+                if should_remove {
+                    self.divergence_index.remove(&key);
+                }
             }
 
             let seen_objects = self.seen_objects_per_act_type.entry(key.clone()).or_default();
@@ -367,5 +382,66 @@ impl MinerState {
         }
 
         model
+    }
+
+    pub fn estimate_memory_usage(&self) -> (usize, usize) {
+        let mut total_mem = 0;
+        let mut div_mem = 0;
+
+        // Helper for String estimation: 24 bytes (struct) + length (heap)
+        fn string_mem(s: &str) -> usize { 24 + s.len() }
+
+        // internal_ocdfg: HashMap<String, usize>
+        total_mem += self.internal_ocdfg.len() * 48; // Entry overhead
+        for k in self.internal_ocdfg.keys() { total_mem += string_mem(k); }
+
+        // internal_start_activities: HashMap<String, usize>
+        total_mem += self.internal_start_activities.len() * 48;
+        for k in self.internal_start_activities.keys() { total_mem += string_mem(k); }
+
+        // activity_counts: HashMap<String, usize>
+        total_mem += self.activity_counts.len() * 48;
+        for k in self.activity_counts.keys() { total_mem += string_mem(k); }
+
+        // divergence_index: HashMap<(String, String), HashMap<BTreeSet<String>, HashSet<BTreeSet<String>>>>
+        div_mem += self.divergence_index.len() * 64;
+        for ((a, o), inner) in &self.divergence_index {
+            div_mem += string_mem(a) + string_mem(o);
+            div_mem += inner.len() * 48;
+            for (k, v) in inner {
+                // BTreeSet<String>
+                div_mem += 32 + k.len() * 40;
+                for s in k { div_mem += string_mem(s); }
+                // HashSet<BTreeSet<String>>
+                div_mem += v.len() * 48;
+                for bs in v {
+                    div_mem += 32 + bs.len() * 40;
+                    for s in bs { div_mem += string_mem(s); }
+                }
+            }
+        }
+        total_mem += div_mem;
+
+        // seen_objects_per_act_type: HashMap<(String, String), HashSet<String>>
+        total_mem += self.seen_objects_per_act_type.len() * 64;
+        for ((a, o), v) in &self.seen_objects_per_act_type {
+            total_mem += string_mem(a) + string_mem(o);
+            total_mem += v.len() * 32;
+            for s in v { total_mem += string_mem(s); }
+        }
+
+        // last_event_per_object: HashMap<String, (String, String)>
+        total_mem += self.last_event_per_object.len() * 64;
+        for (k, (v1, v2)) in &self.last_event_per_object {
+            total_mem += string_mem(k) + string_mem(v1) + string_mem(v2);
+        }
+
+        // object_to_type: HashMap<String, String>
+        total_mem += self.object_to_type.len() * 48;
+        for (k, v) in &self.object_to_type {
+            total_mem += string_mem(k) + string_mem(v);
+        }
+
+        (total_mem, div_mem)
     }
 }
