@@ -173,8 +173,11 @@ pub fn build_output(
         }
     };
 
+    let mut ots_vec: Vec<String> = all_ots.into_iter().collect();
+    ots_vec.sort();
+
     OutputJson {
-        ots: all_ots.into_iter().collect(),
+        ots: ots_vec,
         hierarchy,
     }
 }
