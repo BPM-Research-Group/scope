@@ -60,6 +60,7 @@ async fn run_full_evaluation() {
         let mut online_state = MinerState {
             object_to_type: object_to_type.clone(),
             free_memory: true,
+            enable_heuristics: true, // we enable heuristics for evaluation
             ..Default::default()
         };
 

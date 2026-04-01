@@ -9,6 +9,30 @@ use std::collections::{HashMap, HashSet, BTreeSet};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::fs;
+use std::hash::{Hash, Hasher};
+use std::collections::hash_map::DefaultHasher;
+
+#[derive(Default, Clone)]
+pub struct StringPool {
+    pub str_to_id: HashMap<String, u32>,
+    pub id_to_str: Vec<String>,
+}
+
+impl StringPool {
+    pub fn get_or_insert(&mut self, s: &str) -> u32 {
+        if let Some(&id) = self.str_to_id.get(s) {
+            id
+        } else {
+            let id = self.id_to_str.len() as u32;
+            self.str_to_id.insert(s.to_string(), id);
+            self.id_to_str.push(s.to_string());
+            id
+        }
+    }
+    pub fn get_str(&self, id: u32) -> &str {
+        &self.id_to_str[id as usize]
+    }
+}
 
 #[derive(Default, Clone)]
 pub struct MinerSnapshot {
@@ -27,24 +51,29 @@ pub struct MinerSnapshot {
 
 #[derive(Default)]
 pub struct MinerState {
-    pub internal_ocdfg: HashMap<String, usize>,
-    pub internal_start_activities: HashMap<String, usize>,
-    pub activity_counts: HashMap<String, usize>,
+    pub pool: StringPool,
+    pub internal_ocdfg: HashMap<(u32, u32, u32), usize>,
+    pub internal_start_activities: HashMap<(u32, u32), usize>,
+    pub activity_counts: HashMap<u32, usize>,
     pub _processed_count: usize,
     pub _last_timestamp: Option<String>,
 
-    pub divergence_index: HashMap<(String, String), HashMap<BTreeSet<String>, HashSet<BTreeSet<String>>>>,
-    pub divergent_activities: HashMap<String, HashSet<String>>,
-    pub seen_objects_per_act_type: HashMap<(String, String), HashSet<String>>,
-    pub convergent_activities: HashMap<String, HashSet<String>>,
-    pub activity_otype_event_counts: HashMap<(String, String), usize>,
+    pub divergence_index: HashMap<(u32, u32), HashMap<u64, HashMap<u64, usize>>>,
+    pub divergent_activities: HashMap<u32, HashSet<u32>>,
+    pub seen_objects_per_act_type: HashMap<(u32, u32), HashSet<u32>>,
+    pub convergent_activities: HashMap<u32, HashSet<u32>>,
+    pub activity_otype_event_counts: HashMap<(u32, u32), usize>,
     
-    pub last_event_per_object: HashMap<String, (String, String)>,
+    pub end_activities_hist: HashMap<(u32, u32), usize>,
+    pub last_event_per_object: HashMap<u32, (u32, usize)>,
+    
     pub object_to_type: HashMap<String, String>,
+    pub object_type_map: HashMap<u32, u32>,
 
     pub dirty_dfg: bool,
     pub dirty_ocpt: bool,
     pub free_memory: bool,
+    pub enable_heuristics: bool,
 }
 
 pub struct IncrementalMiner {
@@ -53,7 +82,7 @@ pub struct IncrementalMiner {
 }
 
 impl IncrementalMiner {
-    pub fn new(object_to_type: HashMap<String, String>, free_memory: bool) -> Self {
+    pub fn new(object_to_type: HashMap<String, String>, free_memory: bool, enable_heuristics: bool) -> Self {
         let _ = fs::remove_file("./temp/stream_divergence.json");
         let _ = fs::remove_file("./temp/stream_edges.json");
 
@@ -61,6 +90,7 @@ impl IncrementalMiner {
             state: Arc::new(RwLock::new(MinerState {
                 object_to_type,
                 free_memory,
+                enable_heuristics,
                 ..Default::default()
             })),
             new_data_signal: Arc::new(Notify::new()),
@@ -80,7 +110,6 @@ impl IncrementalMiner {
         let ingestion_done_for_proc = Arc::clone(&ingestion_done);
         let token_for_proc = cancel_token.clone();
 
-        // 1. Task: Event Ingestion (High Speed)
         tokio::spawn(async move {
             loop {
                 tokio::select! {
@@ -115,7 +144,6 @@ impl IncrementalMiner {
         let ingestion_done_for_dfg = Arc::clone(&ingestion_done);
         let tx_ws_dfg = tx_ws.clone();
 
-        // 2. Task: DFG Updates (100ms)
         tokio::spawn(async move {
             let mut interval = interval(Duration::from_millis(100));
             loop {
@@ -144,7 +172,6 @@ impl IncrementalMiner {
             log::info!("DFG Task: Stopped.");
         });
 
-        // 3. Task: Lazy OCPT Worker (Heavy Discovery)
         let state_for_ocpt = Arc::clone(&self.state);
         let signal_for_ocpt = Arc::clone(&self.new_data_signal);
         let ingestion_done_for_ocpt = Arc::clone(&ingestion_done);
@@ -153,7 +180,6 @@ impl IncrementalMiner {
 
         tokio::spawn(async move {
             loop {
-                // Wait for signal
                 tokio::select! {
                     _ = token_for_ocpt.cancelled() => break,
                     _ = signal_for_ocpt.notified() => {}
@@ -161,7 +187,6 @@ impl IncrementalMiner {
 
                 let done = ingestion_done_for_ocpt.load(Ordering::SeqCst);
                 
-                // Get a snapshot while holding the lock briefly
                 let (snapshot, should_exit) = {
                     let mut s = state_for_ocpt.write().await;
                     if !s.dirty_ocpt && !done {
@@ -173,7 +198,6 @@ impl IncrementalMiner {
                 };
 
                 if let Some(snap) = snapshot {
-                    // Run discovery in blocking thread so we don't block the async executor
                     let ocpt_res = tokio::task::spawn_blocking(move || {
                         snap.run_inductive_miner()
                     }).await;
@@ -185,8 +209,6 @@ impl IncrementalMiner {
                 }
 
                 if should_exit { break; }
-                
-                // Minimum cooling period for CPU
                 tokio::time::sleep(Duration::from_millis(200)).await;
             }
             log::info!("OCPT Task: Stopped.");
@@ -231,26 +253,30 @@ impl MinerState {
         let mut defi = HashMap::new();
 
         for (act, ots) in &self.convergent_activities {
-            con.insert(act.clone(), ots.iter().cloned().collect());
+            let act_str = self.pool.get_str(*act).to_string();
+            con.insert(act_str, ots.iter().map(|ot| self.pool.get_str(*ot).to_string()).collect());
         }
         for (act, ots) in &self.divergent_activities {
-            div.insert(act.clone(), ots.iter().cloned().collect());
+            let act_str = self.pool.get_str(*act).to_string();
+            div.insert(act_str, ots.iter().map(|ot| self.pool.get_str(*ot).to_string()).collect());
         }
-        for ((act, ot), count) in &self.activity_otype_event_counts {
-            let total = *self.activity_counts.get(act).unwrap_or(&0);
+        for (&(act, ot), count) in &self.activity_otype_event_counts {
+            let total = *self.activity_counts.get(&act).unwrap_or(&0);
             if *count > 0 && *count < total {
-                defi.entry(act.clone()).or_insert_with(Vec::new).push(ot.clone());
+                let act_str = self.pool.get_str(act).to_string();
+                let ot_str = self.pool.get_str(ot).to_string();
+                defi.entry(act_str).or_insert_with(Vec::new).push(ot_str);
             }
         }
 
         let mut end_acts = HashSet::new();
-        for (act, _) in self.last_event_per_object.values() {
-            end_acts.insert(act.clone());
+        for &(act, _) in self.last_event_per_object.values() {
+            end_acts.insert(self.pool.get_str(act).to_string());
         }
 
         MinerSnapshot {
             dfg,
-            activity_counts: self.activity_counts.clone(),
+            activity_counts: self.activity_counts.iter().map(|(&k, &v)| (self.pool.get_str(k).to_string(), v)).collect(),
             start_acts: base.start_activities.keys().cloned().collect(),
             end_acts,
             convergent: con,
@@ -265,43 +291,59 @@ impl MinerState {
 
     pub fn process_event(&mut self, event: OCELEvent) {
         let activity = event.event_type.clone();
-        *self.activity_counts.entry(activity.clone()).or_insert(0) += 1;
+        let act_id = self.pool.get_or_insert(&activity);
+        *self.activity_counts.entry(act_id).or_insert(0) += 1;
         self._last_timestamp = Some(event.time.to_rfc3339());
         self._processed_count += 1;
 
         let mut unique_oids_with_type = HashMap::new();
         for rel in &event.relationships {
             if let Some(real_type) = self.object_to_type.get(&rel.object_id) {
-                unique_oids_with_type.entry(rel.object_id.clone()).or_insert(real_type.clone());
+                let oid_id = self.pool.get_or_insert(&rel.object_id);
+                let ot_id = self.pool.get_or_insert(real_type);
+                self.object_type_map.insert(oid_id, ot_id);
+                unique_oids_with_type.entry(oid_id).or_insert(ot_id);
             }
         }
 
-        let full_object_set: BTreeSet<String> = unique_oids_with_type.keys().cloned().collect();
-        let mut objects_by_type: HashMap<String, BTreeSet<String>> = HashMap::new();
-        for (oid, ot) in &unique_oids_with_type {
-            objects_by_type.entry(ot.clone()).or_default().insert(oid.clone());
+        let mut sorted_oids: Vec<u32> = unique_oids_with_type.keys().cloned().collect();
+        sorted_oids.sort_unstable();
+        let mut hasher = DefaultHasher::new();
+        sorted_oids.hash(&mut hasher);
+        let full_object_set_hash = hasher.finish();
+
+        let mut objects_by_type: HashMap<u32, Vec<u32>> = HashMap::new();
+        for (&oid_id, &ot_id) in &unique_oids_with_type {
+            objects_by_type.entry(ot_id).or_default().push(oid_id);
         }
 
-        for (ot, ot_set) in objects_by_type {
-            let key = (activity.clone(), ot.clone());
+        for (ot_id, mut ot_set_vec) in objects_by_type {
+            ot_set_vec.sort_unstable();
+            let mut hasher2 = DefaultHasher::new();
+            ot_set_vec.hash(&mut hasher2);
+            let ot_set_hash = hasher2.finish();
             
-            let is_already_divergent = self.divergent_activities.get(&activity).map(|s| s.contains(&ot)).unwrap_or(false);
+            let key = (act_id, ot_id);
+            
+            let is_already_divergent = self.divergent_activities.get(&act_id).map(|s| s.contains(&ot_id)).unwrap_or(false);
             if !is_already_divergent {
                 let mut should_remove = false;
                 {
                     let group_map = self.divergence_index.entry(key.clone()).or_default();
-                    if let Some(full_sets) = group_map.get_mut(&ot_set) {
-                        if !full_sets.contains(&full_object_set) {
-                            self.divergent_activities.entry(activity.clone()).or_default().insert(ot.clone());
-                            full_sets.insert(full_object_set.clone());
+                    if let Some(full_sets) = group_map.get_mut(&ot_set_hash) {
+                        if !full_sets.contains_key(&full_object_set_hash) {
+                            self.divergent_activities.entry(act_id).or_default().insert(ot_id);
+                            full_sets.insert(full_object_set_hash, self._processed_count);
                             if self.free_memory {
                                 should_remove = true;
                             }
+                        } else {
+                            full_sets.insert(full_object_set_hash, self._processed_count);
                         }
                     } else {
-                        let mut sets = HashSet::new();
-                        sets.insert(full_object_set.clone());
-                        group_map.insert(ot_set.clone(), sets);
+                        let mut sets = HashMap::new();
+                        sets.insert(full_object_set_hash, self._processed_count);
+                        group_map.insert(ot_set_hash, sets);
                     }
                 }
                 if should_remove {
@@ -310,50 +352,103 @@ impl MinerState {
             }
 
             let seen_objects = self.seen_objects_per_act_type.entry(key.clone()).or_default();
-            for oid in &ot_set {
-                if seen_objects.contains(oid) {
-                    self.convergent_activities.entry(activity.clone()).or_default().insert(ot.clone());
+            for &oid_id in &ot_set_vec {
+                if seen_objects.contains(&oid_id) {
+                    self.convergent_activities.entry(act_id).or_default().insert(ot_id);
                 }
-                seen_objects.insert(oid.clone());
+                seen_objects.insert(oid_id);
             }
             *self.activity_otype_event_counts.entry(key).or_insert(0) += 1;
         }
 
-        for (object_id, object_type) in unique_oids_with_type {
-            if let Some((prev_activity, _)) = self.last_event_per_object.get(&object_id) {
-                let key = format!("{}|{}|{}", prev_activity, activity, object_type);
-                *self.internal_ocdfg.entry(key).or_insert(0) += 1;
+        for (&oid_id, &ot_id) in &unique_oids_with_type {
+            if let Some(&(prev_act_id, _)) = self.last_event_per_object.get(&oid_id) {
+                *self.internal_ocdfg.entry((prev_act_id, act_id, ot_id)).or_insert(0) += 1;
             } else {
-                let key = format!("{}|{}", activity, object_type);
-                *self.internal_start_activities.entry(key).or_insert(0) += 1;
+                *self.internal_start_activities.entry((act_id, ot_id)).or_insert(0) += 1;
             }
-            self.last_event_per_object.insert(object_id, (activity.clone(), event.time.to_rfc3339()));
+            self.last_event_per_object.insert(oid_id, (act_id, self._processed_count));
+        }
+
+        if self.enable_heuristics && self._processed_count % 10000 == 0 {
+            self.run_heuristics_cleanup();
+        }
+    }
+
+    pub fn run_heuristics_cleanup(&mut self) {
+        let max_inactive_events = 1_000; 
+        let current_count = self._processed_count;
+
+        self.divergence_index.retain(|_, ot_map| {
+            ot_map.retain(|_, full_set_map| {
+                full_set_map.retain(|_, last_seen| {
+                    current_count.saturating_sub(*last_seen) < max_inactive_events
+                });
+                !full_set_map.is_empty()
+            });
+            !ot_map.is_empty()
+        });
+
+        let end_hint_timeout = 10_000;
+        let mut total_ends_per_type = HashMap::new();
+        for (&(_, ot_id), &count) in &self.end_activities_hist {
+            *total_ends_per_type.entry(ot_id).or_insert(0) += count;
+        }
+
+        let mut dead_objects = Vec::new();
+        for (&oid_id, &(act_id, last_seen)) in &self.last_event_per_object {
+            let age = current_count.saturating_sub(last_seen);
+            if age > max_inactive_events {
+                dead_objects.push((oid_id, act_id, true)); 
+            } else if age > end_hint_timeout {
+                if let Some(&ot_id) = self.object_type_map.get(&oid_id) {
+                    let total_ended = *total_ends_per_type.get(&ot_id).unwrap_or(&0);
+                    if total_ended > 100 { 
+                        let act_ends = *self.end_activities_hist.get(&(act_id, ot_id)).unwrap_or(&0);
+                        if act_ends as f64 / total_ended as f64 > 0.90 {
+                            dead_objects.push((oid_id, act_id, false)); 
+                        }
+                    }
+                }
+            }
+        }
+        
+        for (oid_id, act_id, is_true_dead) in dead_objects {
+            if is_true_dead {
+                if let Some(&ot_id) = self.object_type_map.get(&oid_id) {
+                    *self.end_activities_hist.entry((act_id, ot_id)).or_insert(0) += 1;
+                }
+            }
+            self.last_event_per_object.remove(&oid_id);
+            self.object_type_map.remove(&oid_id);
+            for val in self.seen_objects_per_act_type.values_mut() {
+                val.remove(&oid_id);
+            }
         }
     }
 
     pub fn get_base_model(&self) -> StreamingModel {
         let mut model = StreamingModel {
-            activity_counts: self.activity_counts.clone(),
-            divergent_activities: self.divergent_activities.clone(),
+            activity_counts: self.activity_counts.iter().map(|(&k, &v)| (self.pool.get_str(k).to_string(), v)).collect(),
+            divergent_activities: self.divergent_activities.iter().map(|(&k, v)| (self.pool.get_str(k).to_string(), v.iter().map(|&ot| self.pool.get_str(ot).to_string()).collect())).collect(),
             processed_count: self._processed_count,
             last_timestamp: self._last_timestamp.clone(),
             ..Default::default()
         };
 
         let mut aggregated_edges: HashMap<String, (usize, HashMap<String, usize>)> = HashMap::new();
-        for (key, count) in &self.internal_ocdfg {
-            let parts: Vec<&str> = key.split('|').collect();
-            if parts.len() != 3 { continue; }
-            let (a, b, ot) = (parts[0], parts[1], parts[2]);
-
-            let a_div = self.divergent_activities.get(a).map(|s| s.contains(ot)).unwrap_or(false);
-            let b_div = self.divergent_activities.get(b).map(|s| s.contains(ot)).unwrap_or(false);
+        for (&(a, b, ot), &count) in &self.internal_ocdfg {
+            let a_div = self.divergent_activities.get(&a).map(|s| s.contains(&ot)).unwrap_or(false);
+            let b_div = self.divergent_activities.get(&b).map(|s| s.contains(&ot)).unwrap_or(false);
 
             if !(a_div && b_div) {
-                let pair_key = format!("{}|{}", a, b);
+                let a_str = self.pool.get_str(a);
+                let b_str = self.pool.get_str(b);
+                let ot_str = self.pool.get_str(ot);
+                let pair_key = format!("{}|{}", a_str, b_str);
                 let entry = aggregated_edges.entry(pair_key).or_default();
                 entry.0 += count;
-                *entry.1.entry(ot.to_string()).or_insert(0) += count;
+                *entry.1.entry(ot_str.to_string()).or_insert(0) += count;
             }
         }
 
@@ -365,13 +460,12 @@ impl MinerState {
         }
 
         let mut aggregated_starts: HashMap<String, (usize, HashMap<String, usize>)> = HashMap::new();
-        for (key, count) in &self.internal_start_activities {
-            let parts: Vec<&str> = key.split('|').collect();
-            if parts.len() != 2 { continue; }
-            let (act, ot) = (parts[0], parts[1]);
-            let entry = aggregated_starts.entry(act.to_string()).or_default();
+        for (&(act, ot), &count) in &self.internal_start_activities {
+            let act_str = self.pool.get_str(act);
+            let ot_str = self.pool.get_str(ot);
+            let entry = aggregated_starts.entry(act_str.to_string()).or_default();
             entry.0 += count;
-            *entry.1.entry(ot.to_string()).or_insert(0) += count;
+            *entry.1.entry(ot_str.to_string()).or_insert(0) += count;
         }
 
         for (act, (total_count, ot_counts)) in aggregated_starts {
@@ -388,59 +482,36 @@ impl MinerState {
         let mut total_mem = 0;
         let mut div_mem = 0;
 
-        // Helper for String estimation: 24 bytes (struct) + length (heap)
-        fn string_mem(s: &str) -> usize { 24 + s.len() }
+        total_mem += self.pool.str_to_id.len() * 48;
+        for k in self.pool.str_to_id.keys() { total_mem += 24 + k.len(); }
+        total_mem += self.pool.id_to_str.len() * 24;
+        for s in &self.pool.id_to_str { total_mem += s.len(); }
 
-        // internal_ocdfg: HashMap<String, usize>
-        total_mem += self.internal_ocdfg.len() * 48; // Entry overhead
-        for k in self.internal_ocdfg.keys() { total_mem += string_mem(k); }
-
-        // internal_start_activities: HashMap<String, usize>
+        total_mem += self.internal_ocdfg.len() * 48; 
         total_mem += self.internal_start_activities.len() * 48;
-        for k in self.internal_start_activities.keys() { total_mem += string_mem(k); }
-
-        // activity_counts: HashMap<String, usize>
         total_mem += self.activity_counts.len() * 48;
-        for k in self.activity_counts.keys() { total_mem += string_mem(k); }
 
-        // divergence_index: HashMap<(String, String), HashMap<BTreeSet<String>, HashSet<BTreeSet<String>>>>
         div_mem += self.divergence_index.len() * 64;
-        for ((a, o), inner) in &self.divergence_index {
-            div_mem += string_mem(a) + string_mem(o);
-            div_mem += inner.len() * 48;
-            for (k, v) in inner {
-                // BTreeSet<String>
-                div_mem += 32 + k.len() * 40;
-                for s in k { div_mem += string_mem(s); }
-                // HashSet<BTreeSet<String>>
-                div_mem += v.len() * 48;
-                for bs in v {
-                    div_mem += 32 + bs.len() * 40;
-                    for s in bs { div_mem += string_mem(s); }
-                }
+        for inner in self.divergence_index.values() {
+            div_mem += inner.len() * 64;
+            for inner_inner in inner.values() {
+                div_mem += inner_inner.len() * 48;
             }
         }
         total_mem += div_mem;
 
-        // seen_objects_per_act_type: HashMap<(String, String), HashSet<String>>
         total_mem += self.seen_objects_per_act_type.len() * 64;
-        for ((a, o), v) in &self.seen_objects_per_act_type {
-            total_mem += string_mem(a) + string_mem(o);
-            total_mem += v.len() * 32;
-            for s in v { total_mem += string_mem(s); }
+        for val in self.seen_objects_per_act_type.values() {
+            total_mem += val.len() * 32;
         }
 
-        // last_event_per_object: HashMap<String, (String, String)>
-        total_mem += self.last_event_per_object.len() * 64;
-        for (k, (v1, v2)) in &self.last_event_per_object {
-            total_mem += string_mem(k) + string_mem(v1) + string_mem(v2);
-        }
-
-        // object_to_type: HashMap<String, String>
+        total_mem += self.last_event_per_object.len() * 48;
         total_mem += self.object_to_type.len() * 48;
         for (k, v) in &self.object_to_type {
-            total_mem += string_mem(k) + string_mem(v);
+            total_mem += 24 + k.len() + 24 + v.len();
         }
+        total_mem += self.object_type_map.len() * 48;
+        total_mem += self.end_activities_hist.len() * 48;
 
         (total_mem, div_mem)
     }

@@ -93,7 +93,7 @@ async fn handle_socket(mut socket: WebSocket, file_id: String, replay_speed: u64
     let replayer = Replayer::new(ocel, replay_speed);
     tokio::spawn(replayer.start(tx_event, cancel_token.clone()));
 
-    let miner = IncrementalMiner::new(object_to_type, true);
+    let miner = IncrementalMiner::new(object_to_type, true, false);
     tokio::spawn(miner.run(rx_event, tx_model, cancel_token.clone()));
 
     while let Some(model) = rx_model.recv().await {
