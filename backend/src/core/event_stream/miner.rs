@@ -482,36 +482,59 @@ impl MinerState {
         let mut total_mem = 0;
         let mut div_mem = 0;
 
-        total_mem += self.pool.str_to_id.len() * 48;
-        for k in self.pool.str_to_id.keys() { total_mem += 24 + k.len(); }
-        total_mem += self.pool.id_to_str.len() * 24;
-        for s in &self.pool.id_to_str { total_mem += s.len(); }
+        // Macro to accurately capture heap allocation layout using .capacity() 
+        // Hashbrown allocates 1 control byte per bucket. We add 8 bytes padding for typical word alignment overhead.
+        macro_rules! map_mem {
+            ($map:expr, $k:ty, $v:ty) => {
+                std::mem::size_of_val(&$map) + $map.capacity() * (std::mem::size_of::<($k, $v)>() + 8)
+            };
+        }
+        macro_rules! set_mem {
+            ($set:expr, $k:ty) => {
+                std::mem::size_of_val(&$set) + $set.capacity() * (std::mem::size_of::<$k>() + 8)
+            };
+        }
 
-        total_mem += self.internal_ocdfg.len() * 48; 
-        total_mem += self.internal_start_activities.len() * 48;
-        total_mem += self.activity_counts.len() * 48;
+        total_mem += map_mem!(self.pool.str_to_id, String, u32);
+        for k in self.pool.str_to_id.keys() { total_mem += k.capacity(); }
+        total_mem += std::mem::size_of_val(&self.pool.id_to_str) + self.pool.id_to_str.capacity() * std::mem::size_of::<String>();
+        for s in &self.pool.id_to_str { total_mem += s.capacity(); }
 
-        div_mem += self.divergence_index.len() * 64;
+        total_mem += map_mem!(self.internal_ocdfg, (u32, u32, u32), usize); 
+        total_mem += map_mem!(self.internal_start_activities, (u32, u32), usize);
+        total_mem += map_mem!(self.activity_counts, u32, usize);
+
+        div_mem += map_mem!(self.divergence_index, (u32, u32), HashMap<u64, HashMap<u64, usize>>);
         for inner in self.divergence_index.values() {
-            div_mem += inner.len() * 64;
+            div_mem += map_mem!(inner, u64, HashMap<u64, usize>);
             for inner_inner in inner.values() {
-                div_mem += inner_inner.len() * 48;
+                div_mem += map_mem!(inner_inner, u64, usize);
             }
         }
         total_mem += div_mem;
 
-        total_mem += self.seen_objects_per_act_type.len() * 64;
+        total_mem += map_mem!(self.seen_objects_per_act_type, (u32, u32), HashSet<u32>);
         for val in self.seen_objects_per_act_type.values() {
-            total_mem += val.len() * 32;
+            total_mem += set_mem!(val, u32);
         }
 
-        total_mem += self.last_event_per_object.len() * 48;
-        total_mem += self.object_to_type.len() * 48;
+        total_mem += map_mem!(self.last_event_per_object, u32, (u32, usize));
+        total_mem += map_mem!(self.object_to_type, String, String);
         for (k, v) in &self.object_to_type {
-            total_mem += 24 + k.len() + 24 + v.len();
+            total_mem += k.capacity() + v.capacity();
         }
-        total_mem += self.object_type_map.len() * 48;
-        total_mem += self.end_activities_hist.len() * 48;
+        total_mem += map_mem!(self.object_type_map, u32, u32);
+        total_mem += map_mem!(self.end_activities_hist, (u32, u32), usize);
+        
+        // Include standalone HashSets if we missed any (like divergent tracking sets)
+        total_mem += map_mem!(self.divergent_activities, u32, HashSet<u32>);
+        for val in self.divergent_activities.values() {
+            total_mem += set_mem!(val, u32);
+        }
+        total_mem += map_mem!(self.convergent_activities, u32, HashSet<u32>);
+        for val in self.convergent_activities.values() {
+            total_mem += set_mem!(val, u32);
+        }
 
         (total_mem, div_mem)
     }

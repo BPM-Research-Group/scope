@@ -33,7 +33,7 @@ async fn run_full_evaluation() {
     logs.sort();
 
     let mut csv_file = File::create("evaluation_results.csv").expect("Unable to create results file");
-    writeln!(csv_file, "log,event_index,offline_ns,online_ns,total_mem_bytes,div_index_mem_bytes").unwrap();
+    writeln!(csv_file, "log,event_index,offline_ns,online_base_ns,online_heur_ns,total_mem_base_bytes,div_mem_base_bytes,total_mem_heur_bytes,div_mem_heur_bytes").unwrap();
 
     for log_path in logs {
         println!("Evaluating: {}", log_path);
@@ -56,16 +56,22 @@ async fn run_full_evaluation() {
             object_to_type.insert(obj.id.clone(), obj.object_type.clone());
         }
 
-        // Online state starts fresh for each log
-        let mut online_state = MinerState {
+        // Online models start fresh for each log
+        let mut online_state_base = MinerState {
             object_to_type: object_to_type.clone(),
             free_memory: true,
-            enable_heuristics: true, // we enable heuristics for evaluation
+            enable_heuristics: false,
+            ..Default::default()
+        };
+        let mut online_state_heur = MinerState {
+            object_to_type: object_to_type.clone(),
+            free_memory: true,
+            enable_heuristics: true,
             ..Default::default()
         };
 
         let n_total = sorted_events.len();
-        let offline_every_n = 100_000;
+        let offline_every_n = 1_000;
         let memory_every_n = 50;
         
         for i in 1..=n_total {
@@ -99,7 +105,7 @@ async fn run_full_evaluation() {
                 "".to_string()
             };
 
-            // --- 2. Measure ONLINE ---
+            // --- 2. Measure ONLINE BASE ---
             let event_pm = OCELEvent {
                 id: current_event_sid.id.clone(),
                 event_type: current_event_sid.activity.clone(),
@@ -111,30 +117,39 @@ async fn run_full_evaluation() {
                 attributes: Vec::new(),
             };
 
-            let online_start = Instant::now();
-            online_state.process_event(event_pm);
-            // We also count the base model generation (aggregation) as part of the "online step"
-            let _ = online_state.get_base_model();
-            let online_duration = online_start.elapsed().as_nanos();
+            let online_base_start = Instant::now();
+            online_state_base.process_event(event_pm.clone());
+            let _ = online_state_base.get_base_model();
+            let online_base_duration = online_base_start.elapsed().as_nanos();
+            
+            // --- 3. Measure ONLINE HEURISTICS ---
+            let online_heur_start = Instant::now();
+            online_state_heur.process_event(event_pm);
+            let _ = online_state_heur.get_base_model();
+            let online_heur_duration = online_heur_start.elapsed().as_nanos();
             
             let should_measure_memory = (i == 1) || (i == n_total) || ((i - 1) % memory_every_n == 0);
-            let (total_mem, div_mem) = if should_measure_memory {
-                let (tm, dm) = online_state.estimate_memory_usage();
-                (tm.to_string(), dm.to_string())
+            let (tm_base, dm_base, tm_heur, dm_heur) = if should_measure_memory {
+                let (tb, db) = online_state_base.estimate_memory_usage();
+                let (th, dh) = online_state_heur.estimate_memory_usage();
+                (tb.to_string(), db.to_string(), th.to_string(), dh.to_string())
             } else {
-                ("".to_string(), "".to_string())
+                ("".to_string(), "".to_string(), "".to_string(), "".to_string())
             };
 
-            // --- 3. Save Results ---
+            // --- 4. Save Results ---
             writeln!(
                 csv_file,
-                "{},{},{},{},{},{}",
+                "{},{},{},{},{},{},{},{},{}",
                 log_path.split('/').last().unwrap(),
                 i,
                 offline_duration_str,
-                online_duration,
-                total_mem,
-                div_mem
+                online_base_duration,
+                online_heur_duration,
+                tm_base,
+                dm_base,
+                tm_heur,
+                dm_heur
             ).unwrap();
 
             if i % 100 == 0 {
