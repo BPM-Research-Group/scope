@@ -39,8 +39,8 @@ fn compare_df2_graphs(
     true
 }
 
-async fn validate_incremental_correctness(path: &str, step_size: usize, free_memory: bool) {
-    println!("Testing OCEL: {} (Step Size: {}, Free Memory: {})", path, step_size, free_memory);
+async fn validate_incremental_correctness(path: &str, step_size: usize) {
+    println!("Testing OCEL: {} (Step Size: {})", path, step_size);
     let content = fs::read_to_string(path).expect("Failed to read OCEL file");
     let ocel_sid: OcelJson = serde_json::from_str(&content).expect("Failed to parse OCEL JSON");
     
@@ -59,12 +59,8 @@ async fn validate_incremental_correctness(path: &str, step_size: usize, free_mem
     // Maintain ONE state for the whole run (True Incremental)
     let mut online_miner_state = MinerState {
         object_to_type: object_to_type.clone(),
-        free_memory,
         ..Default::default()
     };
-
-    let mut csv_lines = Vec::new();
-    csv_lines.push("event_n,total_mem_bytes,div_index_mem_bytes".to_string());
 
     for n in 1..=n_total {
         // Process only the NEW event
@@ -83,9 +79,6 @@ async fn validate_incremental_correctness(path: &str, step_size: usize, free_mem
 
         // Only run the expensive comparison every 'step_size' events
         if n % step_size == 0 || n == n_total {
-            let (total_mem, div_mem) = online_miner_state.estimate_memory_usage();
-            csv_lines.push(format!("{},{},{}", n, total_mem, div_mem));
-
             let prefix_events = &sorted_events[0..n];
             
             // 1. Compute OFFLINE
@@ -108,23 +101,17 @@ async fn validate_incremental_correctness(path: &str, step_size: usize, free_mem
                 panic!("FAILED CORRECTNESS at n={} events. Graphs differ!", n);
             }
             
-            println!("  Progress: n={} ok (mem: {} bytes)", n, total_mem);
+            println!("  Progress: n={} ok", n);
         }
     }
-
-    let csv_path = format!("./temp/memory_usage_{}_{}.csv", if free_memory { "free" } else { "full" }, path.split('/').last().unwrap());
-    let _ = fs::create_dir_all("./temp");
-    fs::write(&csv_path, csv_lines.join("\n")).expect("Failed to write CSV");
-    println!("Memory usage CSV written to: {}", csv_path);
-
     println!("SUCCESS: Online DF2 matches Offline DF2 for prefixes of {}", path);
 }
 
 #[tokio::test]
 async fn test_online_df2_correctness() {
     // Using step_size 50 to keep the test fast
-    // validate_incremental_correctness("../example_data/ocel/order-management.json", 50, true).await;
-    // validate_incremental_correctness("../example_data/ocel/logistics.json", 50, true).await;
-    // validate_incremental_correctness("../example_data/ocel/lrmsCollection.json", 50, true).await;
-    validate_incremental_correctness("../example_data/ocel/procureToPay.json", 50, true).await;
+    // validate_incremental_correctness("../example_data/ocel/order-management.json", 50).await;
+    // validate_incremental_correctness("../example_data/ocel/logistics.json", 50).await;
+    // validate_incremental_correctness("../example_data/ocel/lrmsCollection.json", 50).await;
+    validate_incremental_correctness("../example_data/ocel/procureToPay.json", 50).await;
 }

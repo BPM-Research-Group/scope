@@ -33,7 +33,7 @@ async fn run_full_evaluation() {
     logs.sort();
 
     let mut csv_file = File::create("evaluation_results.csv").expect("Unable to create results file");
-    writeln!(csv_file, "log,event_index,offline_ns,online_ns").unwrap();
+    writeln!(csv_file, "log,event_index,offline_ns,online_ns,total_mem_bytes,div_index_mem_bytes").unwrap();
 
     for log_path in logs {
         println!("Evaluating: {}", log_path);
@@ -59,18 +59,19 @@ async fn run_full_evaluation() {
         // Online state starts fresh for each log
         let mut online_state = MinerState {
             object_to_type: object_to_type.clone(),
+            free_memory: true,
             ..Default::default()
         };
 
         let n_total = sorted_events.len();
-        let offline_sample_rate = 0.02; // 2%
-        let offline_every_n = (1.0 / offline_sample_rate) as usize; // every 50th
+        let offline_every_n = 100_000;
+        let memory_every_n = 50;
         
         for i in 1..=n_total {
             let current_event_sid = &sorted_events[i-1];
             
             // --- 1. Measure OFFLINE ---
-            // Only measure every 50th, and always the first and last
+            // Only measure every 100,000th, and always the first and last
             let should_run_offline = (i == 1) || (i == n_total) || ((i - 1) % offline_every_n == 0);
             
             let offline_duration_str = if should_run_offline {
@@ -114,15 +115,25 @@ async fn run_full_evaluation() {
             // We also count the base model generation (aggregation) as part of the "online step"
             let _ = online_state.get_base_model();
             let online_duration = online_start.elapsed().as_nanos();
+            
+            let should_measure_memory = (i == 1) || (i == n_total) || ((i - 1) % memory_every_n == 0);
+            let (total_mem, div_mem) = if should_measure_memory {
+                let (tm, dm) = online_state.estimate_memory_usage();
+                (tm.to_string(), dm.to_string())
+            } else {
+                ("".to_string(), "".to_string())
+            };
 
             // --- 3. Save Results ---
             writeln!(
                 csv_file,
-                "{},{},{},{}",
+                "{},{},{},{},{},{}",
                 log_path.split('/').last().unwrap(),
                 i,
                 offline_duration_str,
-                online_duration
+                online_duration,
+                total_mem,
+                div_mem
             ).unwrap();
 
             if i % 100 == 0 {
