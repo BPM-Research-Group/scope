@@ -6,11 +6,11 @@ use std::collections::{HashMap, HashSet};
 use std::fs;
 use chrono::DateTime;
 
-/// Compares two DF2 graphs for identity.
-fn compare_df2_graphs(
+/// Compares two DF2 graphs for identity and returns (extra_arcs_ratio, missing_arcs_ratio).
+pub fn compare_df2_graphs(
     online_dfg: &HashMap<String, usize>, 
     offline_dfg: &HashMap<(String, String), usize>
-) -> bool {
+) -> (f64, f64) {
     let mut online_pairs = HashSet::new();
     for key in online_dfg.keys() {
         let parts: Vec<&str> = key.split('|').collect();
@@ -24,19 +24,23 @@ fn compare_df2_graphs(
         offline_pairs.insert((f.clone(), t.clone()));
     }
 
-    if online_pairs != offline_pairs {
-        let only_online: Vec<_> = online_pairs.difference(&offline_pairs).collect();
-        let only_offline: Vec<_> = offline_pairs.difference(&online_pairs).collect();
-        
-        if !only_online.is_empty() {
-            println!("  ERROR: Edges only in Online: {:?}", only_online);
-        }
-        if !only_offline.is_empty() {
-            println!("  ERROR: Edges only in Offline: {:?}", only_offline);
-        }
-        return false;
+    let online_len = online_pairs.len() as f64;
+    let offline_len = offline_pairs.len() as f64;
+
+    let only_online: Vec<_> = online_pairs.difference(&offline_pairs).collect();
+    let only_offline: Vec<_> = offline_pairs.difference(&online_pairs).collect();
+    
+    let score_extra = if online_len > 0.0 { only_online.len() as f64 / online_len } else { 0.0 };
+    let score_missing = if offline_len > 0.0 { only_offline.len() as f64 / offline_len } else { 0.0 };
+
+    if !only_online.is_empty() {
+        println!("  INFO: Edges only in Online: {:?}", only_online);
     }
-    true
+    if !only_offline.is_empty() {
+        println!("  INFO: Edges only in Offline: {:?}", only_offline);
+    }
+    
+    (score_extra, score_missing)
 }
 
 async fn validate_incremental_correctness(path: &str, step_size: usize) {
@@ -96,9 +100,11 @@ async fn validate_incremental_correctness(path: &str, step_size: usize) {
             // 2. Compare against our accumulated state
             let online_model = online_miner_state.get_base_model();
 
-            if !compare_df2_graphs(&online_model.ocdfg, &offline_dfg) {
+            let (extra, missing) = compare_df2_graphs(&online_model.ocdfg, &offline_dfg);
+
+            if extra > 0.0 || missing > 0.0 {
                 println!("  CRITICAL: Prefix size n={} failed comparison.", n);
-                panic!("FAILED CORRECTNESS at n={} events. Graphs differ!", n);
+                panic!("FAILED CORRECTNESS at n={} events. Graphs differ! extra={}, missing={}", n, extra, missing);
             }
             
             println!("  Progress: n={} ok", n);

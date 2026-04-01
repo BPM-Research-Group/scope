@@ -2,6 +2,7 @@ use crate::models::ocel_sid_df2_miner::OcelJson;
 use crate::models::ocel::{OCELEvent, OCELRelationship};
 use crate::core::event_stream::miner::MinerState;
 use crate::core::df2_miner::{build_relations_fns, interaction_patterns, divergence_free_dfg};
+use super::tests::compare_df2_graphs;
 use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{Write, BufReader};
@@ -33,7 +34,7 @@ async fn run_full_evaluation() {
     logs.sort();
 
     let mut csv_file = File::create("evaluation_results.csv").expect("Unable to create results file");
-    writeln!(csv_file, "log,event_index,offline_ns,online_base_ns,online_heur_ns,total_mem_base_bytes,div_mem_base_bytes,total_mem_heur_bytes,div_mem_heur_bytes").unwrap();
+    writeln!(csv_file, "log,event_index,offline_ns,online_base_ns,online_heur_ns,total_mem_base_bytes,div_mem_base_bytes,total_mem_heur_bytes,div_mem_heur_bytes,base_extra_arcs,base_missing_arcs,heur_extra_arcs,heur_missing_arcs").unwrap();
 
     for log_path in logs {
         println!("Evaluating: {}", log_path);
@@ -81,6 +82,8 @@ async fn run_full_evaluation() {
             // Only measure every 100,000th, and always the first and last
             let should_run_offline = (i == 1) || (i == n_total) || ((i - 1) % offline_every_n == 0);
             
+            let mut current_offline_dfg = None;
+
             let offline_duration_str = if should_run_offline {
                 let offline_start = Instant::now();
                 
@@ -98,8 +101,9 @@ async fn run_full_evaluation() {
                 };
                 
                 let (div, _con, _rel, _defi, _all_acts, _all_ots) = interaction_patterns::get_interaction_patterns(&relations, &ocel_prefix);
-                let (_dfg, _, _) = divergence_free_dfg::get_divergence_free_graph_v2(&relations, &div);
+                let (offline_dfg, _, _) = divergence_free_dfg::get_divergence_free_graph_v2(&relations, &div);
                 
+                current_offline_dfg = Some(offline_dfg);
                 offline_start.elapsed().as_nanos().to_string()
             } else {
                 "".to_string()
@@ -137,10 +141,21 @@ async fn run_full_evaluation() {
                 ("".to_string(), "".to_string(), "".to_string(), "".to_string())
             };
 
-            // --- 4. Save Results ---
+            // --- 4. Evaluate DFG Loss ---
+            let (b_e_str, b_m_str, h_e_str, h_m_str) = if let Some(ref offline_dfg) = current_offline_dfg {
+                let online_model_base = online_state_base.get_base_model();
+                let online_model_heur = online_state_heur.get_base_model();
+                let (b_extra, b_miss) = compare_df2_graphs(&online_model_base.ocdfg, offline_dfg);
+                let (h_extra, h_miss) = compare_df2_graphs(&online_model_heur.ocdfg, offline_dfg);
+                (format!("{:.4}", b_extra), format!("{:.4}", b_miss), format!("{:.4}", h_extra), format!("{:.4}", h_miss))
+            } else {
+                ("".to_string(), "".to_string(), "".to_string(), "".to_string())
+            };
+
+            // --- 5. Save Results ---
             writeln!(
                 csv_file,
-                "{},{},{},{},{},{},{},{},{}",
+                "{},{},{},{},{},{},{},{},{},{},{},{},{}",
                 log_path.split('/').last().unwrap(),
                 i,
                 offline_duration_str,
@@ -149,7 +164,11 @@ async fn run_full_evaluation() {
                 tm_base,
                 dm_base,
                 tm_heur,
-                dm_heur
+                dm_heur,
+                b_e_str,
+                b_m_str,
+                h_e_str,
+                h_m_str
             ).unwrap();
 
             if i % 100 == 0 {
