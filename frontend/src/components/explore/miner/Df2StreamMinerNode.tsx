@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useState, useEffect } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import { Position } from '@xyflow/react';
 import { Network, Maximize2, ChevronDown, ChevronRight, HelpCircle } from 'lucide-react';
@@ -14,8 +14,8 @@ import { Button } from '~/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '~/components/ui/dialog';
 
 const Df2StreamMinerNode = memo<NodeProps<MinerNode>>((props) => {
-    const { id, data, selected } = props;
-    const { nodes, edges, updateNodeData } = useExploreFlowStore();
+    const { id, data } = props;
+    const { updateNodeData } = useExploreFlowStore();
     const [isMaximized, setIsMaximized] = useState(false);
     const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -32,6 +32,14 @@ const Df2StreamMinerNode = memo<NodeProps<MinerNode>>((props) => {
     const activityCount = Object.keys(streamingData?.activity_counts ?? {}).length;
     const edgeCount = Object.keys(streamingData?.ocdfg ?? {}).length;
     const totalEvents = streamingData?.processed_count ?? 0;
+
+    // Auto-collapse advanced settings strictly when stream initially connects
+    const isStreaming = totalEvents > 0;
+    useEffect(() => {
+        if (isStreaming) {
+            setShowAdvanced(false);
+        }
+    }, [isStreaming]);
 
     const renderContent = () => (
         <div className="mt-2 border-t pt-2 space-y-3">
@@ -53,32 +61,6 @@ const Df2StreamMinerNode = memo<NodeProps<MinerNode>>((props) => {
                     </Button>
                 )}
             </div>
-
-            {totalEvents > 0 && (
-                <div className="h-[200px] w-full">
-                    <LiveDf2Graph data={streamingData} width={250} height={200} isMinimized={true} />
-                </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-2">
-                <div className="bg-blue-50 p-2 rounded border border-blue-100 flex flex-col items-center">
-                    <span className="text-[10px] font-semibold text-blue-700 uppercase">Activities</span>
-                    <span className="text-lg font-bold text-blue-900">{activityCount}</span>
-                </div>
-                <div className="bg-amber-50 p-2 rounded border border-amber-100 flex flex-col items-center">
-                    <span className="text-[10px] font-semibold text-amber-700 uppercase">DF Edges</span>
-                    <span className="text-lg font-bold text-amber-900">{edgeCount}</span>
-                </div>
-            </div>
-
-            {totalEvents === 0 && (
-                <div className="py-4 flex flex-col items-center justify-center border-2 border-dashed border-gray-100 rounded-lg">
-                    <Network className="h-6 w-6 text-gray-200 mb-1" />
-                    <p className="text-[9px] text-gray-400 text-center px-4">
-                        Connect to an active Event Stream to see live mining results
-                    </p>
-                </div>
-            )}
 
             <div className="pt-2 border-t mt-1 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
@@ -158,6 +140,32 @@ const Df2StreamMinerNode = memo<NodeProps<MinerNode>>((props) => {
                     </div>
                 )}
             </div>
+
+            {totalEvents > 0 ? (
+                <div className="h-[200px] w-full mt-2">
+                    <LiveDf2Graph data={streamingData} width={250} height={200} isMinimized={true} />
+                </div>
+            ) : (
+                <div className="py-4 flex flex-col items-center justify-center border-2 border-dashed border-gray-100 rounded-lg mt-2">
+                    <Network className="h-6 w-6 text-gray-200 mb-1" />
+                    <p className="text-[9px] text-gray-400 text-center px-4">
+                        Connect to an active Event Stream to see live mining results
+                    </p>
+                </div>
+            )}
+
+            {totalEvents > 0 && (
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                    <div className="bg-blue-50 p-2 rounded border border-blue-100 flex flex-col items-center">
+                        <span className="text-[10px] font-semibold text-blue-700 uppercase">Activities</span>
+                        <span className="text-lg font-bold text-blue-900">{activityCount}</span>
+                    </div>
+                    <div className="bg-amber-50 p-2 rounded border border-amber-100 flex flex-col items-center">
+                        <span className="text-[10px] font-semibold text-amber-700 uppercase">DF Edges</span>
+                        <span className="text-lg font-bold text-amber-900">{edgeCount}</span>
+                    </div>
+                </div>
+            )}
 
             <Dialog open={isMaximized} onOpenChange={setIsMaximized}>
                 <DialogContent className="max-w-[95vw] w-[1000px] h-[80vh] flex flex-col p-0 gap-0 overflow-hidden">
