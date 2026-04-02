@@ -34,7 +34,7 @@ async fn run_full_evaluation() {
     logs.sort();
 
     let mut csv_file = File::create("evaluation_results.csv").expect("Unable to create results file");
-    writeln!(csv_file, "log,event_index,offline_ns,online_base_ns,online_heur_ns,total_mem_base_bytes,div_mem_base_bytes,total_mem_heur_bytes,div_mem_heur_bytes,base_extra_arcs,base_missing_arcs,heur_extra_arcs,heur_missing_arcs").unwrap();
+    writeln!(csv_file, "log,event_index,offline_ns,online_base_ns,online_heur_ns,total_mem_base_bytes,div_mem_base_bytes,seen_mem_base_bytes,active_objs_base,total_mem_heur_bytes,div_mem_heur_bytes,seen_mem_heur_bytes,active_objs_heur,base_extra_arcs,base_missing_arcs,heur_extra_arcs,heur_missing_arcs").unwrap();
 
     for log_path in logs {
         println!("Evaluating: {}", log_path);
@@ -68,12 +68,19 @@ async fn run_full_evaluation() {
             object_to_type: object_to_type.clone(),
             free_memory: true,
             enable_heuristics: true,
+            heuristics_config: crate::core::event_stream::miner::HeuristicsConfig {
+                cleanup_interval: (0.1 * sorted_events.len() as f64) as usize, // Cleanup every 2% of events
+                max_inactive_events: (0.05 * sorted_events.len() as f64) as usize, // Consider events inactive after 1% of total events
+                end_hint_timeout: (0.01 * sorted_events.len() as f64) as usize, // 0.1% of total events
+                min_end_histogram_samples: 100,
+                end_probability_threshold: 0.90,
+            },
             ..Default::default()
         };
 
         let n_total = sorted_events.len();
-        let offline_every_n = 1_000;
-        let memory_every_n = 50;
+        let offline_every_n = 50_000;
+        let memory_every_n = 250;
         
         for i in 1..=n_total {
             let current_event_sid = &sorted_events[i-1];
@@ -133,12 +140,18 @@ async fn run_full_evaluation() {
             let online_heur_duration = online_heur_start.elapsed().as_nanos();
             
             let should_measure_memory = (i == 1) || (i == n_total) || ((i - 1) % memory_every_n == 0);
-            let (tm_base, dm_base, tm_heur, dm_heur) = if should_measure_memory {
-                let (tb, db) = online_state_base.estimate_memory_usage();
-                let (th, dh) = online_state_heur.estimate_memory_usage();
-                (tb.to_string(), db.to_string(), th.to_string(), dh.to_string())
+            let (
+                tm_b, dm_b, sm_b, ac_b,
+                tm_h, dm_h, sm_h, ac_h
+            ) = if should_measure_memory {
+                let stat_b = online_state_base.estimate_memory_usage();
+                let stat_h = online_state_heur.estimate_memory_usage();
+                (
+                    stat_b.total_mem.to_string(), stat_b.div_mem.to_string(), stat_b.seen_objects_mem.to_string(), stat_b.active_objects_count.to_string(),
+                    stat_h.total_mem.to_string(), stat_h.div_mem.to_string(), stat_h.seen_objects_mem.to_string(), stat_h.active_objects_count.to_string()
+                )
             } else {
-                ("".to_string(), "".to_string(), "".to_string(), "".to_string())
+                ("".to_string(), "".to_string(), "".to_string(), "".to_string(), "".to_string(), "".to_string(), "".to_string(), "".to_string())
             };
 
             // --- 4. Evaluate DFG Loss ---
@@ -155,16 +168,20 @@ async fn run_full_evaluation() {
             // --- 5. Save Results ---
             writeln!(
                 csv_file,
-                "{},{},{},{},{},{},{},{},{},{},{},{},{}",
+                "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
                 log_path.split('/').last().unwrap(),
                 i,
                 offline_duration_str,
                 online_base_duration,
                 online_heur_duration,
-                tm_base,
-                dm_base,
-                tm_heur,
-                dm_heur,
+                tm_b,
+                dm_b,
+                sm_b,
+                ac_b,
+                tm_h,
+                dm_h,
+                sm_h,
+                ac_h,
                 b_e_str,
                 b_m_str,
                 h_e_str,

@@ -12,6 +12,14 @@ use std::fs;
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 
+#[derive(Default, Clone, Debug)]
+pub struct MemoryStats {
+    pub total_mem: usize,
+    pub div_mem: usize,
+    pub seen_objects_mem: usize,
+    pub active_objects_count: usize,
+}
+
 #[derive(Default, Clone)]
 pub struct StringPool {
     pub str_to_id: HashMap<String, u32>,
@@ -49,6 +57,33 @@ pub struct MinerSnapshot {
     pub _edge_types: HashMap<String, String>,
 }
 
+/// Configuration for the lossy memory-freeing heuristics.
+#[derive(Clone, Debug)]
+pub struct HeuristicsConfig {
+    /// Number of processed events between each run of the heuristic cleanup routine.
+    pub cleanup_interval: usize,
+    /// Number of incoming events a tracked object can be inactive for before it is forcibly forgotten.
+    pub max_inactive_events: usize,
+    /// Number of events an object can be inactive for before we check the end-activities histogram to guess if it has naturally finished its lifecycle.
+    pub end_hint_timeout: usize,
+    /// Minimum number of observed object lifecycles required to trust the end-activities histogram.
+    pub min_end_histogram_samples: usize,
+    /// The probability threshold (0.0 to 1.0) required to assume an activity permanently ends an object's lifecycle.
+    pub end_probability_threshold: f64,
+}
+
+impl Default for HeuristicsConfig {
+    fn default() -> Self {
+        Self {
+            cleanup_interval: 10_000,
+            max_inactive_events: 1_000,
+            end_hint_timeout: 10_000,
+            min_end_histogram_samples: 100,
+            end_probability_threshold: 0.90,
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct MinerState {
     pub pool: StringPool,
@@ -74,6 +109,7 @@ pub struct MinerState {
     pub dirty_ocpt: bool,
     pub free_memory: bool,
     pub enable_heuristics: bool,
+    pub heuristics_config: HeuristicsConfig,
 }
 
 pub struct IncrementalMiner {
@@ -370,13 +406,17 @@ impl MinerState {
             self.last_event_per_object.insert(oid_id, (act_id, self._processed_count));
         }
 
-        if self.enable_heuristics && self._processed_count % 10000 == 0 {
+        if self.enable_heuristics && self._processed_count % self.heuristics_config.cleanup_interval == 0 {
             self.run_heuristics_cleanup();
         }
     }
 
     pub fn run_heuristics_cleanup(&mut self) {
-        let max_inactive_events = 1_000; 
+        let max_inactive_events = self.heuristics_config.max_inactive_events; 
+        let end_hint_timeout = self.heuristics_config.end_hint_timeout;
+        let min_samples = self.heuristics_config.min_end_histogram_samples as usize;
+        let threshold = self.heuristics_config.end_probability_threshold;
+        
         let current_count = self._processed_count;
 
         self.divergence_index.retain(|_, ot_map| {
@@ -389,7 +429,6 @@ impl MinerState {
             !ot_map.is_empty()
         });
 
-        let end_hint_timeout = 10_000;
         let mut total_ends_per_type = HashMap::new();
         for (&(_, ot_id), &count) in &self.end_activities_hist {
             *total_ends_per_type.entry(ot_id).or_insert(0) += count;
@@ -403,9 +442,9 @@ impl MinerState {
             } else if age > end_hint_timeout {
                 if let Some(&ot_id) = self.object_type_map.get(&oid_id) {
                     let total_ended = *total_ends_per_type.get(&ot_id).unwrap_or(&0);
-                    if total_ended > 100 { 
+                    if total_ended > min_samples { 
                         let act_ends = *self.end_activities_hist.get(&(act_id, ot_id)).unwrap_or(&0);
-                        if act_ends as f64 / total_ended as f64 > 0.90 {
+                        if act_ends as f64 / total_ended as f64 > threshold {
                             dead_objects.push((oid_id, act_id, false)); 
                         }
                     }
@@ -478,9 +517,10 @@ impl MinerState {
         model
     }
 
-    pub fn estimate_memory_usage(&self) -> (usize, usize) {
+    pub fn estimate_memory_usage(&self) -> MemoryStats {
         let mut total_mem = 0;
         let mut div_mem = 0;
+        let mut seen_objects_mem = 0;
 
         // Macro to accurately capture heap allocation layout using .capacity() 
         // Hashbrown allocates 1 control byte per bucket. We add 8 bytes padding for typical word alignment overhead.
@@ -513,10 +553,11 @@ impl MinerState {
         }
         total_mem += div_mem;
 
-        total_mem += map_mem!(self.seen_objects_per_act_type, (u32, u32), HashSet<u32>);
+        seen_objects_mem += map_mem!(self.seen_objects_per_act_type, (u32, u32), HashSet<u32>);
         for val in self.seen_objects_per_act_type.values() {
-            total_mem += set_mem!(val, u32);
+            seen_objects_mem += set_mem!(val, u32);
         }
+        total_mem += seen_objects_mem;
 
         total_mem += map_mem!(self.last_event_per_object, u32, (u32, usize));
         total_mem += map_mem!(self.object_to_type, String, String);
@@ -536,6 +577,11 @@ impl MinerState {
             total_mem += set_mem!(val, u32);
         }
 
-        (total_mem, div_mem)
+        MemoryStats {
+            total_mem,
+            div_mem,
+            seen_objects_mem,
+            active_objects_count: self.last_event_per_object.len(),
+        }
     }
 }
