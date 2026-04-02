@@ -118,7 +118,7 @@ pub struct IncrementalMiner {
 }
 
 impl IncrementalMiner {
-    pub fn new(object_to_type: HashMap<String, String>, free_memory: bool, enable_heuristics: bool) -> Self {
+    pub fn new(object_to_type: HashMap<String, String>, free_memory: bool, enable_heuristics: bool, heuristics_config: HeuristicsConfig) -> Self {
         let _ = fs::remove_file("./temp/stream_divergence.json");
         let _ = fs::remove_file("./temp/stream_edges.json");
 
@@ -127,6 +127,7 @@ impl IncrementalMiner {
                 object_to_type,
                 free_memory,
                 enable_heuristics,
+                heuristics_config,
                 ..Default::default()
             })),
             new_data_signal: Arc::new(Notify::new()),

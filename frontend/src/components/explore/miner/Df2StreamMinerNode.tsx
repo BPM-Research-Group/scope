@@ -1,7 +1,11 @@
 import { memo, useState } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import { Position } from '@xyflow/react';
-import { Network, Maximize2 } from 'lucide-react';
+import { Network, Maximize2, ChevronDown, ChevronRight, HelpCircle } from 'lucide-react';
+import { Switch } from '~/components/ui/switch';
+import { Input } from '~/components/ui/input';
+import { Label } from '~/components/ui/label';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '~/components/ui/tooltip';
 import BaseMinerNode from '~/components/explore/miner/BaseMinerNode';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { MinerNode } from '~/types/explore/nodes';
@@ -11,8 +15,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '~/components/u
 
 const Df2StreamMinerNode = memo<NodeProps<MinerNode>>((props) => {
     const { id, data, selected } = props;
-    const { nodes, edges } = useExploreFlowStore();
+    const { nodes, edges, updateNodeData } = useExploreFlowStore();
     const [isMaximized, setIsMaximized] = useState(false);
+    const [showAdvanced, setShowAdvanced] = useState(false);
+
+    const useHeuristics = (data as any)?.useHeuristics ?? false;
+    const cleanupInterval = (data as any)?.cleanupInterval ?? 10000;
+    const maxInactiveEvents = (data as any)?.maxInactiveEvents ?? 1000;
+    const endHintTimeout = (data as any)?.endHintTimeout ?? 10000;
+    const minEndHistogramSamples = (data as any)?.minEndHistogramSamples ?? 100;
+    const endProbabilityThreshold = (data as any)?.endProbabilityThreshold ?? 0.90;
 
     // Find upstream node to get its processedData
     const incomingEdge = edges.find((e) => e.target === id);
@@ -69,6 +81,85 @@ const Df2StreamMinerNode = memo<NodeProps<MinerNode>>((props) => {
                     </p>
                 </div>
             )}
+
+            <div className="pt-2 border-t mt-1 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                    <TooltipProvider delayDuration={200}>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1 cursor-help underline decoration-slate-300 underline-offset-2">
+                                    Memory Heuristics
+                                    <HelpCircle className="w-3 h-3 text-slate-400" />
+                                </Label>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-[200px] text-xs">
+                                Lose correctness guarantees in order to drastically reduce memory footprint.
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                    <Switch
+                        checked={useHeuristics}
+                        onCheckedChange={(checked) => updateNodeData(id, { useHeuristics: checked })}
+                    />
+                </div>
+                {useHeuristics && (
+                    <div className="flex items-center gap-1 cursor-pointer select-none text-slate-500 hover:text-slate-700" onClick={() => setShowAdvanced(!showAdvanced)}>
+                        {showAdvanced ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                        <span className="text-[10px] font-medium">Advanced Settings</span>
+                    </div>
+                )}
+                {useHeuristics && showAdvanced && (
+                    <div className="flex flex-col gap-2 bg-slate-50 p-2 rounded border border-slate-100">
+                        <TooltipProvider delayDuration={200}>
+                            <div className="flex items-center justify-between">
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Label className="text-[10px] flex items-center gap-1 cursor-help underline decoration-slate-300 underline-offset-2">Cleanup Interval <HelpCircle className="w-3 h-3 text-slate-400" /></Label>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-[200px] text-xs">How many events to process before triggering a memory cleanup sweep.</TooltipContent>
+                                </Tooltip>
+                                <Input type="number" className="h-6 w-16 text-[10px] px-1 py-0 text-right" value={cleanupInterval} onChange={(e) => updateNodeData(id, { cleanupInterval: Number(e.target.value) })} />
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Label className="text-[10px] flex items-center gap-1 cursor-help underline decoration-slate-300 underline-offset-2">Max Inactive <HelpCircle className="w-3 h-3 text-slate-400" /></Label>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-[200px] text-xs">The strict limit on how many events pass without an object being active before it is aggressively deleted.</TooltipContent>
+                                </Tooltip>
+                                <Input type="number" className="h-6 w-16 text-[10px] px-1 py-0 text-right" value={maxInactiveEvents} onChange={(e) => updateNodeData(id, { maxInactiveEvents: Number(e.target.value) })} />
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Label className="text-[10px] flex items-center gap-1 cursor-help underline decoration-slate-300 underline-offset-2">End Hint Timeout <HelpCircle className="w-3 h-3 text-slate-400" /></Label>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-[200px] text-xs">The 'soft limit' where the algorithm starts predicting if an object has naturally finished its lifecycle.</TooltipContent>
+                                </Tooltip>
+                                <Input type="number" className="h-6 w-16 text-[10px] px-1 py-0 text-right" value={endHintTimeout} onChange={(e) => updateNodeData(id, { endHintTimeout: Number(e.target.value) })} />
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Label className="text-[10px] flex items-center gap-1 cursor-help underline decoration-slate-300 underline-offset-2">Min End Samples <HelpCircle className="w-3 h-3 text-slate-400" /></Label>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-[200px] text-xs">Minimum number of completed lifecycles required to trust prediction data.</TooltipContent>
+                                </Tooltip>
+                                <Input type="number" className="h-6 w-16 text-[10px] px-1 py-0 text-right" value={minEndHistogramSamples} onChange={(e) => updateNodeData(id, { minEndHistogramSamples: Number(e.target.value) })} />
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Label className="text-[10px] flex items-center gap-1 cursor-help underline decoration-slate-300 underline-offset-2">End Threshold <HelpCircle className="w-3 h-3 text-slate-400" /></Label>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-[200px] text-xs">Confidence needed (0.0 to 1.0) to predict an object is permanently done.</TooltipContent>
+                                </Tooltip>
+                                <Input type="number" step="0.01" className="h-6 w-16 text-[10px] px-1 py-0 text-right" value={endProbabilityThreshold} onChange={(e) => updateNodeData(id, { endProbabilityThreshold: Number(e.target.value) })} />
+                            </div>
+                        </TooltipProvider>
+                    </div>
+                )}
+            </div>
 
             <Dialog open={isMaximized} onOpenChange={setIsMaximized}>
                 <DialogContent className="max-w-[95vw] w-[1000px] h-[80vh] flex flex-col p-0 gap-0 overflow-hidden">

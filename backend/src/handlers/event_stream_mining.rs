@@ -28,6 +28,12 @@ pub struct EventStreamInitResponse {
 #[derive(Deserialize)]
 pub struct WsParams {
     pub replay_speed: Option<u64>,
+    pub use_heuristics: Option<bool>,
+    pub cleanup_interval: Option<usize>,
+    pub max_inactive_events: Option<usize>,
+    pub end_hint_timeout: Option<usize>,
+    pub min_end_histogram_samples: Option<usize>,
+    pub end_probability_threshold: Option<f64>,
 }
 
 pub async fn event_stream_init(
@@ -61,7 +67,7 @@ pub async fn event_stream_ws(
     Path(file_id): Path<String>,
     Query(params): Query<WsParams>,
 ) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| handle_socket(socket, file_id, params.replay_speed.unwrap_or(60)))
+    ws.on_upgrade(move |socket| handle_socket(socket, file_id, params))
 }
 
 pub async fn save_ocpt(
@@ -72,7 +78,8 @@ pub async fn save_ocpt(
     Ok(Json(serde_json::json!({ "file_id": file_id })))
 }
 
-async fn handle_socket(mut socket: WebSocket, file_id: String, replay_speed: u64) {
+async fn handle_socket(mut socket: WebSocket, file_id: String, params: WsParams) {
+    let replay_speed = params.replay_speed.unwrap_or(60);
     let ocel = match OCEL::import_from_path(&file_id).await {
         Ok(o) => o,
         Err(_) => {
@@ -93,7 +100,17 @@ async fn handle_socket(mut socket: WebSocket, file_id: String, replay_speed: u64
     let replayer = Replayer::new(ocel, replay_speed);
     tokio::spawn(replayer.start(tx_event, cancel_token.clone()));
 
-    let miner = IncrementalMiner::new(object_to_type, true, false);
+    let enable_heuristics = params.use_heuristics.unwrap_or(false);
+    let defaults = crate::core::event_stream::miner::HeuristicsConfig::default();
+    let heuristics_config = crate::core::event_stream::miner::HeuristicsConfig {
+        cleanup_interval: params.cleanup_interval.unwrap_or(defaults.cleanup_interval),
+        max_inactive_events: params.max_inactive_events.unwrap_or(defaults.max_inactive_events),
+        end_hint_timeout: params.end_hint_timeout.unwrap_or(defaults.end_hint_timeout),
+        min_end_histogram_samples: params.min_end_histogram_samples.unwrap_or(defaults.min_end_histogram_samples),
+        end_probability_threshold: params.end_probability_threshold.unwrap_or(defaults.end_probability_threshold),
+    };
+
+    let miner = IncrementalMiner::new(object_to_type, true, enable_heuristics, heuristics_config);
     tokio::spawn(miner.run(rx_event, tx_model, cancel_token.clone()));
 
     while let Some(model) = rx_model.recv().await {

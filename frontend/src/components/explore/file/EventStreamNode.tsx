@@ -36,6 +36,18 @@ const EventStreamNode = memo<NodeProps<FileNode>>((props) => {
     });
 
     const replaySpeed = (data as any).replaySpeed ?? 60;
+    
+    // Attempt to pull heuristic configurations from a connected downstream df2 node
+    const { nodes, edges } = useExploreFlowStore();
+    const targetEdge = edges.find((e) => e.source === id);
+    const targetNode = targetEdge ? nodes.find((n) => n.id === targetEdge.target) : null;
+    
+    const useHeuristics = (targetNode?.data as any)?.useHeuristics ?? false;
+    const cleanupInterval = (targetNode?.data as any)?.cleanupInterval ?? 10000;
+    const maxInactiveEvents = (targetNode?.data as any)?.maxInactiveEvents ?? 1000;
+    const endHintTimeout = (targetNode?.data as any)?.endHintTimeout ?? 10000;
+    const minEndHistogramSamples = (targetNode?.data as any)?.minEndHistogramSamples ?? 100;
+    const endProbabilityThreshold = (targetNode?.data as any)?.endProbabilityThreshold ?? 0.90;
 
     const handleSpeedChange = (value: number[]) => {
         updateNodeData(id, { replaySpeed: value[0] });
@@ -47,7 +59,7 @@ const EventStreamNode = memo<NodeProps<FileNode>>((props) => {
             setIsReplaying(false);
         } else {
             const baseUrl = import.meta.env.VITE_BACKEND_BASE_URL.replace('http', 'ws');
-            const wsUrl = `${baseUrl}/v1/event_stream/ws/${fileId}?replay_speed=${replaySpeed}`;
+            const wsUrl = `${baseUrl}/v1/event_stream/ws/${fileId}?replay_speed=${replaySpeed}&use_heuristics=${useHeuristics}&cleanup_interval=${cleanupInterval}&max_inactive_events=${maxInactiveEvents}&end_hint_timeout=${endHintTimeout}&min_end_histogram_samples=${minEndHistogramSamples}&end_probability_threshold=${endProbabilityThreshold}`;
             
             const socket = new WebSocket(wsUrl);
             socketRef.current = socket;
@@ -168,7 +180,7 @@ const EventStreamNode = memo<NodeProps<FileNode>>((props) => {
                                 onValueChange={handleSpeedChange}
                                 className="py-1 cursor-pointer"
                             />
-                            <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 h-8" onClick={toggleReplay}>
+                            <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 h-8 mt-2" onClick={toggleReplay}>
                                 <Play className="h-3 w-3 mr-1" /> Start Replay
                             </Button>
                         </div>
