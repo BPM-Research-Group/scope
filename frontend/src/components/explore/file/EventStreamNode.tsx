@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { NodeProps } from '@xyflow/react';
 import { Position } from '@xyflow/react';
 import { format } from 'date-fns';
-import { Activity, Play, StopCircle } from 'lucide-react';
+import { Play, StopCircle } from 'lucide-react';
 import { Button } from '~/components/ui/button';
 import { Slider } from '~/components/ui/slider';
 import BaseFileNode from '~/components/explore/file/BaseFileNode';
@@ -36,18 +36,6 @@ const EventStreamNode = memo<NodeProps<FileNode>>((props) => {
     });
 
     const replaySpeed = (data as any).replaySpeed ?? 60;
-    
-    // Attempt to pull heuristic configurations from a connected downstream df2 node
-    const { nodes, edges } = useExploreFlowStore();
-    const targetEdge = edges.find((e) => e.source === id);
-    const targetNode = targetEdge ? nodes.find((n) => n.id === targetEdge.target) : null;
-    
-    const useHeuristics = (targetNode?.data as any)?.useHeuristics ?? false;
-    const cleanupInterval = (targetNode?.data as any)?.cleanupInterval ?? 10000;
-    const maxInactiveEvents = (targetNode?.data as any)?.maxInactiveEvents ?? 1000;
-    const endHintTimeout = (targetNode?.data as any)?.endHintTimeout ?? 10000;
-    const minEndHistogramSamples = (targetNode?.data as any)?.minEndHistogramSamples ?? 100;
-    const endProbabilityThreshold = (targetNode?.data as any)?.endProbabilityThreshold ?? 0.90;
 
     const handleSpeedChange = (value: number[]) => {
         updateNodeData(id, { replaySpeed: value[0] });
@@ -59,21 +47,39 @@ const EventStreamNode = memo<NodeProps<FileNode>>((props) => {
             setIsReplaying(false);
         } else {
             const baseUrl = import.meta.env.VITE_BACKEND_BASE_URL.replace('http', 'ws');
-            const wsUrl = `${baseUrl}/v1/event_stream/ws/${fileId}?replay_speed=${replaySpeed}&use_heuristics=${useHeuristics}&cleanup_interval=${cleanupInterval}&max_inactive_events=${maxInactiveEvents}&end_hint_timeout=${endHintTimeout}&min_end_histogram_samples=${minEndHistogramSamples}&end_probability_threshold=${endProbabilityThreshold}`;
+            const wsUrl = `${baseUrl}/v1/event_stream/ws/${fileId}?replay_speed=${replaySpeed}`;
             
             const socket = new WebSocket(wsUrl);
             socketRef.current = socket;
 
+            const { nodes, edges } = useExploreFlowStore.getState();
+            const targets = edges.filter(e => e.source === id).map(e => nodes.find(n => n.id === e.target)).filter(Boolean);
+            
+            const minerConfigs = targets.map(t => ({
+                id: t!.id,
+                miner_type: t!.type,
+                use_heuristics: (t!.data as any)?.useHeuristics ?? false,
+                heuristics_config: {
+                    cleanup_interval: (t!.data as any)?.cleanupInterval ?? 10000,
+                    max_inactive_events: (t!.data as any)?.maxInactiveEvents ?? 1000,
+                    end_hint_timeout: (t!.data as any)?.endHintTimeout ?? 10000,
+                    min_end_histogram_samples: (t!.data as any)?.minEndHistogramSamples ?? 100,
+                    end_probability_threshold: (t!.data as any)?.endProbabilityThreshold ?? 0.90,
+                }
+            }));
+
             socket.onopen = () => {
+                socket.send(JSON.stringify(minerConfigs));
                 setIsReplaying(true);
                 setStreamingData(null);
-                // Clear any previous "isLast" state
-                updateNodeData(id, (prev: any) => ({
-                    processedData: {
-                        ...(prev.processedData || {}),
-                        isLast: false,
-                    }
-                }));
+                targets.forEach(t => {
+                    updateNodeData(t!.id, (prev: any) => ({
+                        processedData: {
+                            ...(prev.processedData || {}),
+                            isLast: false,
+                        }
+                    }));
+                });
             };
 
             socket.onmessage = (event) => {
@@ -81,25 +87,29 @@ const EventStreamNode = memo<NodeProps<FileNode>>((props) => {
                     const update = JSON.parse(event.data);
                     const isLast = update.is_last;
 
-                    if (update.type === 'dfg') {
-                        const dfgData = update.data;
-                        setStreamingData(dfgData);
-                        updateNodeData(id, (prev: any) => ({
-                            processedData: {
-                                ...(prev.processedData || {}),
-                                ...dfgData,
-                                isLast: isLast || prev.processedData?.isLast,
-                            }
-                        }));
-                    } else if (update.type === 'ocpt') {
-                        const ocptData = update.data;
-                        updateNodeData(id, (prev: any) => ({
-                            processedData: {
-                                ...(prev.processedData || {}),
-                                ocpt: ocptData,
-                                isLast: isLast || prev.processedData?.isLast,
-                            }
-                        }));
+                    const targetNodeId = update.target_node_id;
+
+                    if (targetNodeId) {
+                        if (update.type === 'dfg') {
+                            const dfgData = update.data;
+                            setStreamingData(dfgData);
+                            updateNodeData(targetNodeId, (prev: any) => ({
+                                processedData: {
+                                    ...(prev.processedData || {}),
+                                    ...dfgData,
+                                    isLast: isLast || prev.processedData?.isLast,
+                                }
+                            }));
+                        } else if (update.type === 'ocpt') {
+                            const ocptData = update.data;
+                            updateNodeData(targetNodeId, (prev: any) => ({
+                                processedData: {
+                                    ...(prev.processedData || {}),
+                                    ocpt: ocptData,
+                                    isLast: isLast || prev.processedData?.isLast,
+                                }
+                            }));
+                        }
                     }
                 } catch (e) {
                     console.error('Failed to parse streaming update', e);

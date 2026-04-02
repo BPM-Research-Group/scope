@@ -28,12 +28,14 @@ pub struct EventStreamInitResponse {
 #[derive(Deserialize)]
 pub struct WsParams {
     pub replay_speed: Option<u64>,
-    pub use_heuristics: Option<bool>,
-    pub cleanup_interval: Option<usize>,
-    pub max_inactive_events: Option<usize>,
-    pub end_hint_timeout: Option<usize>,
-    pub min_end_histogram_samples: Option<usize>,
-    pub end_probability_threshold: Option<f64>,
+}
+
+#[derive(Deserialize)]
+pub struct MinerConfigMsg {
+    pub id: String,
+    pub miner_type: Option<String>,
+    pub use_heuristics: bool,
+    pub heuristics_config: crate::core::event_stream::miner::HeuristicsConfig,
 }
 
 pub async fn event_stream_init(
@@ -67,7 +69,7 @@ pub async fn event_stream_ws(
     Path(file_id): Path<String>,
     Query(params): Query<WsParams>,
 ) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| handle_socket(socket, file_id, params))
+    ws.on_upgrade(move |socket| handle_socket(socket, file_id, params.replay_speed.unwrap_or(60)))
 }
 
 pub async fn save_ocpt(
@@ -78,8 +80,7 @@ pub async fn save_ocpt(
     Ok(Json(serde_json::json!({ "file_id": file_id })))
 }
 
-async fn handle_socket(mut socket: WebSocket, file_id: String, params: WsParams) {
-    let replay_speed = params.replay_speed.unwrap_or(60);
+async fn handle_socket(mut socket: WebSocket, file_id: String, replay_speed: u64) {
     let ocel = match OCEL::import_from_path(&file_id).await {
         Ok(o) => o,
         Err(_) => {
@@ -93,25 +94,47 @@ async fn handle_socket(mut socket: WebSocket, file_id: String, params: WsParams)
         object_to_type.insert(obj.id.clone(), obj.object_type.clone());
     }
 
+    let mut configs: Vec<MinerConfigMsg> = vec![];
+    while let Some(Ok(msg)) = socket.recv().await {
+        if let Message::Text(text) = msg {
+            log::info!("Received configs: {}", text);
+            match serde_json::from_str(&text) {
+                Ok(c) => {
+                    configs = c;
+                    break;
+                }
+                Err(e) => {
+                    log::error!("Failed to parse configs: {:?}", e);
+                    break;
+                }
+            }
+        }
+    }
+
+    if configs.is_empty() { 
+        log::error!("Configs empty, closing socket");
+        return; 
+    }
+
     let cancel_token = CancellationToken::new();
-    let (tx_event, rx_event) = mpsc::channel(100);
     let (tx_model, mut rx_model) = mpsc::channel::<StreamUpdate>(10);
 
+    let mut txs = Vec::new();
+    for config in configs {
+        let (tx_event, rx_event) = mpsc::channel(100);
+        txs.push(tx_event);
+        let miner = IncrementalMiner::new(
+            object_to_type.clone(), 
+            true, 
+            config.use_heuristics, 
+            config.heuristics_config, 
+            config.id.clone()
+        );
+        tokio::spawn(miner.run(rx_event, tx_model.clone(), cancel_token.clone()));
+    }
+
     let replayer = Replayer::new(ocel, replay_speed);
-    tokio::spawn(replayer.start(tx_event, cancel_token.clone()));
-
-    let enable_heuristics = params.use_heuristics.unwrap_or(false);
-    let defaults = crate::core::event_stream::miner::HeuristicsConfig::default();
-    let heuristics_config = crate::core::event_stream::miner::HeuristicsConfig {
-        cleanup_interval: params.cleanup_interval.unwrap_or(defaults.cleanup_interval),
-        max_inactive_events: params.max_inactive_events.unwrap_or(defaults.max_inactive_events),
-        end_hint_timeout: params.end_hint_timeout.unwrap_or(defaults.end_hint_timeout),
-        min_end_histogram_samples: params.min_end_histogram_samples.unwrap_or(defaults.min_end_histogram_samples),
-        end_probability_threshold: params.end_probability_threshold.unwrap_or(defaults.end_probability_threshold),
-    };
-
-    let miner = IncrementalMiner::new(object_to_type, true, enable_heuristics, heuristics_config);
-    tokio::spawn(miner.run(rx_event, tx_model, cancel_token.clone()));
+    tokio::spawn(replayer.start(txs, cancel_token.clone()));
 
     while let Some(model) = rx_model.recv().await {
         let json = serde_json::to_string(&model).unwrap();

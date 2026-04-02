@@ -16,6 +16,7 @@ pub struct StreamingModel {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StreamUpdate {
+    pub target_node_id: String,
     #[serde(flatten)]
     pub update: StreamType,
     pub is_last: bool,

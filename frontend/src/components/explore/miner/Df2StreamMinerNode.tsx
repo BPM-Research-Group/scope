@@ -26,10 +26,8 @@ const Df2StreamMinerNode = memo<NodeProps<MinerNode>>((props) => {
     const minEndHistogramSamples = (data as any)?.minEndHistogramSamples ?? 100;
     const endProbabilityThreshold = (data as any)?.endProbabilityThreshold ?? 0.90;
 
-    // Find upstream node to get its processedData
-    const incomingEdge = edges.find((e) => e.target === id);
-    const sourceNode = incomingEdge ? nodes.find((n) => n.id === incomingEdge.source) : null;
-    const streamingData = sourceNode?.data?.processedData as any;
+    // In the multiplexed architecture, EventStreamNode pushes the data directly to this node's state
+    const streamingData = (data as any)?.processedData;
 
     const activityCount = Object.keys(streamingData?.activity_counts ?? {}).length;
     const edgeCount = Object.keys(streamingData?.ocdfg ?? {}).length;

@@ -17,7 +17,7 @@ impl Replayer {
         }
     }
 
-    pub async fn start(self, tx: mpsc::Sender<serde_json::Value>, cancel_token: CancellationToken) {
+    pub async fn start(self, txs: Vec<mpsc::Sender<serde_json::Value>>, cancel_token: CancellationToken) {
         let mut events = self.ocel.events.clone();
         
         events.sort_by(|a, b| a.id.cmp(&b.id));
@@ -61,14 +61,18 @@ impl Replayer {
                 }
             }
 
-            if let Err(_) = tx.send(serde_json::to_value(&event).unwrap()).await {
-                break;
+            let event_json = serde_json::to_value(&event).unwrap();
+            for tx in &txs {
+                let _ = tx.send(event_json.clone()).await;
             }
             last_event_time = event.time;
         }
         
         // Signal End of Stream
-        let _ = tx.send(serde_json::json!({ "control": "end" })).await;
+        let end_msg = serde_json::json!({ "control": "end" });
+        for tx in &txs {
+            let _ = tx.send(end_msg.clone()).await;
+        }
         log::info!("Replayer: Finished emission.");
     }
 }

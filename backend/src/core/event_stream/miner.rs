@@ -58,7 +58,7 @@ pub struct MinerSnapshot {
 }
 
 /// Configuration for the lossy memory-freeing heuristics.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct HeuristicsConfig {
     /// Number of processed events between each run of the heuristic cleanup routine.
     pub cleanup_interval: usize,
@@ -113,16 +113,18 @@ pub struct MinerState {
 }
 
 pub struct IncrementalMiner {
+    pub node_id: String,
     pub state: Arc<RwLock<MinerState>>,
     pub new_data_signal: Arc<Notify>,
 }
 
 impl IncrementalMiner {
-    pub fn new(object_to_type: HashMap<String, String>, free_memory: bool, enable_heuristics: bool, heuristics_config: HeuristicsConfig) -> Self {
+    pub fn new(object_to_type: HashMap<String, String>, free_memory: bool, enable_heuristics: bool, heuristics_config: HeuristicsConfig, node_id: String) -> Self {
         let _ = fs::remove_file("./temp/stream_divergence.json");
         let _ = fs::remove_file("./temp/stream_edges.json");
 
         Self {
+            node_id,
             state: Arc::new(RwLock::new(MinerState {
                 object_to_type,
                 free_memory,
@@ -180,6 +182,7 @@ impl IncrementalMiner {
         let token_for_dfg = cancel_token.clone();
         let ingestion_done_for_dfg = Arc::clone(&ingestion_done);
         let tx_ws_dfg = tx_ws.clone();
+        let node_id_dfg = self.node_id.clone();
 
         tokio::spawn(async move {
             let mut interval = interval(Duration::from_millis(100));
@@ -199,7 +202,7 @@ impl IncrementalMiner {
                         };
 
                         if let Some(model) = dfg_model {
-                            let update = StreamUpdate { update: StreamType::Dfg(model), is_last: should_exit };
+                            let update = StreamUpdate { target_node_id: node_id_dfg.clone(), update: StreamType::Dfg(model), is_last: should_exit };
                             if tx_ws_dfg.send(update).await.is_err() { break; }
                         }
                         if should_exit { break; }
@@ -214,6 +217,7 @@ impl IncrementalMiner {
         let ingestion_done_for_ocpt = Arc::clone(&ingestion_done);
         let token_for_ocpt = cancel_token;
         let tx_ws_ocpt = tx_ws;
+        let node_id_ocpt = self.node_id.clone();
 
         tokio::spawn(async move {
             loop {
@@ -240,7 +244,7 @@ impl IncrementalMiner {
                     }).await;
 
                     if let Ok(ocpt_fe) = ocpt_res {
-                        let update = StreamUpdate { update: StreamType::Ocpt(ocpt_fe), is_last: should_exit };
+                        let update = StreamUpdate { target_node_id: node_id_ocpt.clone(), update: StreamType::Ocpt(ocpt_fe), is_last: should_exit };
                         if tx_ws_ocpt.send(update).await.is_err() { break; }
                     }
                 }
