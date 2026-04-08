@@ -39,7 +39,7 @@ impl Replayer {
             (self.replay_speed_seconds as f64 * 1000.0) / total_log_duration
         };
 
-        let mut last_event_time = first_time;
+        let start_real_time = tokio::time::Instant::now();
 
         for event in events {
             if cancel_token.is_cancelled() {
@@ -48,11 +48,15 @@ impl Replayer {
             }
 
             if speed_factor > 0.0 {
-                let time_diff = (event.time - last_event_time).num_milliseconds() as f64;
-                let wait_ms = (time_diff * speed_factor) as u64;
-                if wait_ms > 0 {
+                let time_since_first = (event.time - first_time).num_milliseconds() as f64;
+                let expected_elapsed_ms = time_since_first * speed_factor;
+                let expected_duration = StdDuration::from_secs_f64(expected_elapsed_ms / 1000.0);
+                
+                let elapsed_real = start_real_time.elapsed();
+                if elapsed_real < expected_duration {
+                    let wait_duration = expected_duration - elapsed_real;
                     tokio::select! {
-                        _ = sleep(StdDuration::from_millis(wait_ms)) => {}
+                        _ = sleep(wait_duration) => {}
                         _ = cancel_token.cancelled() => {
                             log::info!("Replayer: Cancellation received during sleep, stopping.");
                             return;
@@ -65,7 +69,6 @@ impl Replayer {
             for tx in &txs {
                 let _ = tx.send(event_json.clone()).await;
             }
-            last_event_time = event.time;
         }
         
         // Signal End of Stream

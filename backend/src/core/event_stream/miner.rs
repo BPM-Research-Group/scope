@@ -168,6 +168,7 @@ impl IncrementalMiner {
                             s.process_event(event);
                             s.dirty_dfg = true;
                             s.dirty_ocpt = true;
+                            drop(s);
                             signal_for_proc.notify_waiters();
                         }
                     }
