@@ -9,6 +9,7 @@ export const minerNodeTypes = [
     'flowVisualizationNode',
     'abstractionMinerNode',
     'conformanceMinerNode',
+    'kpiMinerNode',
 ] as const;
 export type ExploreMinerNodeType = (typeof minerNodeTypes)[number];
 

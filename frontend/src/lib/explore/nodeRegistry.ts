@@ -118,4 +118,9 @@ export const nodeRegistry = {
         ],
         sidebar: { label: 'Conformance', icon: 'radar', group: 'miners' },
     },
+    kpiMinerNode: {
+        category: 'miner',
+        allowedAssetTypes: ['ocelFile'],
+        sidebar: { label: 'KPI', icon: 'waves', group: 'miners' },
+    },
 } satisfies Record<RegistrableNodeType, NodeRegistryEntry>;
