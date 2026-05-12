@@ -57,7 +57,7 @@ const dashboardData: DashboardData = {
                 mean: 623.09,
                 max: 2946.5,
                 min: 29.99,
-                sum: 74770.9,
+                sum: 7477068.9,
             },
         },
 
@@ -68,7 +68,7 @@ const dashboardData: DashboardData = {
                 mean: 43.13,
                 max: 13.87,
                 min: 0.166,
-                sum: 4668.38,
+                sum: 4668853.38,
             },
         },
     ],
