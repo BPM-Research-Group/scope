@@ -26,6 +26,7 @@ import OcpnMinerNode from '~/components/explore/miner/OcpnMinerNode';
 import OcptMinerNode from '~/components/explore/miner/OcptMinerNode';
 import OcptStreamMinerNode from '~/components/explore/miner/OcptStreamMinerNode';
 import ResourceMinerNode from '~/components/explore/miner/ResourceMinerNode';
+import CaseClusteringMinerNode from '~/components/explore/miner/CaseClusteringMinerNode';
 import { RefocusProgressPanel } from '~/components/explore/RefocusProgressPanel';
 import { useConnections } from '~/hooks/explore/useConnections';
 import { useDragDrop } from '~/hooks/explore/useDragDrop';
@@ -55,6 +56,7 @@ const nodeTypes = {
     df2StreamMinerNode: Df2StreamMinerNode,
     ocptStreamMinerNode: OcptStreamMinerNode,
     flowFileNode: FlowFileNode,
+    caseClusteringMinerNode: CaseClusteringMinerNode,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } satisfies Record<keyof typeof nodeRegistry, React.ComponentType<NodeProps<any>>>;
 
