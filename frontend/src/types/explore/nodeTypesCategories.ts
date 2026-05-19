@@ -8,6 +8,7 @@ export const minerNodeTypes = [
     'identityExtendMinerNode',
     'flowVisualizationNode',
     'abstractionMinerNode',
+    'resourceMinerNode',
     'conformanceMinerNode',
     'kpiMinerNode',
 ] as const;

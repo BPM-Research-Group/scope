@@ -23,6 +23,8 @@ import {
     getTraditionalCN,
     mineIdentityOcpt,
     mineOcpt,
+    getActivityResource,
+    postSpecialActivities,
 } from '~/services/api';
 import { getOcel } from '~/services/api';
 import { CaseNotionApiResponse } from '~/types/case_notion.types';
@@ -51,6 +53,53 @@ export const useGetOcel = (fileId: string | null) => {
         queryFn: () => getOcel(fileId!),
         refetchOnWindowFocus: false,
         enabled: Boolean(fileId),
+    });
+};
+
+
+export const useGetActivityResource = (fileId: string | null) => {
+   
+
+    return useQuery({
+        queryKey: ['getActivityResource', fileId],
+        queryFn: () => getActivityResource(fileId!),
+        refetchOnWindowFocus: false,
+        enabled: Boolean(fileId),
+    });
+};
+
+// export const usePostSpecialActivity = (fileId: string | null, ac) => {
+//     console.log('query');
+//         console.log(fileId);
+
+//     return useQuery({
+//         queryKey: ['postSpecialActivities', fileId],
+//         queryFn: () => getActivityResource(fileId!),
+//         refetchOnWindowFocus: false,
+//         enabled: Boolean(fileId),
+//     });
+// };
+
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+
+export const usePostSpecialActivity = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({
+            fileId,
+            activities,
+        }: {
+            fileId: string;
+            activities: string[];
+        }) => postSpecialActivities(fileId, activities),
+
+        onSuccess: (data, variables) => {
+            // 🔁 Refetch activity resource after POST
+            queryClient.invalidateQueries({
+                queryKey: ['getActivityResource', variables.fileId],
+            });
+        },
     });
 };
 

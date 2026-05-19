@@ -64,6 +64,19 @@ export const getOcel = async (fileId: string) => {
     return response.data;
 };
 
+export const getActivityResource = async (fileId: string) => {
+   
+    const response = await api.get(`/v1/resource_miner/${fileId}`);
+   
+    return response.data;
+};
+
+export const postSpecialActivities= async (fileId : string, activities: string[]) => {
+    const response = await api.post(`/v1/resource_miner/${fileId}/fix_multiple_special_activities`, { activities });
+   
+    return response.data;
+}
+
 export const getHistogramEventPersp = async (fileId: string) => {
     //const response = await api.get(`/v1/event_object_frequencies/histogram/${fileId}`);
     const response = await api.get(`/v1/event_object_frequencies/event_perspective_histogram/${fileId}`);
