@@ -70,6 +70,9 @@ pub struct HeuristicsConfig {
     pub min_end_histogram_samples: usize,
     /// The probability threshold (0.0 to 1.0) required to assume an activity permanently ends an object's lifecycle.
     pub end_probability_threshold: f64,
+    /// Whether to use the new mathematically unified heuristic cleanup routine.
+    #[serde(default)]
+    pub use_unified_heuristics: bool,
 }
 
 impl Default for HeuristicsConfig {
@@ -80,6 +83,7 @@ impl Default for HeuristicsConfig {
             end_hint_timeout: 10_000,
             min_end_histogram_samples: 100,
             end_probability_threshold: 0.90,
+            use_unified_heuristics: false,
         }
     }
 }
@@ -413,7 +417,11 @@ impl MinerState {
         }
 
         if self.enable_heuristics && self._processed_count % self.heuristics_config.cleanup_interval == 0 {
-            self.run_heuristics_cleanup();
+            if self.heuristics_config.use_unified_heuristics {
+                self.run_heuristics_cleanup_unified();
+            } else {
+                self.run_heuristics_cleanup();
+            }
         }
     }
 
@@ -453,6 +461,90 @@ impl MinerState {
                         if act_ends as f64 / total_ended as f64 > threshold {
                             dead_objects.push((oid_id, act_id, false)); 
                         }
+                    }
+                }
+            }
+        }
+        
+        for (oid_id, act_id, is_true_dead) in dead_objects {
+            if is_true_dead {
+                if let Some(&ot_id) = self.object_type_map.get(&oid_id) {
+                    *self.end_activities_hist.entry((act_id, ot_id)).or_insert(0) += 1;
+                }
+            }
+            self.last_event_per_object.remove(&oid_id);
+            self.object_type_map.remove(&oid_id);
+            for val in self.seen_objects_per_act_type.values_mut() {
+                val.remove(&oid_id);
+            }
+        }
+    }
+
+    pub fn run_heuristics_cleanup_unified(&mut self) {
+        let max_inactive_events = self.heuristics_config.max_inactive_events; 
+        let end_hint_timeout = self.heuristics_config.end_hint_timeout;
+        
+        let current_count = self._processed_count;
+
+        // 1. Cleanup divergence_index based on max_inactive_events (same as original)
+        self.divergence_index.retain(|_, ot_map| {
+            ot_map.retain(|_, full_set_map| {
+                full_set_map.retain(|_, last_seen| {
+                    current_count.saturating_sub(*last_seen) < max_inactive_events
+                });
+                !full_set_map.is_empty()
+            });
+            !ot_map.is_empty()
+        });
+
+        // 2. Count total ends per object type
+        let mut total_ends_per_type = HashMap::new();
+        for (&(_, ot_id), &count) in &self.end_activities_hist {
+            *total_ends_per_type.entry(ot_id).or_insert(0) += count;
+        }
+
+        // 3. Find dead objects based on the mathematically unified Option A
+        let mut dead_objects = Vec::new();
+        
+        // Statistical constant z (e.g. 1.0 for a standard 1-sigma lower bound)
+        let z = 1.0;
+        // Fixed cleanup decision threshold (e.g. 0.95 probability of being dead)
+        let decision_threshold = 0.95;
+
+        for (&oid_id, &(act_id, last_seen)) in &self.last_event_per_object {
+            let age = current_count.saturating_sub(last_seen);
+            if age >= max_inactive_events {
+                dead_objects.push((oid_id, act_id, true)); 
+            } else if age > end_hint_timeout {
+                if let Some(&ot_id) = self.object_type_map.get(&oid_id) {
+                    let n = *total_ends_per_type.get(&ot_id).unwrap_or(&0) as f64;
+                    let k = *self.end_activities_hist.get(&(act_id, ot_id)).unwrap_or(&0) as f64;
+
+                    // Calculate confidence C using Bayesian Beta-binomial credible lower bound
+                    let confidence = if n == 0.0 {
+                        0.0
+                    } else {
+                        let mu = (k + 1.0) / (n + 2.0);
+                        let var = ((k + 1.0) * (n - k + 1.0)) / ((n + 2.0) * (n + 2.0) * (n + 3.0));
+                        let sigma = var.sqrt();
+                        (mu - z * sigma).max(0.0).min(1.0)
+                    };
+
+                    // Calculate P(dead)
+                    let p_dead = if confidence <= 0.0 {
+                        0.0
+                    } else {
+                        let x = (age - end_hint_timeout) as f64 / (max_inactive_events - end_hint_timeout) as f64;
+                        if confidence >= 0.9999 {
+                            1.0
+                        } else {
+                            let exponent = (1.0 - confidence) / confidence;
+                            x.powf(exponent)
+                        }
+                    };
+
+                    if p_dead >= decision_threshold {
+                        dead_objects.push((oid_id, act_id, false)); 
                     }
                 }
             }

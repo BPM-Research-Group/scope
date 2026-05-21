@@ -69,11 +69,13 @@ async fn run_full_evaluation() {
             free_memory: true,
             enable_heuristics: true,
             heuristics_config: crate::core::event_stream::miner::HeuristicsConfig {
-                cleanup_interval: (0.1 * sorted_events.len() as f64) as usize, // Cleanup every 2% of events
+                //cleanup_interval: (0.1 * sorted_events.len() as f64) as usize, // Cleanup every 2% of events
+                cleanup_interval: 1, // Cleanup after every event
                 max_inactive_events: (0.05 * sorted_events.len() as f64) as usize, // Consider events inactive after 1% of total events
                 end_hint_timeout: (0.01 * sorted_events.len() as f64) as usize, // 0.1% of total events
                 min_end_histogram_samples: 100,
                 end_probability_threshold: 0.90,
+                use_unified_heuristics: false,
             },
             ..Default::default()
         };
