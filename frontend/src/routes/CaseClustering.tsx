@@ -1,21 +1,15 @@
 // ...existing code...
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { Background, Controls, ReactFlow, ReactFlowProvider } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { useParams } from 'react-router-dom';
+import { Button } from '~/components/ui/button';
 import { SidebarInset, SidebarProvider } from '~/components/ui/sidebar';
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '~/components/ui/table';
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 import { useExploreFlowStore } from '~/stores/exploreStore';
-import { Button } from '~/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import exampleClusterdata from '~/routes/CaseClusteringExamples/clustering_example_new.json'; //später löschen
 
 const CaseClustering: React.FC = () => {
     const { nodeId } = useParams<{ nodeId: string }>();
@@ -30,30 +24,63 @@ const CaseClustering: React.FC = () => {
     const [clusteringRaw, setClusteringRaw] = useState<any | null>(null);
     const [nodes, setNodes] = useState<any[]>([]);
     const [edges, setEdges] = useState<any[]>([]);
-    const [generateVis, setGenerateVis] = useState(false)
+    const [generateVis, setGenerateVis] = useState(false);
+    const [tableGenerated, setTableGenerated] = useState(false);
 
-    // Load the new clustering result JSON from public/example_data/clustering/
+    const getCaseNotionsMock = async () => {
+    // simuliert Netzwerkzeit
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      return exampleClusterdata;
+    };
+
+    // Load the new clustering result from the backend in the beginning. Right know a example file
     useEffect(() => {
-        const url = '/example_data/clustering/clustering_example.json';
-        fetch(url)
-            .then((res) => {
-                if (!res.ok) throw new Error(`Failed to load ${url}: ${res.status}`);
-                return res.json();
-            })
-            .then((json) => setClusteringRaw(json))
-            .catch((err) => {
-                // eslint-disable-next-line no-console
-                console.error('Load clustering example failed', err);
-            });
+      const loadData = async () => {
+        const data = await getCaseNotionsMock();
+        console.log(data);
+        setClusteringRaw(data);
+      };
+      loadData();
     }, []);
 
     // Use Effect for the Button
     useEffect(() => {
         if (!generateVis) {return;}
-        
+        console.log("Loaded mock data:", clusteringRaw.case_assignments.slice(0, 5)); // Log the first 5 case assignments for verification
     }, [generateVis]);
 
     const runInfo = useMemo(() => clusteringRaw?.run ?? null, [clusteringRaw]);
+
+    const tableData = useMemo(() => {
+        if (!generateVis || !clusteringRaw) return [];
+        // fallback mock data until clusteringRaw is wired
+        return clusteringRaw.case_assignments.map(([caseId, cluster]) => ({
+          caseId,
+          cluster,
+    }));
+    }, [generateVis, clusteringRaw]);
+
+    const tableColumns = useMemo(
+        () => [
+            {
+                accessorKey: 'caseId',
+                header: 'Id',
+            },
+            {
+                accessorKey: 'cluster',
+                header: 'Cluster',
+            },
+        ],
+        []
+    );
+
+    const table = useReactTable({
+        data: tableData,
+        columns: tableColumns,
+        getCoreRowModel: getCoreRowModel(),
+        manual: !generateVis,
+    });
 
     return (
         <ReactFlowProvider>
@@ -64,7 +91,9 @@ const CaseClustering: React.FC = () => {
                         <aside className="w-80 min-w-[18rem] rounded-md border p-4 bg-background">
                             <h2 className="mb-3 text-lg font-semibold">Case Clustering — Settings</h2>
 
-                            <div className="mb-2 text-xs">Input-File: <strong>clustering_example.json</strong></div>
+                            <div className="mb-2 text-xs">
+                                Input-File: <strong>clustering_example.json</strong>
+                            </div>
 
                             <label className="block mb-2 text-sm">Visualisation</label>
                             <select
@@ -100,13 +129,51 @@ const CaseClustering: React.FC = () => {
                         </aside>
 
                         <main className="flex-1 rounded-md border bg-background p-2">
-                            
+                            {!generateVis ? (
+                                <div className="text-sm text-muted-foreground p-4">Click "Output" to load table</div>
+                            ) : (
+                                <Table>
+                                    <TableCaption>Clustering output (tabular view)</TableCaption>
+
+                                    <TableHeader>
+                                        {table.getHeaderGroups().map((headerGroup) => (
+                                            <TableRow key={headerGroup.id}>
+                                                {headerGroup.headers.map((header) => (
+                                                    <TableHead key={header.id}>
+                                                        {flexRender(
+                                                            header.column.columnDef.header,
+                                                            header.getContext()
+                                                        )}
+                                                    </TableHead>
+                                                ))}
+                                            </TableRow>
+                                        ))}
+                                    </TableHeader>
+
+                                    <TableBody>
+                                        {table.getRowModel().rows.map((row) => (
+                                            <TableRow key={row.id}>
+                                                {row.getVisibleCells().map((cell) => (
+                                                    <TableCell key={cell.id}>
+                                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                                    </TableCell>
+                                                ))}
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            )}
                         </main>
 
                         <aside className="w-64 min-w-[16rem] rounded-md border p-4 bg-background">
                             <h3 className="mb-2 text-sm font-semibold">Debug / Run Info</h3>
                             <div className="text-xs">File ID: {clusteringRaw?.file_id ?? '-'}</div>
-                            <div className="text-xs">Clusters: {clusteringRaw?.case_assignments ? new Set(clusteringRaw.case_assignments.map(([,c]: any) => c)).size : '-'}</div>
+                            <div className="text-xs">
+                                Clusters:{' '}
+                                {clusteringRaw?.case_assignments
+                                    ? new Set(clusteringRaw.case_assignments.map(([, c]: any) => c)).size
+                                    : '-'}
+                            </div>
                             <pre className="text-xs mt-2 max-h-[60vh] overflow-auto">
                                 {clusteringRaw ? JSON.stringify(runInfo ?? clusteringRaw, null, 2) : '...'}
                             </pre>
