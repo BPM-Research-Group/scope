@@ -5,6 +5,11 @@ export interface HistogramState {
     isSubmitted: boolean;
 }
 
+export interface KpiState {
+    selections: Record<string, number[]>;
+    isSubmitted: boolean;
+}
+
 export interface FileNodeViewState {
     filteredObjectTypes: string[];
     colorScale: {
@@ -23,4 +28,5 @@ export interface FileExploreNodeData extends BaseExploreNodeData {
     colorMap?: Record<string, string>;
     colorIndex?: number;
     histogramState?: HistogramState;
+    KpiState?: KpiState;
 }

@@ -8,6 +8,7 @@ export type ExploreFlowStore = GraphSlice & PipelineSlice;
 
 export type { SavedPipeline } from './slices/pipelineSlice.types';
 export type { HistogramState } from '~/types/explore/nodeData/fileNodeData';
+export type { KpiState } from '~/types/explore/nodeData/fileNodeData';
 
 export const useExploreFlowStore = create<ExploreFlowStore>((...a) => ({
     ...createGraphSlice(...a),

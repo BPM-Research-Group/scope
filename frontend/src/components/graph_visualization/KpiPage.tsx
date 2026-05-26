@@ -1,155 +1,232 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { AxisBottom, AxisLeft } from '@visx/axis';
 import { Group } from '@visx/group';
 import { scaleBand, scaleLinear, scaleOrdinal } from '@visx/scale';
-import { Bar } from '@visx/shape';
-import { Pie } from '@visx/shape';
+import { Bar, Pie } from '@visx/shape';
+import { useLocation } from 'react-router-dom';
+import { v4 as uuidv4 } from 'uuid';
+import { useMineCaseNotionMutation } from '~/services/mutation';
+import { useAttributeStats, useMineKpi } from '~/services/queries';
 
 type Stats = {
-    mean: number;
-    max: number;
+    count: number;
     min: number;
+    max: number;
+    mean: number;
+    median: number;
+    std_dev: number;
     sum: number;
 };
 
-type ObjectAttributeStat = {
-    attribute_name: string;
-    entity_type: string;
-    stats: Stats;
+type Attribute = {
+    name: string;
+    value_type: string;
+    numeric: boolean;
 };
 
-type DashboardData = {
-    total_events: number;
-    total_objects: number;
-    object_attribute_stats: ObjectAttributeStat[];
+type ObjectType = {
+    name: string;
+    attributes: Attribute[];
 };
 
-type BarChartData = {
+type EventType = {
+    name: string;
+    attributes: Attribute[];
+};
+
+type AttributeStatsParams = {
+    attribute: string;
+    object_type?: string;
+    event_type?: string;
+};
+
+type Props = {
+    fileId: string | null;
+    sourceType: string;
+};
+
+type ChartData = {
     label: string;
     value: number;
-};
-
-type PieChartData = {
-    label: string;
-    value: number;
-};
-
-const dashboardData: DashboardData = {
-    total_events: 21008,
-    total_objects: 10840,
-
-    object_attribute_stats: [
-        {
-            attribute_name: 'price',
-            entity_type: 'orders',
-            stats: {
-                mean: 2380.95,
-                max: 11241.55,
-                min: 36.7,
-                sum: 4761909.99,
-            },
-        },
-
-        {
-            attribute_name: 'price',
-            entity_type: 'products',
-            stats: {
-                mean: 623.09,
-                max: 2946.5,
-                min: 29.99,
-                sum: 7477068.9,
-            },
-        },
-
-        {
-            attribute_name: 'weight',
-            entity_type: 'packages',
-            stats: {
-                mean: 43.13,
-                max: 13.87,
-                min: 0.166,
-                sum: 4668853.38,
-            },
-        },
-    ],
 };
 
 const COLORS = ['#2563eb', '#9333ea', '#14b8a6', '#f97316'];
 
-const AnalyticsDashboard: React.FC = () => {
-    const [entity, setEntity] = useState<string>('orders');
+const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
+    const [selectedObjectType, setSelectedObjectType] = useState('');
+    const [selectedEventType, setSelectedEventType] = useState('');
 
-    const [attribute, setAttribute] = useState<string>('price');
+    const [selectedAttribute, setSelectedAttribute] = useState('');
 
-    const [operation, setOperation] = useState<keyof Stats>('sum');
+    const [currentCnFileId, setCurrentCnFileId] = useState<string>('');
 
-    const entityOptions = useMemo(() => {
-        return [...new Set(dashboardData.object_attribute_stats.map((item) => item.entity_type))];
-    }, []);
+    const [hasUnminedChanges, setHasUnminedChanges] = useState(false);
 
-    const attributeOptions = useMemo(() => {
-        return [
-            ...new Set(
-                dashboardData.object_attribute_stats
-                    .filter((item) => item.entity_type === entity)
-                    .map((item) => item.attribute_name)
-            ),
-        ];
-    }, [entity]);
+    const [algorithm, setAlgorithm] = useState<string>('traditional');
 
-    const selectedKpi = useMemo(() => {
-        return dashboardData.object_attribute_stats.find(
-            (item) => item.entity_type === entity && item.attribute_name === attribute
+    const [genericPayload, setGenericPayload] = useState<any>(null);
+    const [shouldFetchStats, setShouldFetchStats] = useState(false);
+
+    const { data: metadata, isLoading: metadataLoading, error: metadataError } = useMineKpi(fileId);
+
+    const {
+        mutate,
+        isPending: isMiningCaseNotion,
+        data: caseNotionData,
+        reset: resetCaseNotionMutation,
+    } = useMineCaseNotionMutation();
+    const [aggregation, setAggregation] = useState<keyof Stats>('mean');
+
+    useEffect(() => {
+        if (!metadata) return;
+
+        const firstObjectType = metadata.object_types?.[0];
+
+        if (!firstObjectType) return;
+
+        setSelectedObjectType(firstObjectType.name);
+
+        const firstNumericAttribute = firstObjectType.attributes.find((attr: Attribute) => attr.numeric);
+
+        if (firstNumericAttribute) {
+            setSelectedAttribute(firstNumericAttribute.name);
+        }
+    }, [metadata]);
+
+    const handleMine = () => {
+        if (!fileId || !selectedObjectType) return;
+
+        const newCnId = uuidv4();
+
+        setCurrentCnFileId(newCnId);
+
+        mutate(
+            {
+                fileId,
+                algorithm,
+                objectType: selectedObjectType,
+                newFileId: newCnId,
+                payload: genericPayload,
+            },
+            {
+                onSuccess: (data) => {
+                    setHasUnminedChanges(false);
+
+                    setShouldFetchStats(true);
+                },
+            }
         );
-    }, [entity, attribute]);
+    };
 
-    const generatedValue = selectedKpi?.stats?.[operation];
+    const params: AttributeStatsParams | null = useMemo(() => {
+        if (!selectedAttribute) return null;
 
-    const barChartData: BarChartData[] = dashboardData.object_attribute_stats.map((item) => ({
-        label: item.entity_type,
-        value: item.stats.mean,
-    }));
+        return {
+            attribute: selectedAttribute,
+            ...(selectedObjectType && {
+                object_type: selectedObjectType,
+            }),
+            ...(selectedEventType && {
+                event_type: selectedEventType,
+            }),
+        };
+    }, [selectedAttribute, selectedObjectType, selectedEventType]);
 
-    const pieChartData: PieChartData[] = dashboardData.object_attribute_stats.map((item) => ({
-        label: item.entity_type,
-        value: item.stats.sum,
-    }));
+    const {
+        data: attributeStatsData,
+        isLoading: attributeStatsLoading,
+        error: attributeStatsError,
+    } = useAttributeStats(currentCnFileId, params, {
+        enabled: shouldFetchStats && !!currentCnFileId && !!selectedAttribute,
+    });
+
+    const stats: Stats | null = attributeStatsData?.stats ?? null;
+
+    const objectTypeOptions = useMemo(() => {
+        return metadata?.object_types ?? [];
+    }, [metadata]);
+
+    const numericAttributes = useMemo(() => {
+        const objectType = metadata?.object_types.find((item: any) => item.name === selectedObjectType);
+
+        return objectType?.attributes.filter((attr: any) => attr.numeric) ?? [];
+    }, [metadata, selectedObjectType]);
+
+    const barChartData: ChartData[] = useMemo(() => {
+        if (!metadata) return [];
+
+        return metadata.object_types.map((item: any) => ({
+            label: item.name,
+            value: item.attributes.length,
+        }));
+    }, [metadata]);
+
+    const pieChartData: ChartData[] = useMemo(() => {
+        if (!metadata) return [];
+
+        return metadata.object_types.map((item: any) => ({
+            label: item.name,
+            value: item.attributes.length,
+        }));
+    }, [metadata]);
+
+    if (metadataLoading) {
+        return <div className="p-6 text-lg font-medium">Loading KPI Dashboard...</div>;
+    }
+
+    if (metadataError) {
+        return <div className="p-6 text-red-500">Failed to load metadata</div>;
+    }
 
     return (
-        <div className="min-h-screen bg-slate-100 p-6">
+        <div className="w-full h-full overflow-y-auto bg-slate-100 p-6">
             <div className="max-w-7xl mx-auto space-y-6">
                 <div>
                     <h1 className="text-3xl font-bold text-slate-800">KPI Dashboard</h1>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <KpiCard title="Total Events" value={dashboardData.total_events} />
+                    <KpiCard title="Total Events" value={metadata?.total_events ?? 0} />
 
-                    <KpiCard title="Total Objects" value={dashboardData.total_objects} />
+                    <KpiCard title="Total Objects" value={metadata?.total_objects ?? 0} />
 
-                    <KpiCard title="Average Order Price" value="€2380.95" />
+                    <KpiCard title="Selected KPI" value={stats ? stats[aggregation].toFixed(2) : '-'} />
 
-                    <KpiCard title="Max Product Price" value="€2946.5" />
+                    <KpiCard title="Attribute" value={selectedAttribute || '-'} />
                 </div>
 
                 <div className="bg-white rounded-2xl shadow p-6">
                     <h2 className="text-xl font-semibold mb-5">KPI Builder</h2>
+                    <button
+                        onClick={handleMine}
+                        disabled={isMiningCaseNotion}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-xl disabled:opacity-50"
+                    >
+                        {isMiningCaseNotion ? 'Mining...' : 'Run KPI'}
+                    </button>
 
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div>
                             <label className="block text-sm font-medium mb-2">Object Type</label>
 
                             <select
-                                value={entity}
+                                value={selectedObjectType}
                                 onChange={(e) => {
-                                    setEntity(e.target.value);
-                                    setAttribute('price');
+                                    const value = e.target.value;
+
+                                    setSelectedObjectType(value);
+                                    setShouldFetchStats(false);
+                                    const objectType = metadata?.object_types.find((item: any) => item.name === value);
+
+                                    const firstAttribute = objectType?.attributes.find((attr: any) => attr.numeric);
+
+                                    setSelectedAttribute(firstAttribute?.name ?? '');
                                 }}
                                 className="w-full border rounded-xl px-3 py-2"
                             >
-                                {entityOptions.map((item) => (
-                                    <option key={item} value={item}>
-                                        {item}
+                                {objectTypeOptions.map((item: any) => (
+                                    <option key={item.name} value={item.name}>
+                                        {item.name}
                                     </option>
                                 ))}
                             </select>
@@ -159,13 +236,15 @@ const AnalyticsDashboard: React.FC = () => {
                             <label className="block text-sm font-medium mb-2">Attribute</label>
 
                             <select
-                                value={attribute}
-                                onChange={(e) => setAttribute(e.target.value)}
+                                value={selectedAttribute}
+                                onChange={(e) => {
+                                    setSelectedAttribute(e.target.value), setShouldFetchStats(false);
+                                }}
                                 className="w-full border rounded-xl px-3 py-2"
                             >
-                                {attributeOptions.map((item) => (
-                                    <option key={item} value={item}>
-                                        {item}
+                                {numericAttributes.map((item: any) => (
+                                    <option key={item.name} value={item.name}>
+                                        {item.name}
                                     </option>
                                 ))}
                             </select>
@@ -175,14 +254,21 @@ const AnalyticsDashboard: React.FC = () => {
                             <label className="block text-sm font-medium mb-2">Aggregation</label>
 
                             <select
-                                value={operation}
-                                onChange={(e) => setOperation(e.target.value as keyof Stats)}
+                                value={aggregation}
+                                onChange={(e) => setAggregation(e.target.value as keyof Stats)}
                                 className="w-full border rounded-xl px-3 py-2"
                             >
                                 <option value="sum">Sum</option>
+
                                 <option value="mean">Mean</option>
+
                                 <option value="max">Max</option>
+
                                 <option value="min">Min</option>
+
+                                <option value="median">Median</option>
+
+                                <option value="std_dev">Std Dev</option>
                             </select>
                         </div>
 
@@ -190,7 +276,7 @@ const AnalyticsDashboard: React.FC = () => {
                             <label className="block text-sm font-medium mb-2">KPI Value</label>
 
                             <div className="border rounded-xl px-4 py-2 bg-slate-50 font-semibold">
-                                {generatedValue}
+                                {stats ? stats[aggregation].toFixed(2) : '-'}
                             </div>
                         </div>
                     </div>
@@ -198,13 +284,13 @@ const AnalyticsDashboard: React.FC = () => {
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div className="bg-white rounded-2xl shadow p-6">
-                        <h2 className="text-lg font-semibold mb-4">Average KPI Values</h2>
+                        <h2 className="text-lg font-semibold mb-4">Object Type Counts</h2>
 
                         <BarChart data={barChartData} width={500} height={300} />
                     </div>
 
                     <div className="bg-white rounded-2xl shadow p-6">
-                        <h2 className="text-lg font-semibold mb-4">KPI Sum Distribution</h2>
+                        <h2 className="text-lg font-semibold mb-4">Object Type Distribution</h2>
 
                         <PieChart data={pieChartData} width={500} height={300} />
                     </div>
@@ -232,7 +318,7 @@ const KpiCard: React.FC<KpiCardProps> = ({ title, value }) => {
 };
 
 type BarChartProps = {
-    data: BarChartData[];
+    data: ChartData[];
     width: number;
     height: number;
 };
@@ -256,7 +342,7 @@ const BarChart: React.FC<BarChartProps> = ({ data, width, height }) => {
     });
 
     const yScale = scaleLinear<number>({
-        domain: [0, Math.max(...data.map((d) => d.value))],
+        domain: [0, Math.max(...data.map((d) => d.value), 1)],
         range: [yMax, 0],
         nice: true,
     });
@@ -289,7 +375,7 @@ const BarChart: React.FC<BarChartProps> = ({ data, width, height }) => {
 };
 
 type PieChartProps = {
-    data: PieChartData[];
+    data: ChartData[];
     width: number;
     height: number;
 };

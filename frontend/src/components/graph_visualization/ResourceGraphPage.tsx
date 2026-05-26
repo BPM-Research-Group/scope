@@ -27,8 +27,7 @@ type Props = {
 const ResourceGraphPage: React.FC<Props> = ({ fileId: initialFileId }) => {
     const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
     const [fileId, setFileId] = useState<string | null>(initialFileId);
-    console.log('file');
-    console.log(fileId);
+
     useEffect(() => {
         if (initialFileId) {
             setFileId(initialFileId);
@@ -43,7 +42,6 @@ const ResourceGraphPage: React.FC<Props> = ({ fileId: initialFileId }) => {
     if (!resourceData) return <div>No data found</div>;
 
     const data = resourceData;
-    console.log(data);
 
     const maxNodes = Math.max(
         data.object_resource.length,
@@ -114,8 +112,6 @@ const ResourceGraphPage: React.FC<Props> = ({ fileId: initialFileId }) => {
             },
             {
                 onSuccess: (data) => {
-                    console.log('Success:', data);
-                    console.log('newfileid:', data.new_file_id);
                     setFileId(data.new_file_id);
                     setSelectedActivities([]);
                 },

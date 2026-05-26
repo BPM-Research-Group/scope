@@ -47,6 +47,7 @@ const GraphPage: React.FC<GraphPageProps> = ({
         arr.push([b, a]);
     }
 
+
     useEffect(() => {
         if (!editable) {
             setStartingObjects([]);

@@ -110,6 +110,7 @@ export const mineCaseNotion = async (
     });
 
     if (algorithm === 'generic') {
+       
         const response = await api.post(`/v1/case_notion/${endpoint}/${fileId}?${params.toString()}`, payload);
         return response.data;
     } else {
@@ -228,8 +229,20 @@ export const mineOcpt = async (fileId: string, algorithm: string = 'DF2'): Promi
     throw new Error(`Algorithm ${algorithm} not supported`);
 };
 
-export const getCaseNotions = async (cnFileId: string) => {
-    const response = await api.get<GetCaseNotionsResponse>(`v1/case_notion/case_ocel/${cnFileId}`);
+export const mineKpi = async (fileId: string) => {
+    const response = await api.get(`/v1/kpi/ocel_metadata/${fileId}`); 
+    return response.data;
+   
+};
+
+export const attributeStats = async (fileId: string, params: any) => { 
+    const response = await api.get(`/v1/kpi/case_attribute_stats/${fileId}`, {params}); 
+    return response.data;
+   
+};
+
+export const getCaseNotions = async (cnFileId: string) => { 
+    const response = await api.get<GetCaseNotionsResponse>(`v1/case_notion/case_ocel/${cnFileId}`);   
     return response.data;
 };
 

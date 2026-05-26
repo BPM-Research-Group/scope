@@ -1,5 +1,5 @@
 import { Connection, Edge, EdgeChange, NodeChange } from '@xyflow/react';
-import { HistogramState } from '~/types/explore/nodeData/fileNodeData';
+import { HistogramState ,KpiState} from '~/types/explore/nodeData/fileNodeData';
 import { ExploreNode, ExploreNodeData } from '~/types/explore/nodes';
 
 export interface GraphSlice {
@@ -30,4 +30,7 @@ export interface GraphSlice {
     // --- Histogram (stored on node.data.histogramState) ---
     setHistogramState: (nodeId: string, state: HistogramState) => void;
     clearHistogramState: (nodeId: string) => void;
+
+    setKpiState: (nodeId: string, state: KpiState) => void;
+    clearKpiState: (nodeId: string) => void;
 }

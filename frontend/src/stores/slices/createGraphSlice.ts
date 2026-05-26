@@ -4,7 +4,7 @@ import { ExploreFlowStore } from '~/stores/exploreStore';
 import { getDeterministicColor } from '~/lib/colors';
 import { isFileNode } from '~/lib/explore/exploreNodes.utils';
 import { BaseExploreNodeAsset } from '~/types/explore/nodeData/baseNodeData';
-import { FileExploreNodeData, HistogramState } from '~/types/explore/nodeData/fileNodeData';
+import { FileExploreNodeData, HistogramState ,KpiState} from '~/types/explore/nodeData/fileNodeData';
 import { ExploreNode } from '~/types/explore/nodes';
 import { GraphSlice } from './graphSlice.types';
 
@@ -161,4 +161,17 @@ export const createGraphSlice: StateCreator<ExploreFlowStore, [], [], GraphSlice
             histogramState: undefined,
         } as Partial<FileExploreNodeData>);
     },
+setKpiState: (nodeId: string, state: KpiState) => {
+        const { updateNodeData } = get();
+        updateNodeData(nodeId, {
+            kpiState: state,
+        } as Partial<FileExploreNodeData>);
+    },
+    clearKpiState: (nodeId: string) => {
+        const { updateNodeData } = get();
+        updateNodeData(nodeId, {
+            kpiState: undefined,
+        } as Partial<FileExploreNodeData>);
+    },
+
 });

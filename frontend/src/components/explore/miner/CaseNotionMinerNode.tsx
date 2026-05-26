@@ -88,7 +88,6 @@ const CaseNotionMinerNode = memo<NodeProps<MinerNode>>((node) => {
         const newCnId = uuidv4();
         setCurrentCnFileId(newCnId);
         setMakeFinalFetch(false);
-
         mutate(
             {
                 fileId,
@@ -99,10 +98,13 @@ const CaseNotionMinerNode = memo<NodeProps<MinerNode>>((node) => {
             },
             {
                 onSuccess: () => {
+                    
                     setHasUnminedChanges(false);
                 },
             }
+            
         );
+      
     };
 
     const handleExport = () => {

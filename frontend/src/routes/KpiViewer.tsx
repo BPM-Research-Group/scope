@@ -1,67 +1,70 @@
-import { useEffect, useState } from 'react';
+
+
+
+import { useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { SidebarProvider } from '~/components/ui/sidebar';
 import BreadcrumbNav from '~/components/BreadcrumbNav';
-import OcelVisualization from '~/components/graph_visualization/OcelVisualization';
+import KpiPage from '~/components/graph_visualization/KpiPage';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { assetTypeToNodeType } from '~/lib/explore/exploreNodes.utils';
 import { ExploreFileNodeType } from '~/types/explore/nodeTypesCategories';
-import KpiPage from '~/components/graph_visualization/KpiPage';
 
 const KpiViewer: React.FC = () => {
-    const [fileId, setFileId] = useState<string | null>(null);
-    const [sourceType, setSourceType] =
-        useState<Extract<ExploreFileNodeType, 'ocelFileNode' | 'ocelCollectionNode'>>('ocelFileNode');
     const { nodeId } = useParams<{ nodeId: string }>();
     const { getNode } = useExploreFlowStore();
 
-    // Restore the saved flow from localStorage
+    
     useEffect(() => {
         const savedFlow = localStorage.getItem('currentExploreFlow');
+
         if (savedFlow) {
             const { nodes, edges } = JSON.parse(savedFlow);
-            useExploreFlowStore.setState({ nodes, edges });
+
+            useExploreFlowStore.setState({
+                nodes,
+                edges,
+            });
         }
     }, []);
 
-    // Extract the fileId from the node
-    useEffect(() => {
-        if (!nodeId) return;
-
-        const node = getNode(nodeId);
-        if (!node) {
-            console.warn(` Node with ID ${nodeId} not found.`);
-            return;
-        }
-
-        const nodeData = node.data;
-
-        console.dir(node, { depth: null });
-        console.log('Node found:', node);
-
-        if (nodeData?.assets?.length > 0) {
-            const firstAsset = nodeData.assets[0];
-            console.log('Extracted file ID from assets:', firstAsset.id);
-            setFileId(firstAsset.id);
-
-            const nodeType = assetTypeToNodeType(firstAsset.type);
-            if (nodeType === 'ocelCollectionNode' || nodeType === 'ocelFileNode') {
-                setSourceType(nodeType);
-            }
-        } else {
-            console.warn('No assets found in node data.');
-        }
+    
+    const node = useMemo(() => {
+        if (!nodeId) return undefined;
+        return getNode(nodeId);
     }, [nodeId, getNode]);
+
+    
+    const firstAsset = node?.data?.assets?.[0];
+
+    
+    const fileId = firstAsset?.id ?? null;
+
+    
+    const sourceType: Extract<
+        ExploreFileNodeType,
+        'ocelFileNode' | 'ocelCollectionNode'
+    > =
+        firstAsset?.type &&
+        (assetTypeToNodeType(firstAsset.type) === 'ocelCollectionNode' ||
+            assetTypeToNodeType(firstAsset.type) === 'ocelFileNode')
+            ? assetTypeToNodeType(firstAsset.type)
+            : 'ocelFileNode';
+
+    useEffect(() => {
+       
+    }, [node, fileId, sourceType]);
 
     return (
         <SidebarProvider>
             <div className="flex flex-col h-screen w-screen overflow-hidden">
                 <BreadcrumbNav />
+
                 <div className="flex flex-1 h-full w-full overflow-hidden">
-                   
-                        <KpiPage  />
-                   
-                     
+                    <KpiPage
+                        fileId={fileId}
+                        sourceType={sourceType}
+                    />
                 </div>
             </div>
         </SidebarProvider>
