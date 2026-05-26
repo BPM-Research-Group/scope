@@ -10,6 +10,10 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import exampleClusterdata from '~/routes/CaseClusteringExamples/clustering_example_new.json'; //später löschen
+import { Select, SelectContent, SelectTrigger } from '~/components/ui/select';
+import { SelectItem, SelectValue } from '~/components/ui/select';
+import { set } from 'lodash-es';
+
 
 const CaseClustering: React.FC = () => {
     const { nodeId } = useParams<{ nodeId: string }>();
@@ -24,7 +28,7 @@ const CaseClustering: React.FC = () => {
     const [nodes, setNodes] = useState<any[]>([]);
     const [edges, setEdges] = useState<any[]>([]);
     const [generateVis, setGenerateVis] = useState(false);
-    const [tableGenerated, setTableGenerated] = useState(false);
+    const [generateTable, setGenerateTable] = useState(false);
 
     //Simuliert API function
     const getCaseNotionsMock = async () => {
@@ -46,20 +50,20 @@ const CaseClustering: React.FC = () => {
 
     // Use Effect for the Button
     useEffect(() => {
-        if (!generateVis) {return;}
-    }, [generateVis]);
+        if (!generateTable) {return;}
+    }, [generateTable]);
 
     const runInfo = useMemo(() => clusteringRaw?.run ?? null, [clusteringRaw]);
 
     const tableData = useMemo(() => {
-        if (!generateVis || !clusteringRaw) return [];
+        if (!generateTable || !clusteringRaw) return [];
         console.log("loading tableData");
         // fallback mock data until clusteringRaw is wired
         return clusteringRaw.case_assignments.map(([caseId, cluster]: [number, number]) => ({
           caseId,
           cluster,
     }));
-    }, [generateVis, clusteringRaw]);
+    }, [clusteringRaw, generateTable]);
 
     const tableColumns = useMemo(
         () => [
@@ -95,27 +99,35 @@ const CaseClustering: React.FC = () => {
                             </div>
 
                             <label className="block mb-2 text-sm">Visualisation</label>
-                            <select
-                                value={params.visMethod}
-                                onChange={(e) => setParams((s) => ({ ...s, visMethod: e.target.value }))}
-                                className="mb-4 w-full rounded border px-2 py-1"
-                            >
-                                <option value="tabular">Tabular</option>
-                                <option value="graphic">Graphic</option>
-                            </select>
+                            <Select value={params.visMethod} onValueChange={(e) =>setParams((s) =>({...s, visMethod: e.toString()}))}>
+                                <SelectTrigger
+                                    className="h-07 px-2 bg-gray-100 text-amber-600 hover:bg-gray-200 rounded-md w-full gap-1 text-s font-semibold"
+                                    aria-label="Select Visualisation"
+                                >
+                                    <SelectValue placeholder="Visualisation" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem className="text-xs text-amber-600 font-semibold" value="tabular">
+                                        Tabular
+                                    </SelectItem>
+                                    <SelectItem className="text-xs text-amber-600 font-semibold" value="graphic">
+                                        Graphic
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
 
                             <label className="block mb-2 text-sm">Number of clusters (k)</label>
-                            <input
+                            <input 
                                 type="number"
-                                value={params.k}
-                                onChange={(e) => setParams((s) => ({ ...s, k: Number(e.target.value) }))}
-                                className="mb-4 w-full rounded border px-2 py-1"
+                                value={params.k} 
+                                onChange={(e) => setParams((s) => ({ ...s, k: Number(e.target.value) }))} 
+                                className="mb-4 w-full rounded border px-2 py-1" 
                             />
 
                             <Button
-                                onClick={() => setGenerateVis(true)} //until Vis is implemented this starts the clustering output
+                                onClick={() => {if(params.visMethod === 'tabular'){setGenerateTable(true);}}} //until Vis is implemented this starts the clustering output
                                 className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md"
-                                aria-label="Configure case notion mining"
+                                aria-label="Configure case notion mining" 
                             >
                                 <span className="text-xs text-blue-600">Output</span>
                             </Button>
@@ -128,7 +140,7 @@ const CaseClustering: React.FC = () => {
                         </aside>
 
                         <main className="flex-1 rounded-md border bg-background p-2">
-                            {!generateVis ? (
+                            {!generateTable ? (
                                 <div className="text-sm text-muted-foreground p-4">Click "Output" to load table</div>
                             ) : (
                                 <Table>
