@@ -1,7 +1,7 @@
 // ...existing code...
 import React, { useEffect, useMemo, useState } from 'react';
-import { flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { Background, Controls, ReactFlow, ReactFlowProvider } from '@xyflow/react';
+import { flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import '@xyflow/react/dist/style.css';
 import { useParams } from 'react-router-dom';
 import { Button } from '~/components/ui/button';
@@ -16,9 +16,8 @@ const CaseClustering: React.FC = () => {
     const { getNode } = useExploreFlowStore();
 
     const [params, setParams] = useState({
-        clusteringAlgorithm: 'kmeans',
+        visMethod: 'tabular',
         k: 5,
-        distanceMetric: 'euclidean',
     });
 
     const [clusteringRaw, setClusteringRaw] = useState<any | null>(null);
@@ -27,8 +26,9 @@ const CaseClustering: React.FC = () => {
     const [generateVis, setGenerateVis] = useState(false);
     const [tableGenerated, setTableGenerated] = useState(false);
 
+    //Simuliert API function
     const getCaseNotionsMock = async () => {
-    // simuliert Netzwerkzeit
+      // simuliert Netzwerkzeit
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       return exampleClusterdata;
@@ -47,15 +47,15 @@ const CaseClustering: React.FC = () => {
     // Use Effect for the Button
     useEffect(() => {
         if (!generateVis) {return;}
-        console.log("Loaded mock data:", clusteringRaw.case_assignments.slice(0, 5)); // Log the first 5 case assignments for verification
     }, [generateVis]);
 
     const runInfo = useMemo(() => clusteringRaw?.run ?? null, [clusteringRaw]);
 
     const tableData = useMemo(() => {
         if (!generateVis || !clusteringRaw) return [];
+        console.log("loading tableData");
         // fallback mock data until clusteringRaw is wired
-        return clusteringRaw.case_assignments.map(([caseId, cluster]) => ({
+        return clusteringRaw.case_assignments.map(([caseId, cluster]: [number, number]) => ({
           caseId,
           cluster,
     }));
@@ -79,7 +79,6 @@ const CaseClustering: React.FC = () => {
         data: tableData,
         columns: tableColumns,
         getCoreRowModel: getCoreRowModel(),
-        manual: !generateVis,
     });
 
     return (
@@ -97,8 +96,8 @@ const CaseClustering: React.FC = () => {
 
                             <label className="block mb-2 text-sm">Visualisation</label>
                             <select
-                                value={params.clusteringAlgorithm}
-                                onChange={(e) => setParams((s) => ({ ...s, clusteringAlgorithm: e.target.value }))}
+                                value={params.visMethod}
+                                onChange={(e) => setParams((s) => ({ ...s, visMethod: e.target.value }))}
                                 className="mb-4 w-full rounded border px-2 py-1"
                             >
                                 <option value="tabular">Tabular</option>
@@ -136,9 +135,10 @@ const CaseClustering: React.FC = () => {
                                     <TableCaption>Clustering output (tabular view)</TableCaption>
 
                                     <TableHeader>
-                                        {table.getHeaderGroups().map((headerGroup) => (
+                                        {table.getHeaderGroups().map((headerGroup:any) => (
+                                            console.log(headerGroup),
                                             <TableRow key={headerGroup.id}>
-                                                {headerGroup.headers.map((header) => (
+                                                {headerGroup.headers.map((header:any) => (
                                                     <TableHead key={header.id}>
                                                         {flexRender(
                                                             header.column.columnDef.header,
@@ -151,9 +151,9 @@ const CaseClustering: React.FC = () => {
                                     </TableHeader>
 
                                     <TableBody>
-                                        {table.getRowModel().rows.map((row) => (
+                                        {table.getRowModel().rows.map((row:any) => (
                                             <TableRow key={row.id}>
-                                                {row.getVisibleCells().map((cell) => (
+                                                {row.getVisibleCells().map((cell:any) => (
                                                     <TableCell key={cell.id}>
                                                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                                     </TableCell>
