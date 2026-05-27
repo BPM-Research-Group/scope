@@ -6,11 +6,11 @@ import '@xyflow/react/dist/style.css';
 import { useParams } from 'react-router-dom';
 import { generate } from 'storybook/internal/babel';
 import { Button } from '~/components/ui/button';
-//später löschen
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
 import { SidebarInset, SidebarProvider } from '~/components/ui/sidebar';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '~/components/ui/table';
 import BreadcrumbNav from '~/components/BreadcrumbNav';
+import DotDiagram from '~/components/Voronoi';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import exampleClusterdata from '~/routes/CaseClusteringExamples/clustering_example_new.json';
 
@@ -26,8 +26,9 @@ const CaseClustering: React.FC = () => {
     const [clusteringRaw, setClusteringRaw] = useState<any | null>(null);
     const [nodes, setNodes] = useState<any[]>([]);
     const [edges, setEdges] = useState<any[]>([]);
-    const [generateVis, setGenerateVis] = useState(false);
     const [reloadTable, setReloadTable] = useState(false);
+    const [generateTable, setGenerateTable] = useState(false);
+    const [generateMap, setGenerateMap] = useState(false);
 
     //Simuliert API function
     const getCaseNotionsMock = async () => {
@@ -50,9 +51,11 @@ const CaseClustering: React.FC = () => {
     const runInfo = useMemo(() => clusteringRaw?.run ?? null, [clusteringRaw]);
 
     const tableData = useMemo(() => {
-        if (reloadTable===true) {setReloadTable(false);}
-        if (!generateVis || !clusteringRaw) return [];
-        if (params.visMethod==='tabular-simple') {
+        if (reloadTable === true) {
+            setReloadTable(false);
+        }
+        if (!generateTable || !clusteringRaw) return [];
+        if (params.visMethod === 'tabular-simple') {
             console.log('loading tableData');
             // fallback mock data until clusteringRaw is wired
             return clusteringRaw.case_assignments.map(([caseId, cluster_id]: [number, number]) => ({
@@ -60,7 +63,7 @@ const CaseClustering: React.FC = () => {
                 cluster_id,
             }));
         }
-        if (params.visMethod==='tabular-detailed') {
+        if (params.visMethod === 'tabular-detailed') {
             console.log('loading detailed tableData');
             return clusteringRaw.case_points.map((point: any) => ({
                 caseId: point.case_id,
@@ -72,11 +75,13 @@ const CaseClustering: React.FC = () => {
                 y_norm: point.y_norm,
             }));
         }
-    }, [clusteringRaw, generateVis, reloadTable]);
+    }, [clusteringRaw, generateTable, reloadTable]);
 
     const tableColumns = useMemo(() => {
-        if (reloadTable===true) {setReloadTable(false);}
-        if (params.visMethod==='tabular-simple') {
+        if (reloadTable === true) {
+            setReloadTable(false);
+        }
+        if (params.visMethod === 'tabular-simple') {
             return [
                 {
                     accessorKey: 'caseId',
@@ -109,8 +114,16 @@ const CaseClustering: React.FC = () => {
                 accessorKey: 'y',
                 header: 'Y',
             },
+            {
+                accessorKey: 'x_norm',
+                header: 'X Norm',
+            },
+            {
+                accessorKey: 'y_norm',
+                header: 'Y Norm',
+            },
         ];
-    }, [clusteringRaw, generateVis, reloadTable]);
+    }, [clusteringRaw, generateTable, reloadTable]);
 
     const table = useReactTable({
         data: tableData,
@@ -167,9 +180,21 @@ const CaseClustering: React.FC = () => {
                             />
 
                             <Button
-                                onClick={() => { 
-                                    if(generateVis===true) {setReloadTable(true);}
-                                    setGenerateVis(true);
+                                onClick={() => {
+                                    if (generateTable === true) {
+                                        setReloadTable(true);
+                                    }
+                                    if (
+                                        params.visMethod === 'tabular-simple' ||
+                                        params.visMethod === 'tabular-detailed'
+                                    ) {
+                                        setGenerateMap(true);
+                                        setGenerateTable(true);
+                                    }
+                                    if (params.visMethod === 'graphic') {
+                                        setGenerateTable(false);
+                                        setGenerateMap(true);
+                                    }
                                 }} //until Vis is implemented this starts the clustering output
                                 className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md"
                                 aria-label="Configure case notion mining"
@@ -185,7 +210,7 @@ const CaseClustering: React.FC = () => {
                         </aside>
 
                         <main className="flex-1 rounded-md border bg-background p-2">
-                            {!generateVis ? (
+                            {!generateTable ? (
                                 <div className="text-sm text-muted-foreground p-4">Click "Output" to load table</div>
                             ) : (
                                 <Table>
@@ -219,20 +244,25 @@ const CaseClustering: React.FC = () => {
                                     </TableBody>
                                 </Table>
                             )}
+                            {!generateMap ? (
+                                <div className="text-sm text-muted-foreground p-4">Click "Output" to load graphic</div>
+                            ) : (
+                                <DotDiagram
+                                    width={800}
+                                    height={700}
+                                    data={
+                                        clusteringRaw?.case_points?.map((d: any) => ({
+                                            id: d.id,
+                                            x: d.x_norm,
+                                            y: d.y_norm,
+                                        })) ?? []
+                                    }
+                                />
+                            )}
                         </main>
 
                         <aside className="w-64 min-w-[16rem] rounded-md border p-4 bg-background">
                             <h3 className="mb-2 text-sm font-semibold">Debug / Run Info</h3>
-                            <div className="text-xs">File ID: {clusteringRaw?.file_id ?? '-'}</div>
-                            <div className="text-xs">
-                                Clusters:{' '}
-                                {clusteringRaw?.case_assignments
-                                    ? new Set(clusteringRaw.case_assignments.map(([, c]: any) => c)).size
-                                    : '-'}
-                            </div>
-                            <pre className="text-xs mt-2 max-h-[60vh] overflow-auto">
-                                {clusteringRaw ? JSON.stringify(runInfo ?? clusteringRaw, null, 2) : '...'}
-                            </pre>
                         </aside>
                     </div>
                 </SidebarInset>
