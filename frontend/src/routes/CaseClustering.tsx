@@ -1,6 +1,6 @@
 // ...existing code...
 import React, { useEffect, useMemo, useState } from 'react';
-import { flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import { flexRender, getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from '@tanstack/react-table';
 import { Background, Controls, ReactFlow, ReactFlowProvider } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useParams } from 'react-router-dom';
@@ -31,7 +31,7 @@ const CaseClustering: React.FC = () => {
     const [reloadMap, setReloadMap] = useState(false);
     const [generateTable, setGenerateTable] = useState(false);
     const [generateMap, setGenerateMap] = useState(false);
-    
+    const [sorting, setSorting] = useState<SortingState>([]);
 
     //Simuliert API function
     const getCaseNotionsMock = async () => {
@@ -50,8 +50,6 @@ const CaseClustering: React.FC = () => {
         };
         loadData();
     }, []);
-
-    const runInfo = useMemo(() => clusteringRaw?.run ?? null, [clusteringRaw]);
 
     const tableData = useMemo(() => {
         if (reloadTable === true) {
@@ -93,6 +91,7 @@ const CaseClustering: React.FC = () => {
                 {
                     accessorKey: 'cluster_id',
                     header: 'Cluster',
+                    enableSorting: true,
                 },
             ];
         }
@@ -108,6 +107,7 @@ const CaseClustering: React.FC = () => {
             {
                 accessorKey: 'cluster_id',
                 header: 'Cluster',
+                enableSorting: true,
             },
             {
                 accessorKey: 'x',
@@ -132,17 +132,21 @@ const CaseClustering: React.FC = () => {
         data: tableData,
         columns: tableColumns,
         getCoreRowModel: getCoreRowModel(),
+        state: {  sorting,},
+        onSortingChange: setSorting,
+        getSortedRowModel: getSortedRowModel(),
     });
 
     const chartData = useMemo(() => {
-    return clusteringRaw?.case_points?.map((d: any) => ({
-      id: d.id,
-      x: d.x_norm,
-      y: d.y_norm,
-      cluster: d.cluster_id, // wichtig für Farblogik
-    })) ?? [];
-  }, [clusteringRaw]);
-
+        return (
+            clusteringRaw?.case_points?.map((d: any) => ({
+                id: d.id,
+                x: d.x_norm,
+                y: d.y_norm,
+                cluster: d.cluster_id, // wichtig für Farblogik
+            })) ?? []
+        );
+    }, [clusteringRaw]);
 
     return (
         <ReactFlowProvider>
@@ -231,7 +235,11 @@ const CaseClustering: React.FC = () => {
                                         {table.getHeaderGroups().map((headerGroup: any) => (
                                             <TableRow key={headerGroup.id}>
                                                 {headerGroup.headers.map((header: any) => (
-                                                    <TableHead key={header.id}>
+                                                    <TableHead
+                                                        key={header.id}
+                                                        onClick={header.column.getToggleSortingHandler()}
+                                                        className="cursor-pointer select-none"
+                                                    >
                                                         {flexRender(
                                                             header.column.columnDef.header,
                                                             header.getContext()
