@@ -29,7 +29,7 @@ export type VoronoiProps = {
   margin?: { top: number; right: number; bottom: number; left: number };
 };
 
-function Example({ width, height, data, margin = defaultMargin }: VoronoiProps) {
+function DotDiagram({ width, height, data, margin = defaultMargin }: VoronoiProps) {
   const innerWidth = Math.max(0, width - margin.left - margin.right);
   const innerHeight = Math.max(0, height - margin.top - margin.bottom);
 
@@ -107,4 +107,4 @@ function Example({ width, height, data, margin = defaultMargin }: VoronoiProps) 
   );
 }
 
-export default Example;
+export default DotDiagram;

@@ -10,9 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~
 import { SidebarInset, SidebarProvider } from '~/components/ui/sidebar';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '~/components/ui/table';
 import BreadcrumbNav from '~/components/BreadcrumbNav';
+import ClusterVis from '~/components/ClusteringVis';
 import DotDiagram from '~/components/Voronoi';
 import { useExploreFlowStore } from '~/stores/exploreStore';
-import exampleClusterdata from '~/routes/CaseClusteringExamples/clustering_example_new.json';
+import exampleClusterdata from '~/routes/CaseClusteringExamples/clustering_example_new2.json';
 
 const CaseClustering: React.FC = () => {
     const { nodeId } = useParams<{ nodeId: string }>();
@@ -27,8 +28,10 @@ const CaseClustering: React.FC = () => {
     const [nodes, setNodes] = useState<any[]>([]);
     const [edges, setEdges] = useState<any[]>([]);
     const [reloadTable, setReloadTable] = useState(false);
+    const [reloadMap, setReloadMap] = useState(false);
     const [generateTable, setGenerateTable] = useState(false);
     const [generateMap, setGenerateMap] = useState(false);
+    
 
     //Simuliert API function
     const getCaseNotionsMock = async () => {
@@ -131,6 +134,16 @@ const CaseClustering: React.FC = () => {
         getCoreRowModel: getCoreRowModel(),
     });
 
+    const chartData = useMemo(() => {
+    return clusteringRaw?.case_points?.map((d: any) => ({
+      id: d.id,
+      x: d.x_norm,
+      y: d.y_norm,
+      cluster: d.cluster_id, // wichtig für Farblogik
+    })) ?? [];
+  }, [clusteringRaw]);
+
+
     return (
         <ReactFlowProvider>
             <SidebarProvider>
@@ -188,7 +201,7 @@ const CaseClustering: React.FC = () => {
                                         params.visMethod === 'tabular-simple' ||
                                         params.visMethod === 'tabular-detailed'
                                     ) {
-                                        setGenerateMap(true);
+                                        setGenerateMap(false);
                                         setGenerateTable(true);
                                     }
                                     if (params.visMethod === 'graphic') {
@@ -210,9 +223,7 @@ const CaseClustering: React.FC = () => {
                         </aside>
 
                         <main className="flex-1 rounded-md border bg-background p-2">
-                            {!generateTable ? (
-                                <div className="text-sm text-muted-foreground p-4">Click "Output" to load table</div>
-                            ) : (
+                            {!generateTable ? null : (
                                 <Table>
                                     <TableCaption>Clustering output (tabular view)</TableCaption>
 
@@ -244,21 +255,7 @@ const CaseClustering: React.FC = () => {
                                     </TableBody>
                                 </Table>
                             )}
-                            {!generateMap ? (
-                                <div className="text-sm text-muted-foreground p-4">Click "Output" to load graphic</div>
-                            ) : (
-                                <DotDiagram
-                                    width={800}
-                                    height={700}
-                                    data={
-                                        clusteringRaw?.case_points?.map((d: any) => ({
-                                            id: d.id,
-                                            x: d.x_norm,
-                                            y: d.y_norm,
-                                        })) ?? []
-                                    }
-                                />
-                            )}
+                            {!generateMap ? null : <ClusterVis width={800} height={500} data={chartData} />}
                         </main>
 
                         <aside className="w-64 min-w-[16rem] rounded-md border p-4 bg-background">
