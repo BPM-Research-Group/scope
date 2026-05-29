@@ -13,7 +13,7 @@ import BreadcrumbNav from '~/components/BreadcrumbNav';
 import ClusterVis from '~/components/ClusteringVis';
 import DotDiagram from '~/components/Voronoi';
 import { useExploreFlowStore } from '~/stores/exploreStore';
-import exampleClusterdata from '~/routes/CaseClusteringExamples/clustering_example_new2.json';
+import exampleClusterdata from '~/routes/CaseClusteringExamples/clustering_example_new.json';
 
 const CaseClustering: React.FC = () => {
     const { nodeId } = useParams<{ nodeId: string }>();
@@ -132,7 +132,7 @@ const CaseClustering: React.FC = () => {
         data: tableData,
         columns: tableColumns,
         getCoreRowModel: getCoreRowModel(),
-        state: {  sorting,},
+        state: { sorting },
         onSortingChange: setSorting,
         getSortedRowModel: getSortedRowModel(),
     });
@@ -267,7 +267,31 @@ const CaseClustering: React.FC = () => {
                         </main>
 
                         <aside className="w-64 min-w-[16rem] rounded-md border p-4 bg-background">
-                            <h3 className="mb-2 text-sm font-semibold">Debug / Run Info</h3>
+                            <h3 className="mb-2 text-sm font-semibold">Data Overview</h3>
+                            <div className="space-y-3">
+                                <div className="rounded-md border p-2">
+                                    <p className="text-xs text-muted-foreground">Number of Clusters</p>
+                                    <p className="text-lg font-semibold">{clusteringRaw ? clusteringRaw.run.k : 0}</p>
+                                </div>
+                            </div>
+                            <div className="space-y-3">
+                                <div className="rounded-md border p-2">
+                                    <p className="text-xs text-muted-foreground">Number of Cases</p>
+                                    <p className="text-lg font-semibold">{clusteringRaw ? clusteringRaw.run.num_cases : 0}</p>
+                                </div>
+                            </div>
+                            <div className="space-y-3">
+                                <div className="rounded-md border p-2">
+                                    <p className="text-xs text-muted-foreground">Average Cluster Size</p>
+                                    <p className="text-lg font-semibold">{clusteringRaw ? Math.round(clusteringRaw.run.avg_cluster_size) : 0}</p>
+                                </div>
+                            </div>
+                            <div className="space-y-3">
+                                <div className="rounded-md border p-2">
+                                    <p className="text-xs text-muted-foreground">total_runtime_seconds</p>
+                                    <p className="text-lg font-semibold">{clusteringRaw ? clusteringRaw.run.total_runtime_seconds : 0}</p>
+                                </div>
+                            </div>
                         </aside>
                     </div>
                 </SidebarInset>
