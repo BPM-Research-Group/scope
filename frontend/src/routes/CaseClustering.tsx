@@ -13,7 +13,7 @@ import BreadcrumbNav from '~/components/BreadcrumbNav';
 import ClusterVis from '~/components/ClusteringVis';
 import DotDiagram from '~/components/Voronoi';
 import { useExploreFlowStore } from '~/stores/exploreStore';
-import exampleClusterdata from '~/routes/CaseClusteringExamples/clustering_example_new.json';
+import exampleClusterdata from '~/routes/CaseClusteringExamples/clustering_example_new2.json';
 
 const CaseClustering: React.FC = () => {
     const { nodeId } = useParams<{ nodeId: string }>();
@@ -35,7 +35,6 @@ const CaseClustering: React.FC = () => {
     const [generateMap, setGenerateMap] = useState(false);
     const [sorting, setSorting] = useState<SortingState>([]);
     const [loadResult, setloadResult] = useState(false);
-    const [visualizeCommand, setGenerateMapCommmand] = useState(false);
 
     //Simuliert API function
     const getCaseNotionsMock = async () => {
@@ -44,6 +43,24 @@ const CaseClustering: React.FC = () => {
 
         return exampleClusterdata;
     };
+
+    function display(option: string) {
+        console.log('--------------------------------');
+        setParams((s) => ({ ...s, visMethod: option }));
+        if (generateTable === true) {
+            setReloadTable(true);
+        }
+        if (option === 'tabular-simple' || option === 'tabular-detailed') {
+            console.log('displaying table');
+            setGenerateMap(false);
+            setGenerateTable(true);
+        }
+        if (option === 'graphic') {
+            console.log('displaying graphic');
+            setGenerateTable(false);
+            setGenerateMap(true);
+        }
+    }
 
     // Load the new clustering result from the backend in the beginning. Right know a example file
     useEffect(() => {
@@ -211,6 +228,18 @@ const CaseClustering: React.FC = () => {
                                 </SelectContent>
                             </Select>
 
+                            <div className="mb-2 flex items-center justify-between px-2"> </div>
+                            <Button
+                                onClick={() => {
+                                    setloadResult(true);
+                                    display(params.visMethod);
+                                }} 
+                                className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md"
+                                aria-label="Load and display the result"
+                            >
+                                <span className="text-xs text-blue-600">Load</span>
+                            </Button>
+
                             <label className="block mb-2 text-sm">Number of clusters (k)</label>
                             <input
                                 type="number"
@@ -219,96 +248,27 @@ const CaseClustering: React.FC = () => {
                                 className="mb-4 w-full rounded border px-2 py-1"
                             />
 
-                            <Button
-                                onClick={() => {
-                                    setloadResult(true);
-                                }} //until Vis is implemented this starts the clustering output
-                                className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md"
-                                aria-label="Loading the Result"
-                            >
-                                <span className="text-xs text-blue-600">Load Data</span>
-                            </Button>
-                            <div className="mb-2 flex items-center justify-between px-2"> </div>
+                            <hr />
+                            
+                            <label className="block mb-2 text-s"> Visualisation</label>
 
-                            <label className="block mb-2 text-sm">Visualisation</label>
-                            <Select
-                                value={params.visMethod}
-                                onValueChange={(e) => setParams((s) => ({ ...s, visMethod: e.toString() }))}
-                            >
-                                <SelectTrigger
-                                    className="h-07 px-2 bg-gray-100 text-amber-600 hover:bg-gray-200 rounded-md w-full gap-1 text-s font-semibold"
-                                    aria-label="Select Visualisation"
-                                >
-                                    <SelectValue placeholder="Visualisation" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem className="text-xs text-amber-600 font-semibold" value="tabular-simple">
-                                        Tabular-simple
-                                    </SelectItem>
-                                    <SelectItem
-                                        className="text-xs text-amber-600 font-semibold"
-                                        value="tabular-detailed"
+                            <div className="flex gap-2">
+                                {['tabular-simple', 'tabular-detailed', 'graphic'].map((option) => (
+                                    <button
+                                        key={option}
+                                        onClick={() => { 
+                                            display(option);
+                                        }}
+                                        className={`px-3 py-1 rounded-md text-xs font-semibold transition
+                                            ${
+                                                params.visMethod === option
+                                                    ? 'bg-amber-500 text-white'
+                                                    : 'bg-gray-100 text-amber-600 hover:bg-gray-200'
+                                            }`}
                                     >
-                                        Tabular-detailed
-                                    </SelectItem>
-                                    <SelectItem className="text-xs text-amber-600 font-semibold" value="graphic">
-                                        Graphic
-                                    </SelectItem>
-                                </SelectContent>
-                            </Select>
-
-                            <div className="mb-2 flex items-center justify-between px-2"> </div>
-                            <Button
-                                onClick={() => {
-                                    if (generateTable === true) {
-                                        setReloadTable(true);
-                                    }
-                                    if (
-                                        params.visMethod === 'tabular-simple' ||
-                                        params.visMethod === 'tabular-detailed'
-                                    ) {
-                                        setGenerateMap(false);
-                                        setGenerateTable(true);
-                                    }
-                                    if (params.visMethod === 'graphic') {
-                                        setGenerateTable(false);
-                                        setGenerateMap(true);
-                                    }
-                                }} //until Vis is implemented this starts the clustering output
-                                className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md"
-                                aria-label="Display the result"
-                            >
-                                <span className="text-xs text-blue-600">Display</span>
-                            </Button>
-                            <div className="mb-2 flex items-center justify-between px-2"> </div>
-                            <Button
-                                onClick={() => {
-                                    setloadResult(true);
-                                    if (generateTable === true) {
-                                        setReloadTable(true);
-                                    }
-                                    if (
-                                        params.visMethod === 'tabular-simple' ||
-                                        params.visMethod === 'tabular-detailed'
-                                    ) {
-                                        setGenerateMap(false);
-                                        setGenerateTable(true);
-                                    }
-                                    if (params.visMethod === 'graphic') {
-                                        setGenerateTable(false);
-                                        setGenerateMap(true);
-                                    }
-                                }} //until Vis is implemented this starts the clustering output
-                                className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md"
-                                aria-label="Load and display the result"
-                            >
-                                <span className="text-xs text-blue-600">Load & Display</span>
-                            </Button>
-
-                            <div className="mb-2 flex items-center justify-between px-2">
-                                <div className="text-sm text-muted-foreground">
-                                    Status: {clusteringRaw ? 'Loaded' : 'Loading…'}
-                                </div>
+                                        {option}
+                                    </button>
+                                ))}
                             </div>
                         </aside>
 
@@ -393,4 +353,3 @@ const CaseClustering: React.FC = () => {
 };
 
 export default CaseClustering;
-// ...existing code...
