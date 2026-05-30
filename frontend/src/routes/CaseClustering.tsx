@@ -13,7 +13,7 @@ import BreadcrumbNav from '~/components/BreadcrumbNav';
 import ClusterVis from '~/components/ClusteringVis';
 import DotDiagram from '~/components/Voronoi';
 import { useExploreFlowStore } from '~/stores/exploreStore';
-import exampleClusterdata from '~/routes/CaseClusteringExamples/clustering_example_new.json';
+import exampleClusterdata from '~/routes/CaseClusteringExamples/clustering_example_new2.json';
 
 const CaseClustering: React.FC = () => {
     const { nodeId } = useParams<{ nodeId: string }>();
@@ -22,6 +22,8 @@ const CaseClustering: React.FC = () => {
     const [params, setParams] = useState({
         visMethod: 'tabular-simple', //'tabular-detailed', 'graphic'
         k: 2,
+        distanceMeasure: 'Dfg-typ', //'Dfg-obj'
+        algorithm: 'k-medoids', //'agglomerative'
     });
 
     const [clusteringRaw, setClusteringRaw] = useState<any | null>(null);
@@ -161,6 +163,56 @@ const CaseClustering: React.FC = () => {
                                 Input-File: <strong>clustering_example.json</strong>
                             </div>
 
+                            <label className="block mb-2 text-sm">Distance Measure</label>
+                            <Select
+                                value={params.distanceMeasure}
+                                onValueChange={(e) => setParams((s) => ({ ...s, distanceMeasure: e.toString() }))}
+                            >
+                                <SelectTrigger
+                                    className="h-07 px-2 bg-gray-100 text-amber-600 hover:bg-gray-200 rounded-md w-full gap-1 text-s font-semibold"
+                                    aria-label="Select Measurement"
+                                >
+                                    <SelectValue placeholder="Measurement" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem className="text-xs text-amber-600 font-semibold" value="Dfg-typ">
+                                        Dfg-typ
+                                    </SelectItem>
+                                    <SelectItem className="text-xs text-amber-600 font-semibold" value="Dfg-obj" >
+                                        Dfg-obj
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+
+                            <label className="block mb-2 text-sm">Algorithm</label>
+                            <Select
+                                value={params.algorithm}
+                                onValueChange={(e) => setParams((s) => ({ ...s, algorithm: e.toString() }))}
+                            >
+                                <SelectTrigger
+                                    className="h-07 px-2 bg-gray-100 text-amber-600 hover:bg-gray-200 rounded-md w-full gap-1 text-s font-semibold"
+                                    aria-label="Select Algorithm"
+                                >
+                                    <SelectValue placeholder="Algorithm" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem className="text-xs text-amber-600 font-semibold" value="k-medoids">
+                                        k-medoids
+                                    </SelectItem>
+                                    <SelectItem className="text-xs text-amber-600 font-semibold" value="agglomerative" >
+                                        agglomerative clustering
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+
+                            <label className="block mb-2 text-sm">Number of clusters (k)</label>
+                            <input
+                                type="number"
+                                value={params.k}
+                                onChange={(e) => setParams((s) => ({ ...s, k: Number(e.target.value) }))}
+                                className="mb-4 w-full rounded border px-2 py-1"
+                            />
+
                             <label className="block mb-2 text-sm">Visualisation</label>
                             <Select
                                 value={params.visMethod}
@@ -187,14 +239,10 @@ const CaseClustering: React.FC = () => {
                                     </SelectItem>
                                 </SelectContent>
                             </Select>
-
-                            <label className="block mb-2 text-sm">Number of clusters (k)</label>
-                            <input
-                                type="number"
-                                value={params.k}
-                                onChange={(e) => setParams((s) => ({ ...s, k: Number(e.target.value) }))}
-                                className="mb-4 w-full rounded border px-2 py-1"
-                            />
+                            
+                            <div className="mb-2 flex items-center justify-between px-2">
+ 
+                            </div>
 
                             <Button
                                 onClick={() => {
@@ -277,19 +325,25 @@ const CaseClustering: React.FC = () => {
                             <div className="space-y-3">
                                 <div className="rounded-md border p-2">
                                     <p className="text-xs text-muted-foreground">Number of Cases</p>
-                                    <p className="text-lg font-semibold">{clusteringRaw ? clusteringRaw.run.num_cases : 0}</p>
+                                    <p className="text-lg font-semibold">
+                                        {clusteringRaw ? clusteringRaw.run.num_cases : 0}
+                                    </p>
                                 </div>
                             </div>
                             <div className="space-y-3">
                                 <div className="rounded-md border p-2">
                                     <p className="text-xs text-muted-foreground">Average Cluster Size</p>
-                                    <p className="text-lg font-semibold">{clusteringRaw ? Math.round(clusteringRaw.run.avg_cluster_size) : 0}</p>
+                                    <p className="text-lg font-semibold">
+                                        {clusteringRaw ? Math.round(clusteringRaw.run.avg_cluster_size) : 0}
+                                    </p>
                                 </div>
                             </div>
                             <div className="space-y-3">
                                 <div className="rounded-md border p-2">
                                     <p className="text-xs text-muted-foreground">total_runtime_seconds</p>
-                                    <p className="text-lg font-semibold">{clusteringRaw ? clusteringRaw.run.total_runtime_seconds : 0}</p>
+                                    <p className="text-lg font-semibold">
+                                        {clusteringRaw ? clusteringRaw.run.total_runtime_seconds : 0}
+                                    </p>
                                 </div>
                             </div>
                         </aside>
