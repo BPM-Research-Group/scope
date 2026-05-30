@@ -13,7 +13,7 @@ import BreadcrumbNav from '~/components/BreadcrumbNav';
 import ClusterVis from '~/components/ClusteringVis';
 import DotDiagram from '~/components/Voronoi';
 import { useExploreFlowStore } from '~/stores/exploreStore';
-import exampleClusterdata from '~/routes/CaseClusteringExamples/clustering_example_new2.json';
+import exampleClusterdata from '~/routes/CaseClusteringExamples/clustering_example_new.json';
 
 const CaseClustering: React.FC = () => {
     const { nodeId } = useParams<{ nodeId: string }>();
@@ -181,94 +181,97 @@ const CaseClustering: React.FC = () => {
                     <div className="flex h-full w-full gap-4 p-4">
                         <aside className="w-80 min-w-[18rem] rounded-md border p-4 bg-background">
                             <h2 className="mb-3 text-lg font-semibold">Case Clustering — Settings</h2>
+                            <div className="flex flex-col gap-y-0.5">
+                                <div className="mb-2 text-xs">
+                                    Input-File: <strong>clustering_example.json</strong>
+                                </div>
 
-                            <div className="mb-2 text-xs">
-                                Input-File: <strong>clustering_example.json</strong>
-                            </div>
-
-                            <label className="block mb-2 text-sm">Distance Measure</label>
-                            <Select
-                                value={params.distanceMeasure}
-                                onValueChange={(e) => setParams((s) => ({ ...s, distanceMeasure: e.toString() }))}
-                            >
-                                <SelectTrigger
-                                    className="h-07 px-2 bg-gray-100 text-amber-600 hover:bg-gray-200 rounded-md w-full gap-1 text-s font-semibold"
-                                    aria-label="Select Measurement"
+                                <label className="block mb-2 text-sm mt-3">Distance Measure</label>
+                                <Select
+                                    value={params.distanceMeasure}
+                                    onValueChange={(e) => setParams((s) => ({ ...s, distanceMeasure: e.toString() }))}
                                 >
-                                    <SelectValue placeholder="Measurement" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem className="text-xs text-amber-600 font-semibold" value="Dfg-typ">
-                                        Dfg-typ
-                                    </SelectItem>
-                                    <SelectItem className="text-xs text-amber-600 font-semibold" value="Dfg-obj">
-                                        Dfg-obj
-                                    </SelectItem>
-                                </SelectContent>
-                            </Select>
+                                    <SelectTrigger
+                                        className="h-07 px-2 bg-gray-100 text-amber-600 hover:bg-gray-200 rounded-md w-full gap-1 text-s font-semibold"
+                                        aria-label="Select Measurement"
+                                    >
+                                        <SelectValue placeholder="Measurement" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem className="text-xs text-amber-600 font-semibold" value="Dfg-typ">
+                                            Dfg-typ
+                                        </SelectItem>
+                                        <SelectItem className="text-xs text-amber-600 font-semibold" value="Dfg-obj">
+                                            Dfg-obj
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
 
-                            <label className="block mb-2 text-sm">Algorithm</label>
-                            <Select
-                                value={params.algorithm}
-                                onValueChange={(e) => setParams((s) => ({ ...s, algorithm: e.toString() }))}
-                            >
-                                <SelectTrigger
-                                    className="h-07 px-2 bg-gray-100 text-amber-600 hover:bg-gray-200 rounded-md w-full gap-1 text-s font-semibold"
-                                    aria-label="Select Algorithm"
+                                <label className="block mb-2 text-sm mt-3">Algorithm</label>
+                                <Select
+                                    value={params.algorithm}
+                                    onValueChange={(e) => setParams((s) => ({ ...s, algorithm: e.toString() }))}
                                 >
-                                    <SelectValue placeholder="Algorithm" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem className="text-xs text-amber-600 font-semibold" value="k-medoids">
-                                        k-medoids
-                                    </SelectItem>
-                                    <SelectItem className="text-xs text-amber-600 font-semibold" value="agglomerative">
-                                        agglomerative clustering
-                                    </SelectItem>
-                                </SelectContent>
-                            </Select>
+                                    <SelectTrigger
+                                        className="h-07 px-2 bg-gray-100 text-amber-600 hover:bg-gray-200 rounded-md w-full gap-1 text-s font-semibold"
+                                        aria-label="Select Algorithm"
+                                    >
+                                        <SelectValue placeholder="Algorithm" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem className="text-xs text-amber-600 font-semibold" value="k-medoids">
+                                            k-medoids
+                                        </SelectItem>
+                                        <SelectItem
+                                            className="text-xs text-amber-600 font-semibold"
+                                            value="agglomerative"
+                                        >
+                                            agglomerative clustering
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
 
-                            <div className="mb-2 flex items-center justify-between px-2"> </div>
-                            <Button
-                                onClick={() => {
-                                    setloadResult(true);
-                                    display(params.visMethod);
-                                }} 
-                                className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md"
-                                aria-label="Load and display the result"
-                            >
-                                <span className="text-xs text-blue-600">Load</span>
-                            </Button>
+                                <Button
+                                    onClick={() => {
+                                        setloadResult(true);
+                                        display(params.visMethod);
+                                    }}
+                                    className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md mt-3"
+                                    aria-label="Load and display the result"
+                                >
+                                    <span className="text-xs text-blue-600">Load</span>
+                                </Button>
 
-                            <label className="block mb-2 text-sm">Number of clusters (k)</label>
-                            <input
-                                type="number"
-                                value={params.k}
-                                onChange={(e) => setParams((s) => ({ ...s, k: Number(e.target.value) }))}
-                                className="mb-4 w-full rounded border px-2 py-1"
-                            />
+                                <label className="block mb-2 text-sm mt-3">Number of clusters (k)</label>
+                                <input
+                                    type="number"
+                                    value={params.k}
+                                    onChange={(e) => setParams((s) => ({ ...s, k: Number(e.target.value) }))}
+                                    className="mb-4 w-full rounded border px-2 py-1"
+                                />
 
-                            <hr />
-                            
-                            <label className="block mb-2 text-s"> Visualisation</label>
+                                <hr />
 
-                            <div className="flex gap-2">
-                                {['tabular-simple', 'tabular-detailed', 'graphic'].map((option) => (
-                                    <button
-                                        key={option}
-                                        onClick={() => { 
-                                            display(option);
-                                        }}
-                                        className={`px-3 py-1 rounded-md text-xs font-semibold transition
+                                <label className="block mb-2 text-s mt-3"> Visualisation</label>
+
+                                <div className="flex gap-2">
+                                    {['tabular-simple', 'tabular-detailed', 'graphic'].map((option) => (
+                                        <button
+                                            key={option}
+                                            onClick={() => {
+                                                display(option);
+                                            }}
+                                            className={`px-3 py-1 rounded-md text-xs font-semibold transition
                                             ${
                                                 params.visMethod === option
                                                     ? 'bg-amber-500 text-white'
                                                     : 'bg-gray-100 text-amber-600 hover:bg-gray-200'
                                             }`}
-                                    >
-                                        {option}
-                                    </button>
-                                ))}
+                                        >
+                                            {option}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         </aside>
 
@@ -314,6 +317,7 @@ const CaseClustering: React.FC = () => {
 
                         <aside className="w-64 min-w-[16rem] rounded-md border p-4 bg-background">
                             <h3 className="mb-2 text-sm font-semibold">Data Overview</h3>
+                            <div className="flex flex-col gap-2">
                             <div className="space-y-3">
                                 <div className="rounded-md border p-2">
                                     <p className="text-xs text-muted-foreground">Number of Clusters</p>
@@ -343,6 +347,7 @@ const CaseClustering: React.FC = () => {
                                         {clusteringRaw ? clusteringRaw.run.total_runtime_seconds : 0}
                                     </p>
                                 </div>
+                            </div>
                             </div>
                         </aside>
                     </div>
