@@ -1,6 +1,7 @@
 // ...existing code...
 import React, { useEffect, useMemo, useState } from 'react';
 import { flexRender, getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from '@tanstack/react-table';
+import { ParentSize } from '@visx/responsive';
 import { Background, Controls, ReactFlow, ReactFlowProvider } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useParams } from 'react-router-dom';
@@ -62,7 +63,7 @@ const CaseClustering: React.FC = () => {
         }
     }
 
-    // Load the new clustering result from the backend in the beginning. Right know a example file
+    // Load the new clustering result from the backend when Load button is pressed. Right know a example file
     useEffect(() => {
         if (!loadResult) {
             return;
@@ -233,6 +234,7 @@ const CaseClustering: React.FC = () => {
 
                                 <Button
                                     onClick={() => {
+                                        //console.log("Load Button clicked");
                                         setloadResult(true);
                                         display(params.visMethod);
                                     }}
@@ -275,7 +277,7 @@ const CaseClustering: React.FC = () => {
                             </div>
                         </aside>
 
-                        <main className="flex-1 rounded-md border bg-background p-2">
+                        <main className="flex-1 rounded-md border bg-background p-2 overflow-hidden">
                             {!generateTable ? null : (
                                 <Table>
                                     <TableCaption>Clustering output (tabular view)</TableCaption>
@@ -318,36 +320,38 @@ const CaseClustering: React.FC = () => {
                         <aside className="w-64 min-w-[16rem] rounded-md border p-4 bg-background">
                             <h3 className="mb-2 text-sm font-semibold">Data Overview</h3>
                             <div className="flex flex-col gap-2">
-                            <div className="space-y-3">
-                                <div className="rounded-md border p-2">
-                                    <p className="text-xs text-muted-foreground">Number of Clusters</p>
-                                    <p className="text-lg font-semibold">{clusteringRaw ? clusteringRaw.run.k : 0}</p>
+                                <div className="space-y-3">
+                                    <div className="rounded-md border p-2">
+                                        <p className="text-xs text-muted-foreground">Number of Clusters</p>
+                                        <p className="text-lg font-semibold">
+                                            {clusteringRaw ? clusteringRaw.run.k : 0}
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="space-y-3">
-                                <div className="rounded-md border p-2">
-                                    <p className="text-xs text-muted-foreground">Number of Cases</p>
-                                    <p className="text-lg font-semibold">
-                                        {clusteringRaw ? clusteringRaw.run.num_cases : 0}
-                                    </p>
+                                <div className="space-y-3">
+                                    <div className="rounded-md border p-2">
+                                        <p className="text-xs text-muted-foreground">Number of Cases</p>
+                                        <p className="text-lg font-semibold">
+                                            {clusteringRaw ? clusteringRaw.run.num_cases : 0}
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="space-y-3">
-                                <div className="rounded-md border p-2">
-                                    <p className="text-xs text-muted-foreground">Average Cluster Size</p>
-                                    <p className="text-lg font-semibold">
-                                        {clusteringRaw ? Math.round(clusteringRaw.run.avg_cluster_size) : 0}
-                                    </p>
+                                <div className="space-y-3">
+                                    <div className="rounded-md border p-2">
+                                        <p className="text-xs text-muted-foreground">Average Cluster Size</p>
+                                        <p className="text-lg font-semibold">
+                                            {clusteringRaw ? Math.round(clusteringRaw.run.avg_cluster_size) : 0}
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="space-y-3">
-                                <div className="rounded-md border p-2">
-                                    <p className="text-xs text-muted-foreground">total_runtime_seconds</p>
-                                    <p className="text-lg font-semibold">
-                                        {clusteringRaw ? clusteringRaw.run.total_runtime_seconds : 0}
-                                    </p>
+                                <div className="space-y-3">
+                                    <div className="rounded-md border p-2">
+                                        <p className="text-xs text-muted-foreground">total_runtime_seconds</p>
+                                        <p className="text-lg font-semibold">
+                                            {clusteringRaw ? clusteringRaw.run.total_runtime_seconds : 0}
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
                             </div>
                         </aside>
                     </div>
