@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Group } from '@visx/group';
 import { polygonHull } from 'd3-polygon';
 
@@ -16,12 +16,12 @@ type Props = {
     margin?: { top: number; left: number; right: number; bottom: number };
 };
 
-const defaultMargin = { top: 0, left: 0, right: 0, bottom: 0 };
+const verge = 50
+const defaultMargin = { top: verge, left: verge, right: verge, bottom: verge };
 
 const COLORS = ['#6366F1', '#22C55E', '#F97316', '#EC4899', '#06B6D4', '#A855F7', '#EAB308', '#EF4444'];
 
 export default function ClusterScatter({ width, height, data, margin = defaultMargin }: Props) {
-    const [hoveredPoint, setHoveredPoint] = useState<Datum | null>(null);
     const innerWidth = Math.max(0, width - margin.left - margin.right);
     const innerHeight = Math.max(0, height - margin.top - margin.bottom);
 
@@ -75,36 +75,16 @@ export default function ClusterScatter({ width, height, data, margin = defaultMa
 
                 {/* 🔵 Points */}
                 {data.map((d) => (
-                    <g key={d.id}>
-                        <circle
-                            cx={d.x * innerWidth}
-                            cy={d.y * innerHeight}
-                            r={hoveredPoint?.id === d.id ? 6 : 4}
-                            fill={colorMap.get(d.cluster)}
-                            fillOpacity={0.9}
-                            stroke="#fff"
-                            strokeWidth={0.5}
-                            onMouseEnter={() => setHoveredPoint(d)}
-                            onMouseLeave={() => setHoveredPoint(null)}
-                            style={{
-                                cursor: 'pointer',
-                                transition: 'all 0.15s ease',
-                            }}
-                        />
-
-                        {/* 🏷 Tooltip */}
-                        {hoveredPoint && (
-                            <g
-                                transform={`translate(${hoveredPoint.x * innerWidth + 10}, ${hoveredPoint.y * innerHeight - 10})`}
-                                pointerEvents="none"
-                            >
-                                <rect width={80} height={24} rx={6} fill="#111" fillOpacity={0.85} />
-                                <text x={8} y={16} fontSize={12} fill="#fff">
-                                    {hoveredPoint.id}
-                                </text>
-                            </g>
-                        )}
-                    </g>
+                    <circle
+                        key={d.id}
+                        cx={d.x * innerWidth}
+                        cy={d.y * innerHeight}
+                        r={4}
+                        fill={colorMap.get(d.cluster)}
+                        fillOpacity={0.9}
+                        stroke="#fff"
+                        strokeWidth={0.5}
+                    />
                 ))}
             </Group>
         </svg>
