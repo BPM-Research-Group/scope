@@ -16,12 +16,20 @@ type Props = {
     margin?: { top: number; left: number; right: number; bottom: number };
 };
 
-const verge = 50
+type AggregatedDatum = {
+    x: number;
+    y: number;
+    count: number;
+    cluster: string | number;
+};
+
+const verge = 100;
 const defaultMargin = { top: verge, left: verge, right: verge, bottom: verge };
 
 const COLORS = ['#6366F1', '#22C55E', '#F97316', '#EC4899', '#06B6D4', '#A855F7', '#EAB308', '#EF4444'];
 
 export default function ClusterScatter({ width, height, data, margin = defaultMargin }: Props) {
+    console.log(width, height);
     const innerWidth = Math.max(0, width - margin.left - margin.right);
     const innerHeight = Math.max(0, height - margin.top - margin.bottom);
 
@@ -49,6 +57,29 @@ export default function ClusterScatter({ width, height, data, margin = defaultMa
         return map;
     }, [data]);
 
+    const aggregatedData = useMemo(() => {
+        const map = new Map<string, AggregatedDatum>();
+
+        data.forEach((d) => {
+            const key = `${d.x}-${d.y}-${d.cluster}`;
+
+            if (!map.has(key)) {
+                map.set(key, {
+                    x: d.x,
+                    y: d.y,
+                    cluster: d.cluster,
+                    count: 1,
+                });
+            } else {
+                map.get(key)!.count += 1;
+            }
+        });
+
+        return Array.from(map.values());
+    }, [data]);
+
+    console.log(aggregatedData);
+
     if (width < 10 || height < 10) return null;
 
     return (
@@ -74,14 +105,13 @@ export default function ClusterScatter({ width, height, data, margin = defaultMa
                 })}
 
                 {/* 🔵 Points */}
-                {data.map((d) => (
+                {aggregatedData.map((d) => (
                     <circle
-                        key={d.id}
                         cx={d.x * innerWidth}
                         cy={d.y * innerHeight}
-                        r={4}
+                        r={100/data.length * d.count}
                         fill={colorMap.get(d.cluster)}
-                        fillOpacity={0.9}
+                        fillOpacity={0.75}
                         stroke="#fff"
                         strokeWidth={0.5}
                     />
