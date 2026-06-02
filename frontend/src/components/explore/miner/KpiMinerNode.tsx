@@ -57,8 +57,8 @@ const KpiMinerNode = memo<NodeProps<MinerNode>>((node) => {
     return (
         <BaseMinerNode
             {...node}
-            title="KPI Miner"
-            iconName="chartBar"
+            title="KPI Builder"
+            iconName="network"
             handleOptions={[
                 { id: 'target', position: Position.Left, type: 'target' as const },
                 { id: 'source', position: Position.Right, type: 'source' as const },

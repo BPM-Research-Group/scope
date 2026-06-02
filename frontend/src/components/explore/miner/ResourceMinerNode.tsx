@@ -62,7 +62,7 @@ const ResourceMinerNode = memo<NodeProps<MinerNode>>((node) => {
         <BaseMinerNode
             {...node}
             title="Resource Miner"
-            iconName="chartBar"
+            iconName="activity"
             handleOptions={[
                 { id: 'target', position: Position.Left, type: 'target' as const },
                 { id: 'source', position: Position.Right, type: 'source' as const },
