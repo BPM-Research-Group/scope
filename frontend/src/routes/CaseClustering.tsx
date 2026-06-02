@@ -1,11 +1,8 @@
-// ...existing code...
 import React, { useEffect, useMemo, useState } from 'react';
 import { flexRender, getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from '@tanstack/react-table';
 import { ParentSize } from '@visx/responsive';
-import { Background, Controls, ReactFlow, ReactFlowProvider } from '@xyflow/react';
+import { ReactFlowProvider } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { useParams } from 'react-router-dom';
-import { generate } from 'storybook/internal/babel';
 import { Button } from '~/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
 import { SidebarInset, SidebarProvider } from '~/components/ui/sidebar';
@@ -13,13 +10,9 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 import ClusterVis from '~/components/ClusteringVis';
 import DotDiagram from '~/components/Voronoi';
-import { useExploreFlowStore } from '~/stores/exploreStore';
 import exampleClusterdata from '~/routes/CaseClusteringExamples/clustering_example_new2.json';
 
 const CaseClustering: React.FC = () => {
-    const { nodeId } = useParams<{ nodeId: string }>();
-    const { getNode } = useExploreFlowStore();
-
     const [params, setParams] = useState({
         visMethod: 'tabular-simple', //'tabular-detailed', 'graphic'
         k: 2,
@@ -28,10 +21,7 @@ const CaseClustering: React.FC = () => {
     });
 
     const [clusteringRaw, setClusteringRaw] = useState<any | null>(null);
-    const [nodes, setNodes] = useState<any[]>([]);
-    const [edges, setEdges] = useState<any[]>([]);
     const [reloadTable, setReloadTable] = useState(false);
-    const [reloadMap, setReloadMap] = useState(false);
     const [generateTable, setGenerateTable] = useState(false);
     const [generateMap, setGenerateMap] = useState(false);
     const [sorting, setSorting] = useState<SortingState>([]);
@@ -46,31 +36,27 @@ const CaseClustering: React.FC = () => {
     };
 
     function display(option: string) {
-        console.log('--------------------------------');
         setParams((s) => ({ ...s, visMethod: option }));
         if (generateTable === true) {
             setReloadTable(true);
         }
         if (option === 'tabular-simple' || option === 'tabular-detailed') {
-            console.log('displaying table');
             setGenerateMap(false);
             setGenerateTable(true);
         }
         if (option === 'graphic') {
-            console.log('displaying graphic');
             setGenerateTable(false);
             setGenerateMap(true);
         }
     }
 
-    // Load the new clustering result from the backend when Load button is pressed. Right know a example file
+    // Load the new clustering result from the backend when Load button is pressed. Right know a example file is read
     useEffect(() => {
         if (!loadResult) {
             return;
         }
         const loadData = async () => {
             const data = await getCaseNotionsMock();
-            console.log(data);
             setClusteringRaw(data);
         };
         loadData();
@@ -83,15 +69,12 @@ const CaseClustering: React.FC = () => {
         }
         if (!generateTable || !clusteringRaw) return [];
         if (params.visMethod === 'tabular-simple') {
-            console.log('loading tableData');
-            // fallback mock data until clusteringRaw is wired
             return clusteringRaw.case_assignments.map(([caseId, cluster_id]: [number, number]) => ({
                 caseId,
                 cluster_id,
             }));
         }
         if (params.visMethod === 'tabular-detailed') {
-            console.log('loading detailed tableData');
             return clusteringRaw.case_points.map((point: any) => ({
                 caseId: point.case_id,
                 case_index: point.case_index,
@@ -169,7 +152,7 @@ const CaseClustering: React.FC = () => {
                 id: d.id,
                 x: d.x_norm,
                 y: d.y_norm,
-                cluster: d.cluster_id, // wichtig für Farblogik
+                cluster: d.cluster_id,
             })) ?? []
         );
     }, [clusteringRaw]);
@@ -234,7 +217,6 @@ const CaseClustering: React.FC = () => {
 
                                 <Button
                                     onClick={() => {
-                                        //console.log("Load Button clicked");
                                         setloadResult(true);
                                         display(params.visMethod);
                                     }}

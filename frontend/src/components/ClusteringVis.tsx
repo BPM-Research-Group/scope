@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Group } from '@visx/group';
 import { polygonHull } from 'd3-polygon';
 
@@ -78,14 +78,12 @@ export default function ClusterScatter({ width, height, data, margin = defaultMa
         return Array.from(map.values());
     }, [data]);
 
-    console.log(aggregatedData);
-
     if (width < 10 || height < 10) return null;
 
     return (
         <svg width={width} height={height}>
             <Group top={margin.top} left={margin.left}>
-                {/* 🟣 Cluster Hulls (Background Shapes) */}
+                {/* Cluster Hulls (Background Shapes) */}
                 {Array.from(grouped.entries()).map(([cluster, points]) => {
                     const hull = polygonHull(points.map((p) => [p.x * innerWidth, p.y * innerHeight]));
 
@@ -104,7 +102,7 @@ export default function ClusterScatter({ width, height, data, margin = defaultMa
                     );
                 })}
 
-                {/* 🔵 Points */}
+                {/*Points */}
                 {aggregatedData.map((d) => (
                     <circle
                         cx={d.x * innerWidth}
