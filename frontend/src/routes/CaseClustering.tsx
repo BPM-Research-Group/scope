@@ -301,8 +301,12 @@ const CaseClustering: React.FC = () => {
                             <main className="h-screen flex-1 rounded-md border bg-background p-2 overflow-hidden h-full w-full">
                                 <ParentSize>
                                     {({ width, height }) => (
-                                         /* Die folgende Zeile garantiert ein verhältnis von 1:1 */
-                                        <ClusterVis width={Math.min(width, height)} height={Math.min(width, height)} data={chartData} />
+                                        /* Die folgende Zeile garantiert ein verhältnis von 1:1 */
+                                        <ClusterVis
+                                            width={Math.min(width, height)}
+                                            height={Math.min(width, height)}
+                                            data={chartData}
+                                        />
                                         /* Die folgende Zeile implementiert ein dynamisches Verhältnis um die maximale Bildschirmgröße Auszunutzen */
                                         /* <ClusterVis width={width} height={height} data={chartData} /> */
                                     )}
@@ -343,6 +347,26 @@ const CaseClustering: React.FC = () => {
                                         <p className="text-lg font-semibold">
                                             {clusteringRaw ? clusteringRaw.run.total_runtime_seconds : 0}
                                         </p>
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    <div className="rounded-md border p-2">
+                                        <p className="text-xs text-muted-foreground">cluster_event_counts</p>
+                                        {clusteringRaw?.run?.cluster_event_counts?.map((group, groupIndex) => (
+                                            <div key={groupIndex} className="mb-3">
+                                                <p className="text-sm font-bold text-muted-foreground">
+                                                    Cluster {groupIndex + 1}
+                                                </p>
+
+                                                <div className="ml-2">
+                                                    {group.map(([name, value]) => (
+                                                        <p key={name} className="text-base font-semibold">
+                                                            {name}: {value}
+                                                        </p>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             </div>
