@@ -14,7 +14,7 @@ import BreadcrumbNav from '~/components/BreadcrumbNav';
 import ClusterVis from '~/components/ClusteringVis';
 import DotDiagram from '~/components/Voronoi';
 import { useExploreFlowStore } from '~/stores/exploreStore';
-import exampleClusterdata from '~/routes/CaseClusteringExamples/clustering_example_new.json';
+import exampleClusterdata from '~/routes/CaseClusteringExamples/clustering_example_new2.json';
 
 const CaseClustering: React.FC = () => {
     const { nodeId } = useParams<{ nodeId: string }>();
@@ -179,8 +179,8 @@ const CaseClustering: React.FC = () => {
             <SidebarProvider>
                 <SidebarInset>
                     <BreadcrumbNav />
-                    <div className="flex h-full w-full gap-4 p-4">
-                        <aside className="w-80 min-w-[18rem] rounded-md border p-4 bg-background">
+                    <div className="flex h-full w-full gap-4 p-4 min-h-0">
+                        <aside className="w-80 min-w-[18rem] rounded-md border p-4 bg-background min-h-0">
                             <h2 className="mb-3 text-lg font-semibold">Case Clustering — Settings</h2>
                             <div className="flex flex-col gap-y-0.5">
                                 <div className="mb-2 text-xs">
@@ -277,8 +277,8 @@ const CaseClustering: React.FC = () => {
                             </div>
                         </aside>
 
-                        <main className="flex-1 rounded-md border bg-background p-2 overflow-hidden">
-                            {!generateTable ? null : (
+                        {!generateTable ? null : (
+                            <main className="flex-1 rounded-md border bg-background p-2 overflow-hidden">
                                 <Table>
                                     <TableCaption>Clustering output (tabular view)</TableCaption>
 
@@ -313,11 +313,19 @@ const CaseClustering: React.FC = () => {
                                         ))}
                                     </TableBody>
                                 </Table>
-                            )}
-                            {!generateMap ? null : <ClusterVis width={800} height={500} data={chartData} />}
-                        </main>
+                            </main>
+                        )}
+                        {!generateMap ? null : (
+                            <main className="h-screen flex-1 rounded-md border bg-background p-2 overflow-hidden h-full w-full">
+                                <ParentSize>
+                                    {({ width, height }) => (
+                                        <ClusterVis width={width} height={height} data={chartData} />
+                                    )}
+                                </ParentSize>
+                            </main>
+                        )}
 
-                        <aside className="w-64 min-w-[16rem] rounded-md border p-4 bg-background">
+                        <aside className="w-64 min-w-[16rem] rounded-md border p-4 bg-background min-h-0">
                             <h3 className="mb-2 text-sm font-semibold">Data Overview</h3>
                             <div className="flex flex-col gap-2">
                                 <div className="space-y-3">
