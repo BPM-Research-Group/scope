@@ -23,13 +23,12 @@ type AggregatedDatum = {
     cluster: string | number;
 };
 
-const verge = 100;
+const verge = 50;
 const defaultMargin = { top: verge, left: verge, right: verge, bottom: verge };
 
 const COLORS = ['#6366F1', '#22C55E', '#F97316', '#EC4899', '#06B6D4', '#A855F7', '#EAB308', '#EF4444'];
 
 export default function ClusterScatter({ width, height, data, margin = defaultMargin }: Props) {
-    console.log(width, height);
     const innerWidth = Math.max(0, width - margin.left - margin.right);
     const innerHeight = Math.max(0, height - margin.top - margin.bottom);
 
@@ -107,12 +106,22 @@ export default function ClusterScatter({ width, height, data, margin = defaultMa
                     <circle
                         cx={d.x * innerWidth}
                         cy={d.y * innerHeight}
-                        r={100/data.length * d.count}
+                        r={(100 / data.length) * d.count}
                         fill={colorMap.get(d.cluster)}
                         fillOpacity={0.75}
                         stroke="#fff"
                         strokeWidth={0.5}
                     />
+                ))}
+            </Group>
+            <Group>
+                {Array.from(colorMap.entries()).map(([cluster, color], i) => (
+                    <g key={cluster} transform={`translate(10, ${20 + i * 20})`}>
+                        <circle r={5} fill={color} />
+                        <text x={12} y={4} fontSize={12} fill="#666">
+                            {String(cluster)}
+                        </text>
+                    </g>
                 ))}
             </Group>
         </svg>
