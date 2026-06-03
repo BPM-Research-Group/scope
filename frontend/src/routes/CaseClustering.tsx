@@ -298,17 +298,20 @@ const CaseClustering: React.FC = () => {
                             </main>
                         )}
                         {!generateMap ? null : (
-                            <main className="h-screen flex-1 rounded-md border bg-background p-2 overflow-hidden h-full w-full">
+                            <main
+                                className="flex-1 rounded-md border bg-background p-2 overflow-hidden w-full"
+                                style={{ height: 'calc(100vh - 57px)' }} /* Limits the height to the window - the navi*/
+                            >
                                 <ParentSize>
                                     {({ width, height }) => (
-                                        /* Die folgende Zeile garantiert ein verhältnis von 1:1 */
+                                        /* This guarantees a graphic ratio 1:1*/
                                         <ClusterVis
                                             width={Math.min(width, height)}
                                             height={Math.min(width, height)}
                                             data={chartData}
                                         />
-                                        /* Die folgende Zeile implementiert ein dynamisches Verhältnis um die maximale Bildschirmgröße Auszunutzen */
-                                        /* <ClusterVis width={width} height={height} data={chartData} /> */
+                                        /* This implements a dynamic ratio to utilize the maximum screen size */
+                                        /*<ClusterVis width={width} height={height} data={chartData} /> */
                                     )}
                                 </ParentSize>
                             </main>
