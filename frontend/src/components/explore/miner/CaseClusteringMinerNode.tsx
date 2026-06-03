@@ -2,22 +2,20 @@ import { memo, useCallback, useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { NodeProps } from '@xyflow/react';
 import { Position } from '@xyflow/react';
+import { useNavigate } from 'react-router-dom';
 import { Eye } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { Button } from '~/components/ui/button';
-import CaseNotionDialog from '~/components/case_notion/ui/CaseNotionDialog';
 import BaseMinerNode from '~/components/explore/miner/BaseMinerNode';
-import { useMineCaseNotionMutation } from '~/services/mutation';
-import { useGetCaseNotions, useGetOcelObjectTypes } from '~/services/queries';
 import { handleMinerOutput } from '~/lib/explore/flowActions';
 import { useInputAsset } from '~/hooks/explore/useMinerAssets';
-import { BaseExploreNodeDropdownOption } from '~/types/explore/nodeData/baseNodeData';
 import { MinerNode } from '~/types/explore/nodes';
-
 
 //still just Framework
 
 const CaseClusteringMinerNode = memo<NodeProps<MinerNode>>((node) => {
+    const navigate = useNavigate();
+    const { id, data: nodeData } = node;
     const queryClient = useQueryClient();
     const { assets } = node.data;
 
@@ -26,31 +24,42 @@ const CaseClusteringMinerNode = memo<NodeProps<MinerNode>>((node) => {
     const fileName = inputAsset?.name ?? '';
     const [generateOutput, setGenerateOutput] = useState(false);    //sais if an output should be generated 
     const [outputGenerated, setOutputGenerated] = useState(false);  //sais if there is already an output
+    const inputFileId = inputAsset?.id ?? null;
 
     const handleReset = useCallback(() => {
         queryClient.removeQueries({ queryKey: ['getAbstraction', node.id] });
-    }, [queryClient, node.id]);
+    }, [queryClient, node.id]);    
 
+    const openMinerInterface = () => {
+        if (inputFileId) {
+            navigate(`/data/pipeline/explore/caseclustering/${id}`);
+        }
+    };
 
     const renderActions = () => {
         if (!fileId) return null;
         return (
             <div className="flex items-center">
                 <Button
-                    onClick={() => setGenerateOutput(true)}
+                    onClick={() => {
+                        setGenerateOutput(true);
+                        openMinerInterface();
+                    }} //until Vis is implemented this starts the clustering output
                     className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md"
                     aria-label="Configure case notion mining"
                 >
                     <Eye className="h-3.5 w-3.5 mr-1 text-blue-600" />
-                    <span className="text-xs text-blue-600">Output</span>
+                    <span className="text-xs text-blue-600">Configure</span>
                 </Button>
             </div>
         );
     };
 
     useEffect(() => {
-            if (!generateOutput) return;
+            if (!generateOutput || !outputGenerated) return;
             const outputId = uuidv4(); // new asset id for the produced output
+            //Here put the linkt to the clustering algorithm/ include the functionality
+            
             /*handleMinerOutput({
             nodeId: node.id,
             outputAssetId: outputId,
@@ -72,11 +81,12 @@ const CaseClusteringMinerNode = memo<NodeProps<MinerNode>>((node) => {
                 outputNodeType:'ocelCollectionNode',
                 inputFileName: fileName || 'input',
             });
-
-
             setOutputGenerated(true);
         }, [generateOutput, outputGenerated]);
-
+    
+    //const handleReset = useCallback(() => {
+    //    queryClient.removeQueries({ queryKey: ['mineOcpt', node.id] });
+    //}, [queryClient, node.id]);
 
 
     // Returns new node! -> in my case it can be one or multiple OCEL collection (like notion miner)

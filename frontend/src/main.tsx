@@ -23,6 +23,7 @@ import OcpnViewer from './routes/OcpnViewer';
 import CaseClustering from './routes/CaseClustering';
 >>>>>>> 76c20d5 (clustering page added - Backend)
 
+
 // Create a client
 const queryClient = new QueryClient();
 
@@ -112,7 +113,7 @@ const router = createBrowserRouter([
         ),
     },
     {
-        path: '/data/pipeline/explore/caseclustering',
+        path: '/data/pipeline/explore/caseclustering/:nodeId',
         element: (
             <RedirectErrorBoundary>
                 <CaseClustering />
