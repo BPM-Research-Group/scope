@@ -51,6 +51,7 @@ pub struct MinerSnapshot {
     pub convergent: HashMap<String, Vec<String>>,
     pub divergent: HashMap<String, Vec<String>>,
     pub deficient: HashMap<String, Vec<String>>,
+    pub related: HashMap<String, Vec<String>>,
     pub _processed_count: usize,
     pub _last_timestamp: Option<String>,
     pub _start_activity_types: HashMap<String, String>,
@@ -71,8 +72,12 @@ pub struct HeuristicsConfig {
     /// The probability threshold (0.0 to 1.0) required to assume an activity permanently ends an object's lifecycle.
     pub end_probability_threshold: f64,
     /// Whether to use the new mathematically unified heuristic cleanup routine.
-    #[serde(default)]
+    #[serde(default = "default_true")]
     pub use_unified_heuristics: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 impl Default for HeuristicsConfig {
@@ -80,10 +85,10 @@ impl Default for HeuristicsConfig {
         Self {
             cleanup_interval: 10_000,
             max_inactive_events: 1_000,
-            end_hint_timeout: 10_000,
+            end_hint_timeout: 200,
             min_end_histogram_samples: 100,
             end_probability_threshold: 0.90,
-            use_unified_heuristics: false,
+            use_unified_heuristics: true,
         }
     }
 }
@@ -108,6 +113,9 @@ pub struct MinerState {
     
     pub object_to_type: HashMap<String, String>,
     pub object_type_map: HashMap<u32, u32>,
+    pub active_objects_by_last_seen: BTreeSet<(usize, u32)>,
+    pub divergence_by_last_seen: BTreeSet<(usize, u32, u32, u64, u64)>,
+    pub total_ends_per_type: HashMap<u32, usize>,
 
     pub dirty_dfg: bool,
     pub dirty_ocpt: bool,
@@ -275,7 +283,8 @@ impl MinerSnapshot {
             &process_forest, 
             &self.convergent, 
             &self.deficient, 
-            &self.divergent
+            &self.divergent,
+            &self.related
         );
         let json = serde_json::to_string(&output_json).unwrap();
         serde_json::from_str(&json).unwrap()
@@ -315,6 +324,15 @@ impl MinerState {
             }
         }
 
+        let mut related = HashMap::new();
+        for (&(act, ot), count) in &self.activity_otype_event_counts {
+            if *count > 0 {
+                let act_str = self.pool.get_str(act).to_string();
+                let ot_str = self.pool.get_str(ot).to_string();
+                related.entry(act_str).or_insert_with(Vec::new).push(ot_str);
+            }
+        }
+
         let mut end_acts = HashSet::new();
         for &(act, _) in self.last_event_per_object.values() {
             end_acts.insert(self.pool.get_str(act).to_string());
@@ -328,6 +346,7 @@ impl MinerState {
             convergent: con,
             divergent: div,
             deficient: defi,
+            related,
             _processed_count: self._processed_count,
             _last_timestamp: self._last_timestamp.clone(),
             _start_activity_types: base.start_activity_types,
@@ -377,43 +396,53 @@ impl MinerState {
                 {
                     let group_map = self.divergence_index.entry(key.clone()).or_default();
                     if let Some(full_sets) = group_map.get_mut(&ot_set_hash) {
+                        if let Some(&prev_last_seen) = full_sets.get(&full_object_set_hash) {
+                            self.divergence_by_last_seen.remove(&(prev_last_seen, act_id, ot_id, ot_set_hash, full_object_set_hash));
+                        }
                         if !full_sets.contains_key(&full_object_set_hash) {
                             self.divergent_activities.entry(act_id).or_default().insert(ot_id);
                             full_sets.insert(full_object_set_hash, self._processed_count);
+                            self.divergence_by_last_seen.insert((self._processed_count, act_id, ot_id, ot_set_hash, full_object_set_hash));
                             if self.free_memory {
                                 should_remove = true;
                             }
                         } else {
                             full_sets.insert(full_object_set_hash, self._processed_count);
+                            self.divergence_by_last_seen.insert((self._processed_count, act_id, ot_id, ot_set_hash, full_object_set_hash));
                         }
                     } else {
                         let mut sets = HashMap::new();
                         sets.insert(full_object_set_hash, self._processed_count);
                         group_map.insert(ot_set_hash, sets);
+                        self.divergence_by_last_seen.insert((self._processed_count, act_id, ot_id, ot_set_hash, full_object_set_hash));
                     }
                 }
                 if should_remove {
-                    self.divergence_index.remove(&key);
+                    if let Some(removed_group) = self.divergence_index.remove(&key) {
+                        for (ot_sh, set_map) in removed_group {
+                            for (full_sh, last_s) in set_map {
+                                self.divergence_by_last_seen.remove(&(last_s, act_id, ot_id, ot_sh, full_sh));
+                            }
+                        }
+                    }
                 }
             }
 
-            let seen_objects = self.seen_objects_per_act_type.entry(key.clone()).or_default();
-            for &oid_id in &ot_set_vec {
-                if seen_objects.contains(&oid_id) {
-                    self.convergent_activities.entry(act_id).or_default().insert(ot_id);
-                }
-                seen_objects.insert(oid_id);
+            if ot_set_vec.len() > 1 {
+                self.convergent_activities.entry(act_id).or_default().insert(ot_id);
             }
             *self.activity_otype_event_counts.entry(key).or_insert(0) += 1;
         }
 
         for (&oid_id, &ot_id) in &unique_oids_with_type {
-            if let Some(&(prev_act_id, _)) = self.last_event_per_object.get(&oid_id) {
+            if let Some(&(prev_act_id, prev_last_seen)) = self.last_event_per_object.get(&oid_id) {
                 *self.internal_ocdfg.entry((prev_act_id, act_id, ot_id)).or_insert(0) += 1;
+                self.active_objects_by_last_seen.remove(&(prev_last_seen, oid_id));
             } else {
                 *self.internal_start_activities.entry((act_id, ot_id)).or_insert(0) += 1;
             }
             self.last_event_per_object.insert(oid_id, (act_id, self._processed_count));
+            self.active_objects_by_last_seen.insert((self._processed_count, oid_id));
         }
 
         if self.enable_heuristics && self._processed_count % self.heuristics_config.cleanup_interval == 0 {
@@ -433,33 +462,48 @@ impl MinerState {
         
         let current_count = self._processed_count;
 
-        self.divergence_index.retain(|_, ot_map| {
-            ot_map.retain(|_, full_set_map| {
-                full_set_map.retain(|_, last_seen| {
-                    current_count.saturating_sub(*last_seen) < max_inactive_events
-                });
-                !full_set_map.is_empty()
-            });
-            !ot_map.is_empty()
-        });
-
-        let mut total_ends_per_type = HashMap::new();
-        for (&(_, ot_id), &count) in &self.end_activities_hist {
-            *total_ends_per_type.entry(ot_id).or_insert(0) += count;
+        // 1. Cleanup divergence_index based on max_inactive_events using divergence_by_last_seen
+        let mut expired_divergence = Vec::new();
+        for &(last_seen, act_id, ot_id, ot_set_hash, full_object_set_hash) in &self.divergence_by_last_seen {
+            if current_count.saturating_sub(last_seen) >= max_inactive_events {
+                expired_divergence.push((last_seen, act_id, ot_id, ot_set_hash, full_object_set_hash));
+            } else {
+                break;
+            }
+        }
+        for (last_seen, act_id, ot_id, ot_set_hash, full_object_set_hash) in expired_divergence {
+            self.divergence_by_last_seen.remove(&(last_seen, act_id, ot_id, ot_set_hash, full_object_set_hash));
+            if let Some(ot_map) = self.divergence_index.get_mut(&(act_id, ot_id)) {
+                if let Some(full_set_map) = ot_map.get_mut(&ot_set_hash) {
+                    full_set_map.remove(&full_object_set_hash);
+                    if full_set_map.is_empty() {
+                        ot_map.remove(&ot_set_hash);
+                    }
+                }
+                if ot_map.is_empty() {
+                    self.divergence_index.remove(&(act_id, ot_id));
+                }
+            }
         }
 
+        // 2. Find dead objects based on active_objects_by_last_seen
         let mut dead_objects = Vec::new();
-        for (&oid_id, &(act_id, last_seen)) in &self.last_event_per_object {
+        for &(last_seen, oid_id) in &self.active_objects_by_last_seen {
             let age = current_count.saturating_sub(last_seen);
-            if age > max_inactive_events {
-                dead_objects.push((oid_id, act_id, true)); 
-            } else if age > end_hint_timeout {
-                if let Some(&ot_id) = self.object_type_map.get(&oid_id) {
-                    let total_ended = *total_ends_per_type.get(&ot_id).unwrap_or(&0);
-                    if total_ended > min_samples { 
-                        let act_ends = *self.end_activities_hist.get(&(act_id, ot_id)).unwrap_or(&0);
-                        if act_ends as f64 / total_ended as f64 > threshold {
-                            dead_objects.push((oid_id, act_id, false)); 
+            if age <= end_hint_timeout {
+                break;
+            }
+            if let Some(&(act_id, _)) = self.last_event_per_object.get(&oid_id) {
+                if age > max_inactive_events {
+                    dead_objects.push((oid_id, act_id, true)); 
+                } else if age > end_hint_timeout {
+                    if let Some(&ot_id) = self.object_type_map.get(&oid_id) {
+                        let total_ended = *self.total_ends_per_type.get(&ot_id).unwrap_or(&0);
+                        if total_ended > min_samples { 
+                            let act_ends = *self.end_activities_hist.get(&(act_id, ot_id)).unwrap_or(&0);
+                            if act_ends as f64 / total_ended as f64 > threshold {
+                                dead_objects.push((oid_id, act_id, false)); 
+                            }
                         }
                     }
                 }
@@ -470,7 +514,11 @@ impl MinerState {
             if is_true_dead {
                 if let Some(&ot_id) = self.object_type_map.get(&oid_id) {
                     *self.end_activities_hist.entry((act_id, ot_id)).or_insert(0) += 1;
+                    *self.total_ends_per_type.entry(ot_id).or_insert(0) += 1;
                 }
+            }
+            if let Some(&(_, last_seen)) = self.last_event_per_object.get(&oid_id) {
+                self.active_objects_by_last_seen.remove(&(last_seen, oid_id));
             }
             self.last_event_per_object.remove(&oid_id);
             self.object_type_map.remove(&oid_id);
@@ -486,24 +534,31 @@ impl MinerState {
         
         let current_count = self._processed_count;
 
-        // 1. Cleanup divergence_index based on max_inactive_events (same as original)
-        self.divergence_index.retain(|_, ot_map| {
-            ot_map.retain(|_, full_set_map| {
-                full_set_map.retain(|_, last_seen| {
-                    current_count.saturating_sub(*last_seen) < max_inactive_events
-                });
-                !full_set_map.is_empty()
-            });
-            !ot_map.is_empty()
-        });
-
-        // 2. Count total ends per object type
-        let mut total_ends_per_type = HashMap::new();
-        for (&(_, ot_id), &count) in &self.end_activities_hist {
-            *total_ends_per_type.entry(ot_id).or_insert(0) += count;
+        // 1. Cleanup divergence_index based on max_inactive_events using divergence_by_last_seen
+        let mut expired_divergence = Vec::new();
+        for &(last_seen, act_id, ot_id, ot_set_hash, full_object_set_hash) in &self.divergence_by_last_seen {
+            if current_count.saturating_sub(last_seen) >= max_inactive_events {
+                expired_divergence.push((last_seen, act_id, ot_id, ot_set_hash, full_object_set_hash));
+            } else {
+                break;
+            }
+        }
+        for (last_seen, act_id, ot_id, ot_set_hash, full_object_set_hash) in expired_divergence {
+            self.divergence_by_last_seen.remove(&(last_seen, act_id, ot_id, ot_set_hash, full_object_set_hash));
+            if let Some(ot_map) = self.divergence_index.get_mut(&(act_id, ot_id)) {
+                if let Some(full_set_map) = ot_map.get_mut(&ot_set_hash) {
+                    full_set_map.remove(&full_object_set_hash);
+                    if full_set_map.is_empty() {
+                        ot_map.remove(&ot_set_hash);
+                    }
+                }
+                if ot_map.is_empty() {
+                    self.divergence_index.remove(&(act_id, ot_id));
+                }
+            }
         }
 
-        // 3. Find dead objects based on the mathematically unified Option A
+        // 2. Find dead objects based on active_objects_by_last_seen and mathematically unified Option A
         let mut dead_objects = Vec::new();
         
         // Statistical constant z (e.g. 1.0 for a standard 1-sigma lower bound)
@@ -511,40 +566,45 @@ impl MinerState {
         // Fixed cleanup decision threshold (e.g. 0.95 probability of being dead)
         let decision_threshold = 0.95;
 
-        for (&oid_id, &(act_id, last_seen)) in &self.last_event_per_object {
+        for &(last_seen, oid_id) in &self.active_objects_by_last_seen {
             let age = current_count.saturating_sub(last_seen);
-            if age >= max_inactive_events {
-                dead_objects.push((oid_id, act_id, true)); 
-            } else if age > end_hint_timeout {
-                if let Some(&ot_id) = self.object_type_map.get(&oid_id) {
-                    let n = *total_ends_per_type.get(&ot_id).unwrap_or(&0) as f64;
-                    let k = *self.end_activities_hist.get(&(act_id, ot_id)).unwrap_or(&0) as f64;
+            if age <= end_hint_timeout {
+                break;
+            }
+            if let Some(&(act_id, _)) = self.last_event_per_object.get(&oid_id) {
+                if age >= max_inactive_events {
+                    dead_objects.push((oid_id, act_id, true)); 
+                } else if age > end_hint_timeout {
+                    if let Some(&ot_id) = self.object_type_map.get(&oid_id) {
+                        let n = *self.total_ends_per_type.get(&ot_id).unwrap_or(&0) as f64;
+                        let k = *self.end_activities_hist.get(&(act_id, ot_id)).unwrap_or(&0) as f64;
 
-                    // Calculate confidence C using Bayesian Beta-binomial credible lower bound
-                    let confidence = if n == 0.0 {
-                        0.0
-                    } else {
-                        let mu = (k + 1.0) / (n + 2.0);
-                        let var = ((k + 1.0) * (n - k + 1.0)) / ((n + 2.0) * (n + 2.0) * (n + 3.0));
-                        let sigma = var.sqrt();
-                        (mu - z * sigma).max(0.0).min(1.0)
-                    };
-
-                    // Calculate P(dead)
-                    let p_dead = if confidence <= 0.0 {
-                        0.0
-                    } else {
-                        let x = (age - end_hint_timeout) as f64 / (max_inactive_events - end_hint_timeout) as f64;
-                        if confidence >= 0.9999 {
-                            1.0
+                        // Calculate confidence C using Bayesian Beta-binomial credible lower bound
+                        let confidence = if n == 0.0 {
+                            0.0
                         } else {
-                            let exponent = (1.0 - confidence) / confidence;
-                            x.powf(exponent)
-                        }
-                    };
+                            let mu = (k + 1.0) / (n + 2.0);
+                            let var = ((k + 1.0) * (n - k + 1.0)) / ((n + 2.0) * (n + 2.0) * (n + 3.0));
+                            let sigma = var.sqrt();
+                            (mu - z * sigma).max(0.0).min(1.0)
+                        };
 
-                    if p_dead >= decision_threshold {
-                        dead_objects.push((oid_id, act_id, false)); 
+                        // Calculate P(dead)
+                        let p_dead = if confidence <= 0.0 {
+                            0.0
+                        } else {
+                            let x = (age - end_hint_timeout) as f64 / (max_inactive_events - end_hint_timeout) as f64;
+                            if confidence >= 0.9999 {
+                                1.0
+                            } else {
+                                let exponent = (1.0 - confidence) / confidence;
+                                x.powf(exponent)
+                            }
+                        };
+
+                        if p_dead >= decision_threshold {
+                            dead_objects.push((oid_id, act_id, false)); 
+                        }
                     }
                 }
             }
@@ -554,7 +614,11 @@ impl MinerState {
             if is_true_dead {
                 if let Some(&ot_id) = self.object_type_map.get(&oid_id) {
                     *self.end_activities_hist.entry((act_id, ot_id)).or_insert(0) += 1;
+                    *self.total_ends_per_type.entry(ot_id).or_insert(0) += 1;
                 }
+            }
+            if let Some(&(_, last_seen)) = self.last_event_per_object.get(&oid_id) {
+                self.active_objects_by_last_seen.remove(&(last_seen, oid_id));
             }
             self.last_event_per_object.remove(&oid_id);
             self.object_type_map.remove(&oid_id);
@@ -664,6 +728,15 @@ impl MinerState {
         }
         total_mem += map_mem!(self.object_type_map, u32, u32);
         total_mem += map_mem!(self.end_activities_hist, (u32, u32), usize);
+        
+        let active_objects_by_last_seen_mem = self.active_objects_by_last_seen.len() * (std::mem::size_of::<(usize, u32)>() + 16);
+        total_mem += active_objects_by_last_seen_mem;
+        
+        let divergence_by_last_seen_mem = self.divergence_by_last_seen.len() * (std::mem::size_of::<(usize, u32, u32, u64, u64)>() + 16);
+        total_mem += divergence_by_last_seen_mem;
+        div_mem += divergence_by_last_seen_mem;
+        
+        total_mem += map_mem!(self.total_ends_per_type, u32, usize);
         
         // Include standalone HashSets if we missed any (like divergent tracking sets)
         total_mem += map_mem!(self.divergent_activities, u32, HashSet<u32>);

@@ -20,9 +20,10 @@ const Df2StreamMinerNode = memo<NodeProps<MinerNode>>((props) => {
     const [showAdvanced, setShowAdvanced] = useState(false);
 
     const useHeuristics = (data as any)?.useHeuristics ?? false;
+    const useUnifiedHeuristics = (data as any)?.useUnifiedHeuristics ?? true;
     const cleanupInterval = (data as any)?.cleanupInterval ?? 10000;
     const maxInactiveEvents = (data as any)?.maxInactiveEvents ?? 1000;
-    const endHintTimeout = (data as any)?.endHintTimeout ?? 10000;
+    const endHintTimeout = (data as any)?.endHintTimeout ?? 200;
     const minEndHistogramSamples = (data as any)?.minEndHistogramSamples ?? 100;
     const endProbabilityThreshold = (data as any)?.endProbabilityThreshold ?? 0.90;
 
@@ -91,15 +92,30 @@ const Df2StreamMinerNode = memo<NodeProps<MinerNode>>((props) => {
                 {useHeuristics && showAdvanced && (
                     <div className="flex flex-col gap-2 bg-slate-50 p-2 rounded border border-slate-100">
                         <TooltipProvider delayDuration={200}>
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between pb-1 border-b border-slate-200/60 mb-1">
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <Label className="text-[10px] flex items-center gap-1 cursor-help underline decoration-slate-300 underline-offset-2">Cleanup Interval <HelpCircle className="w-3 h-3 text-slate-400" /></Label>
+                                        <Label className="text-[10px] font-bold text-slate-600 flex items-center gap-1 cursor-help underline decoration-slate-300 underline-offset-2">Unified Heuristics <HelpCircle className="w-3 h-3 text-slate-400" /></Label>
                                     </TooltipTrigger>
-                                    <TooltipContent className="max-w-[200px] text-xs">How many events to process before triggering a memory cleanup sweep.</TooltipContent>
+                                    <TooltipContent className="max-w-[200px] text-xs">Use the mathematically unified cleanup routine with fewer parameters.</TooltipContent>
                                 </Tooltip>
-                                <Input type="number" className="h-6 w-16 text-[10px] px-1 py-0 text-right" value={cleanupInterval} onChange={(e) => updateNodeData(id, { cleanupInterval: Number(e.target.value) })} />
+                                <Switch
+                                    checked={useUnifiedHeuristics}
+                                    onCheckedChange={(checked) => updateNodeData(id, { useUnifiedHeuristics: checked })}
+                                    className="scale-90"
+                                />
                             </div>
+                            {!useUnifiedHeuristics && (
+                                <div className="flex items-center justify-between">
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Label className="text-[10px] flex items-center gap-1 cursor-help underline decoration-slate-300 underline-offset-2">Cleanup Interval <HelpCircle className="w-3 h-3 text-slate-400" /></Label>
+                                        </TooltipTrigger>
+                                        <TooltipContent className="max-w-[200px] text-xs">How many events to process before triggering a memory cleanup sweep.</TooltipContent>
+                                    </Tooltip>
+                                    <Input type="number" className="h-6 w-16 text-[10px] px-1 py-0 text-right" value={cleanupInterval} onChange={(e) => updateNodeData(id, { cleanupInterval: Number(e.target.value) })} />
+                                </div>
+                            )}
                             <div className="flex items-center justify-between">
                                 <Tooltip>
                                     <TooltipTrigger asChild>
@@ -112,30 +128,34 @@ const Df2StreamMinerNode = memo<NodeProps<MinerNode>>((props) => {
                             <div className="flex items-center justify-between">
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <Label className="text-[10px] flex items-center gap-1 cursor-help underline decoration-slate-300 underline-offset-2">End Hint Timeout <HelpCircle className="w-3 h-3 text-slate-400" /></Label>
+                                        <Label className="text-[10px] flex items-center gap-1 cursor-help underline decoration-slate-300 underline-offset-2">Min Inactive <HelpCircle className="w-3 h-3 text-slate-400" /></Label>
                                     </TooltipTrigger>
                                     <TooltipContent className="max-w-[200px] text-xs">The 'soft limit' where the algorithm starts predicting if an object has naturally finished its lifecycle.</TooltipContent>
                                 </Tooltip>
                                 <Input type="number" className="h-6 w-16 text-[10px] px-1 py-0 text-right" value={endHintTimeout} onChange={(e) => updateNodeData(id, { endHintTimeout: Number(e.target.value) })} />
                             </div>
-                            <div className="flex items-center justify-between">
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Label className="text-[10px] flex items-center gap-1 cursor-help underline decoration-slate-300 underline-offset-2">Min End Samples <HelpCircle className="w-3 h-3 text-slate-400" /></Label>
-                                    </TooltipTrigger>
-                                    <TooltipContent className="max-w-[200px] text-xs">Minimum number of completed lifecycles required to trust prediction data.</TooltipContent>
-                                </Tooltip>
-                                <Input type="number" className="h-6 w-16 text-[10px] px-1 py-0 text-right" value={minEndHistogramSamples} onChange={(e) => updateNodeData(id, { minEndHistogramSamples: Number(e.target.value) })} />
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Label className="text-[10px] flex items-center gap-1 cursor-help underline decoration-slate-300 underline-offset-2">End Threshold <HelpCircle className="w-3 h-3 text-slate-400" /></Label>
-                                    </TooltipTrigger>
-                                    <TooltipContent className="max-w-[200px] text-xs">Confidence needed (0.0 to 1.0) to predict an object is permanently done.</TooltipContent>
-                                </Tooltip>
-                                <Input type="number" step="0.01" className="h-6 w-16 text-[10px] px-1 py-0 text-right" value={endProbabilityThreshold} onChange={(e) => updateNodeData(id, { endProbabilityThreshold: Number(e.target.value) })} />
-                            </div>
+                            {!useUnifiedHeuristics && (
+                                <>
+                                    <div className="flex items-center justify-between">
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Label className="text-[10px] flex items-center gap-1 cursor-help underline decoration-slate-300 underline-offset-2">Min End Samples <HelpCircle className="w-3 h-3 text-slate-400" /></Label>
+                                            </TooltipTrigger>
+                                            <TooltipContent className="max-w-[200px] text-xs">Minimum number of completed lifecycles required to trust prediction data.</TooltipContent>
+                                        </Tooltip>
+                                        <Input type="number" className="h-6 w-16 text-[10px] px-1 py-0 text-right" value={minEndHistogramSamples} onChange={(e) => updateNodeData(id, { minEndHistogramSamples: Number(e.target.value) })} />
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Label className="text-[10px] flex items-center gap-1 cursor-help underline decoration-slate-300 underline-offset-2">End Threshold <HelpCircle className="w-3 h-3 text-slate-400" /></Label>
+                                            </TooltipTrigger>
+                                            <TooltipContent className="max-w-[200px] text-xs">Confidence needed (0.0 to 1.0) to predict an object is permanently done.</TooltipContent>
+                                        </Tooltip>
+                                        <Input type="number" step="0.01" className="h-6 w-16 text-[10px] px-1 py-0 text-right" value={endProbabilityThreshold} onChange={(e) => updateNodeData(id, { endProbabilityThreshold: Number(e.target.value) })} />
+                                    </div>
+                                </>
+                            )}
                         </TooltipProvider>
                     </div>
                 )}

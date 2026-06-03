@@ -64,6 +64,7 @@ pub fn convert_tree(
     con: &HashMap<String, Vec<String>>,
     defi: &HashMap<String, Vec<String>>,
     div: &HashMap<String, Vec<String>>,
+    related: &HashMap<String, Vec<String>>,
 ) -> HierarchyNode {
     let is_operator = matches!(node.label.as_str(), "excl" | "seq" | "para" | "redo");
 
@@ -83,7 +84,7 @@ pub fn convert_tree(
             children: node
                 .children
                 .iter()
-                .map(|c| convert_tree(c, con, defi, div))
+                .map(|c| convert_tree(c, con, defi, div, related))
                 .collect(),
         }
     } else {
@@ -100,11 +101,15 @@ pub fn convert_tree(
             };
         }
 
-        // Collect OTs from all 3 maps
+        // Collect OTs from related map (with fallback to con, defi, div for safety)
         let mut ot_set: HashSet<String> = HashSet::new();
-        ot_set.extend(con.get(&activity).unwrap_or(&vec![]).clone());
-        ot_set.extend(defi.get(&activity).unwrap_or(&vec![]).clone());
-        ot_set.extend(div.get(&activity).unwrap_or(&vec![]).clone());
+        if let Some(rel_ots) = related.get(&activity) {
+            ot_set.extend(rel_ots.clone());
+        } else {
+            ot_set.extend(con.get(&activity).unwrap_or(&vec![]).clone());
+            ot_set.extend(defi.get(&activity).unwrap_or(&vec![]).clone());
+            ot_set.extend(div.get(&activity).unwrap_or(&vec![]).clone());
+        }
 
         let mut ots: Vec<ObjectType> = ot_set
             .into_iter()
@@ -148,18 +153,22 @@ pub fn build_output(
     con: &HashMap<String, Vec<String>>,
     defi: &HashMap<String, Vec<String>>,
     div: &HashMap<String, Vec<String>>,
+    related: &HashMap<String, Vec<String>>,
 ) -> OutputJson {
     // Determine unique OTs
-    let all_ots: HashSet<_> = con
-        .values()
-        .chain(defi.values())
-        .chain(div.values())
-        .flatten()
-        .cloned()
-        .collect();
+    let all_ots: HashSet<_> = if !related.is_empty() {
+        related.values().flatten().cloned().collect()
+    } else {
+        con.values()
+            .chain(defi.values())
+            .chain(div.values())
+            .flatten()
+            .cloned()
+            .collect()
+    };
 
     let hierarchy = if forest.len() == 1 {
-        convert_tree(&forest[0], con, defi, div)
+        convert_tree(&forest[0], con, defi, div, related)
     } else {
         HierarchyNode::Operator {
             value: OperatorValue {
@@ -168,7 +177,7 @@ pub fn build_output(
             },
             children: forest
                 .iter()
-                .map(|n| convert_tree(n, con, defi, div))
+                .map(|n| convert_tree(n, con, defi, div, related))
                 .collect(),
         }
     };

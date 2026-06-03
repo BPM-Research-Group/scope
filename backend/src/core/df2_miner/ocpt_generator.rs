@@ -16,7 +16,7 @@ pub fn generate_ocpt_from_fileid(file_id: &str) -> String {
 
     // Build relations
     let relations = build_relations_fns::build_relations(&ocel.events, &ocel.objects);
-    let (div, con, _rel, defi, all_activities, _all_object_types) =
+    let (div, con, rel, defi, all_activities, _all_object_types) =
         interaction_patterns::get_interaction_patterns(&relations, &ocel);
 
     // Sort divergence map for easy comparison
@@ -73,7 +73,7 @@ pub fn generate_ocpt_from_fileid(file_id: &str) -> String {
     );
 
     // Convert to OCPT output format
-    let ocpt_output = build_output(&process_forest, &con, &defi, &div);
+    let ocpt_output = build_output(&process_forest, &con, &defi, &div, &rel);
 
     // Generate new unique file_id
     let new_file_id = Uuid::new_v4().to_string();

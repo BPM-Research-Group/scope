@@ -60,11 +60,12 @@ const EventStreamNode = memo<NodeProps<FileNode>>((props) => {
                 miner_type: t!.type,
                 use_heuristics: (t!.data as any)?.useHeuristics ?? false,
                 heuristics_config: {
-                    cleanup_interval: (t!.data as any)?.cleanupInterval ?? 10000,
+                    cleanup_interval: (t!.data as any)?.useUnifiedHeuristics !== false ? 1 : ((t!.data as any)?.cleanupInterval ?? 10000),
                     max_inactive_events: (t!.data as any)?.maxInactiveEvents ?? 1000,
-                    end_hint_timeout: (t!.data as any)?.endHintTimeout ?? 10000,
+                    end_hint_timeout: (t!.data as any)?.endHintTimeout ?? 200,
                     min_end_histogram_samples: (t!.data as any)?.minEndHistogramSamples ?? 100,
                     end_probability_threshold: (t!.data as any)?.endProbabilityThreshold ?? 0.90,
+                    use_unified_heuristics: (t!.data as any)?.useUnifiedHeuristics ?? true,
                 }
             }));
 
