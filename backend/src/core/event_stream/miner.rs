@@ -357,7 +357,6 @@ impl MinerState {
     pub fn process_event(&mut self, event: OCELEvent) {
         let activity = event.event_type.clone();
         let act_id = self.pool.get_or_insert(&activity);
-        *self.activity_counts.entry(act_id).or_insert(0) += 1;
         self._last_timestamp = Some(event.time.to_rfc3339());
         self._processed_count += 1;
 
@@ -369,6 +368,10 @@ impl MinerState {
                 self.object_type_map.insert(oid_id, ot_id);
                 unique_oids_with_type.entry(oid_id).or_insert(ot_id);
             }
+        }
+
+        if !unique_oids_with_type.is_empty() {
+            *self.activity_counts.entry(act_id).or_insert(0) += 1;
         }
 
         let mut sorted_oids: Vec<u32> = unique_oids_with_type.keys().cloned().collect();

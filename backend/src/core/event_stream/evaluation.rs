@@ -411,9 +411,9 @@ async fn run_debug_ocpt_comparison() {
     use process_mining::conformance::object_centric::object_centric_language_abstraction::{
         OCLanguageAbstraction, compute_fitness_precision,
     };
-    use std::fs;
 
-    let log_path = "../evaluation_ocels/order-management.json";
+
+    let log_path = "../evaluation_ocels/logistics.json";
     println!("Loading log for debug comparison: {}", log_path);
 
     let file = File::open(&log_path).expect("Failed to open OCEL");
@@ -428,6 +428,7 @@ async fn run_debug_ocpt_comparison() {
     for obj in &ocel_sid.objects {
         object_to_type.insert(obj.id.clone(), obj.object_type.clone());
     }
+
 
     let event_pms: Vec<OCELEvent> = sorted_events.iter().map(|e| {
         OCELEvent {
