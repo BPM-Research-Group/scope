@@ -3,6 +3,8 @@ import { flexRender, getCoreRowModel, getSortedRowModel, SortingState, useReactT
 import { ParentSize } from '@visx/responsive';
 import { ReactFlowProvider } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { set } from 'lodash-es';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { Button } from '~/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
 import { SidebarInset, SidebarProvider } from '~/components/ui/sidebar';
@@ -10,11 +12,9 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 import ClusterVis from '~/components/ClusteringVis';
 import DotDiagram from '~/components/Voronoi';
-import exampleClusterdata from '~/routes/CaseClusteringExamples/clustering_example_new3.json';
-import { set } from 'lodash-es';
+import { useExploreFlowStore } from '~/stores/exploreStore';
 import { type Node } from '~/types/ocpt/ocpt.types';
-import { useParams, useSearchParams } from 'react-router-dom';
-import { useExploreFlowStore} from '~/stores/exploreStore';
+import exampleClusterdata from '~/routes/CaseClusteringExamples/clustering_example_new3.json';
 
 const CaseClustering: React.FC = () => {
     const [params, setParams] = useState({
@@ -28,7 +28,6 @@ const CaseClustering: React.FC = () => {
     const { getNode } = useExploreFlowStore();
 
     const [fileId, setFileId] = useState<string | undefined>(undefined);
-
 
     const [clusteringRaw, setClusteringRaw] = useState<any | null>(null);
     const [reloadTable, setReloadTable] = useState(false);
@@ -49,14 +48,14 @@ const CaseClustering: React.FC = () => {
     //Get Assets
     const node = nodeId ? getNode(nodeId) : undefined;
     useMemo(() => {
-            if (node) {
-                const inputFile = node.data.assets.find((asset) => asset.io === 'input');
-                setFileId(inputFile?.id);
-                console.log("Node:", node);
-            } else {
-                setFileId(undefined);
-            }
-        }, [node]);
+        if (node) {
+            const inputFile = node.data.assets.find((asset) => asset.io === 'input');
+            setFileId(inputFile?.id);
+            console.log('Node:', node);
+        } else {
+            setFileId(undefined);
+        }
+    }, [node]);
 
     function display(option: string) {
         setParams((s) => ({ ...s, visMethod: option }));
@@ -198,7 +197,8 @@ const CaseClustering: React.FC = () => {
                             <h2 className="mb-3 text-lg font-semibold">Case Clustering — Settings</h2>
                             <div className="flex flex-col gap-y-0.5">
                                 <div className="mb-2 text-xs">
-                                    Input-File: <strong>{node?.data.assets.find((asset) => asset.io === 'input')?.name}</strong>
+                                    Input-File:{' '}
+                                    <strong>{node?.data.assets.find((asset) => asset.io === 'input')?.name}</strong>
                                 </div>
 
                                 <label className="block mb-2 text-sm mt-3">Distance Measure</label>
@@ -391,6 +391,34 @@ const CaseClustering: React.FC = () => {
                                         <p className="text-xs text-muted-foreground">total_runtime_seconds</p>
                                         <p className="text-lg font-semibold">
                                             {clusteringRaw ? clusteringRaw.run.total_runtime_seconds : 0}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    <div className="rounded-md border p-2">
+                                        <p className="text-xs text-muted-foreground">within_mean</p>
+                                        <p className="text-lg font-semibold">
+                                            {clusteringRaw
+                                                ? clusteringRaw?.run?.within_mean?.map((value: any, index: any) => (
+                                                      <div key={index}>
+                                                          Cluster {index + 1}: {value.toFixed(5)}
+                                                      </div>
+                                                  ))
+                                                : 0}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    <div className="rounded-md border p-2">
+                                        <p className="text-xs text-muted-foreground">within_std</p>
+                                        <p className="text-lg font-semibold">
+                                            {clusteringRaw
+                                                ? clusteringRaw?.run?.within_std?.map((value: any, index: any) => (
+                                                      <div key={index}>
+                                                          Cluster {index + 1}: {value.toFixed(5)}
+                                                      </div>
+                                                  ))
+                                                : 0}
                                         </p>
                                     </div>
                                 </div>
