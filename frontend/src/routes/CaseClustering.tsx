@@ -10,7 +10,11 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 import ClusterVis from '~/components/ClusteringVis';
 import DotDiagram from '~/components/Voronoi';
-import exampleClusterdata from '~/routes/CaseClusteringExamples/clustering_example_new2.json';
+import exampleClusterdata from '~/routes/CaseClusteringExamples/clustering_example_new3.json';
+import { set } from 'lodash-es';
+import { type Node } from '~/types/ocpt/ocpt.types';
+import { useParams, useSearchParams } from 'react-router-dom';
+import { useExploreFlowStore} from '~/stores/exploreStore';
 
 const CaseClustering: React.FC = () => {
     const [params, setParams] = useState({
@@ -20,12 +24,19 @@ const CaseClustering: React.FC = () => {
         algorithm: 'k-medoids', //'agglomerative'
     });
 
+    const { nodeId } = useParams<{ nodeId: string }>();
+    const { getNode } = useExploreFlowStore();
+
+    const [fileId, setFileId] = useState<string | undefined>(undefined);
+
+
     const [clusteringRaw, setClusteringRaw] = useState<any | null>(null);
     const [reloadTable, setReloadTable] = useState(false);
     const [generateTable, setGenerateTable] = useState(false);
     const [generateMap, setGenerateMap] = useState(false);
     const [sorting, setSorting] = useState<SortingState>([]);
     const [loadResult, setloadResult] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
 
     //Simuliert API function
     const getCaseNotionsMock = async () => {
@@ -34,6 +45,18 @@ const CaseClustering: React.FC = () => {
 
         return exampleClusterdata;
     };
+
+    //Get Assets
+    const node = nodeId ? getNode(nodeId) : undefined;
+    useMemo(() => {
+            if (node) {
+                const inputFile = node.data.assets.find((asset) => asset.io === 'input');
+                setFileId(inputFile?.id);
+                console.log("Node:", node);
+            } else {
+                setFileId(undefined);
+            }
+        }, [node]);
 
     function display(option: string) {
         setParams((s) => ({ ...s, visMethod: option }));
@@ -157,6 +180,14 @@ const CaseClustering: React.FC = () => {
         );
     }, [clusteringRaw]);
 
+    const handleSubmit = () => {
+        setSubmitted(true);
+        setTimeout(() => {
+            setSubmitted(false);
+        }, 3000); // 3 Sekunden
+        return;
+    };
+
     return (
         <ReactFlowProvider>
             <SidebarProvider>
@@ -167,7 +198,7 @@ const CaseClustering: React.FC = () => {
                             <h2 className="mb-3 text-lg font-semibold">Case Clustering — Settings</h2>
                             <div className="flex flex-col gap-y-0.5">
                                 <div className="mb-2 text-xs">
-                                    Input-File: <strong>clustering_example.json</strong>
+                                    Input-File: <strong>{node?.data.assets.find((asset) => asset.io === 'input')?.name}</strong>
                                 </div>
 
                                 <label className="block mb-2 text-sm mt-3">Distance Measure</label>
@@ -256,6 +287,17 @@ const CaseClustering: React.FC = () => {
                                         </button>
                                     ))}
                                 </div>
+                                <hr />
+                                <Button
+                                    onClick={() => {
+                                        handleSubmit();
+                                    }}
+                                    className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md mt-3"
+                                    aria-label="Load and display the result"
+                                >
+                                    <span className="text-xs text-blue-600">Submit</span>
+                                </Button>
+                                {submitted ? <p className="text-sm text-green-600">Data Submitted.</p> : null}
                             </div>
                         </aside>
 
@@ -311,7 +353,7 @@ const CaseClustering: React.FC = () => {
                                             data={chartData}
                                         />
                                         /* This implements a dynamic ratio to utilize the maximum screen size */
-                                        /*<ClusterVis width={width} height={height} data={chartData} /> */
+                                        /*<ClusterVis width={width} height={height} data={chartData} />*/
                                     )}
                                 </ParentSize>
                             </main>
@@ -355,21 +397,23 @@ const CaseClustering: React.FC = () => {
                                 <div className="space-y-3">
                                     <div className="rounded-md border p-2">
                                         <p className="text-xs text-muted-foreground">cluster_event_counts</p>
-                                        {clusteringRaw?.run?.cluster_event_counts?.map((group, groupIndex) => (
-                                            <div key={groupIndex} className="mb-3">
-                                                <p className="text-sm font-bold text-muted-foreground">
-                                                    Cluster {groupIndex + 1}
-                                                </p>
+                                        {clusteringRaw?.run?.cluster_event_counts?.map(
+                                            (group: any, groupIndex: any) => (
+                                                <div key={groupIndex} className="mb-3">
+                                                    <p className="text-sm font-bold text-muted-foreground">
+                                                        Cluster {groupIndex + 1}
+                                                    </p>
 
-                                                <div className="ml-2">
-                                                    {group.map(([name, value]) => (
-                                                        <p key={name} className="text-base font-semibold">
-                                                            {name}: {value}
-                                                        </p>
-                                                    ))}
+                                                    <div className="ml-2">
+                                                        {group.map(([name, value]: [string, number]) => (
+                                                            <p key={name} className="text-base font-semibold">
+                                                                {name}: {value}
+                                                            </p>
+                                                        ))}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            )
+                                        )}
                                     </div>
                                 </div>
                             </div>
