@@ -1,10 +1,11 @@
 use crate::core::kpi::case_kpis::{
-    compute_case_attribute_stats, compute_case_duration, compute_case_time_stats,
+    compute_activity_successors, compute_case_attribute_stats, compute_case_duration,
+    compute_case_time_stats,
 };
 use crate::models::kpi::{
-    AttributeMetadata, CaseAttributeQuery, CaseAttributeStatsResponse, CaseDurationResponse,
-    CaseTimeQuery, CaseTimeStatsResponse, EventTypeMetadata, ObjectTypeMetadata,
-    OcelMetadataResponse,
+    ActivitySuccessorsResponse, AttributeMetadata, CaseAttributeQuery,
+    CaseAttributeStatsResponse, CaseDurationResponse, CaseTimeQuery, CaseTimeStatsResponse,
+    EventTypeMetadata, ObjectTypeMetadata, OcelMetadataResponse,
 };
 use crate::models::ocel::{OCELEvent, OCELObject, OCELType, OCEL};
 use crate::traits::import_export::ImportableFromPath;
@@ -107,9 +108,13 @@ pub async fn get_ocel_metadata(Path(file_id): Path<String>) -> impl IntoResponse
     (StatusCode::OK, Json(response)).into_response()
 }
 
+const VALID_INTRA_CASE_AGG: &[&str] = &["sum", "mean", "min", "max", "count"];
+
 /// Computes aggregate stats for a numeric attribute across all cases.
 /// Provide either `object_type` (reads object attributes) or
 /// `event_type` (reads event attributes) — not both.
+/// Optionally provide `intra_case_agg` (sum/mean/min/max/count) to aggregate
+/// within each case first before computing the final stats.
 pub async fn get_case_attribute_stats(
     Path(case_notion_file_id): Path<String>,
     Query(query): Query<CaseAttributeQuery>,
@@ -130,6 +135,20 @@ pub async fn get_case_attribute_stats(
                 .into_response();
         }
         _ => {}
+    }
+
+    if let Some(agg) = &query.intra_case_agg {
+        if !VALID_INTRA_CASE_AGG.contains(&agg.as_str()) {
+            return (
+                StatusCode::BAD_REQUEST,
+                format!(
+                    "Invalid intra_case_agg '{}'. Must be one of: {}",
+                    agg,
+                    VALID_INTRA_CASE_AGG.join(", ")
+                ),
+            )
+                .into_response();
+        }
     }
 
     let persisted = match load_case_notion(&case_notion_file_id).await {
@@ -154,6 +173,7 @@ pub async fn get_case_attribute_stats(
         &query.attribute,
         query.object_type.as_deref(),
         query.event_type.as_deref(),
+        query.intra_case_agg.as_deref(),
     );
 
     (StatusCode::OK, Json(CaseAttributeStatsResponse {
@@ -161,6 +181,7 @@ pub async fn get_case_attribute_stats(
         origin_file_id_ocel: persisted.origin_file_id_ocel,
         case_notion_type: persisted.case_notion_type,
         attribute: query.attribute,
+        intra_case_agg: query.intra_case_agg,
         stats,
     }))
     .into_response()
@@ -206,6 +227,44 @@ pub async fn get_case_time_stats(
         stats,
     }))
     .into_response()
+}
+
+/// `GET /v1/kpi/activity_successors/{case_notion_file_id}`
+///
+/// Returns, for every activity, the sorted list of activities that genuinely
+/// follow it in at least one object's event timeline across all cases.
+///
+/// No query parameters. Call this once when the page loads and use the result
+/// to filter the `to_activity` dropdown whenever the user changes `from_activity`.
+pub async fn get_activity_successors(
+    Path(case_notion_file_id): Path<String>,
+) -> impl IntoResponse {
+    let persisted = match load_case_notion(&case_notion_file_id).await {
+        Ok(data) => data,
+        Err(response) => return response,
+    };
+
+    let ocel = match OCEL::import_from_path(&persisted.origin_file_id_ocel).await {
+        Ok(ocel) => ocel,
+        Err((status, message)) => return (status, message).into_response(),
+    };
+
+    let event_lookup: FxHashMap<String, OCELEvent> =
+        ocel.events.iter().map(|e| (e.id.clone(), e.clone())).collect();
+
+    let successors = compute_activity_successors(&persisted.case_notion, &event_lookup)
+        .into_iter()
+        .collect();
+
+    (
+        StatusCode::OK,
+        Json(ActivitySuccessorsResponse {
+            case_notion_file_id,
+            case_notion_type: persisted.case_notion_type,
+            successors,
+        }),
+    )
+        .into_response()
 }
 
 /// Returns aggregate stats over all case durations (first event → last event).

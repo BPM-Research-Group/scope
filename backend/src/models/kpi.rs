@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct AttributeMetadata {
@@ -46,11 +47,16 @@ pub struct NumericStats {
 
 /// `GET /v1/kpi/case_attribute_stats/{case_notion_file_id}`
 /// Requires exactly one of `object_type` or `event_type` (not both).
+/// Optional `intra_case_agg`: if provided, first aggregate values within each
+/// case using the chosen function, then compute stats across those per-case
+/// values. Allowed values: `"sum"`, `"mean"`, `"min"`, `"max"`, `"count"`.
+/// If omitted, all raw values are pooled across cases (original behavior).
 #[derive(Deserialize)]
 pub struct CaseAttributeQuery {
     pub attribute: String,
     pub object_type: Option<String>,
     pub event_type: Option<String>,
+    pub intra_case_agg: Option<String>,
 }
 
 /// `GET /v1/kpi/case_attribute_stats/{case_notion_file_id}`
@@ -60,8 +66,11 @@ pub struct CaseAttributeStatsResponse {
     pub origin_file_id_ocel: String,
     pub case_notion_type: String,
     pub attribute: String,
-    /// Absent if the attribute was not found in any case.
+    /// Which intra-case aggregation was applied before computing stats.
+    /// Absent when raw pooling was used (no `intra_case_agg` param).
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub intra_case_agg: Option<String>,
+    /// `null` if the attribute was not found in any case.
     pub stats: Option<NumericStats>,
 }
 
@@ -83,9 +92,16 @@ pub struct CaseTimeStatsResponse {
     pub object_type: String,
     pub from_activity: String,
     pub to_activity: String,
-    /// Absent if no valid from→to pairs were found.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    /// `null` if no valid from→to pairs were found.
     pub stats: Option<NumericStats>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ActivitySuccessorsResponse {
+    pub case_notion_file_id: String,
+    pub case_notion_type: String,
+    /// Key: from_activity. Value: sorted list of valid to_activities.
+    pub successors: HashMap<String, Vec<String>>,
 }
 
 /// `GET /v1/kpi/case_duration/{case_notion_file_id}`
@@ -98,7 +114,6 @@ pub struct CaseDurationResponse {
     pub cases_with_duration: usize,
     /// Cases with only 1 event — duration is undefined, these are excluded.
     pub cases_skipped: usize,
-    /// Absent if no case had at least 2 events.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    /// `null` if no case had at least 2 events.
     pub stats: Option<NumericStats>,
 }

@@ -1,5 +1,6 @@
 use crate::handlers::kpi::{
-    get_case_attribute_stats, get_case_duration, get_case_time_stats, get_ocel_metadata,
+    get_activity_successors, get_case_attribute_stats, get_case_duration, get_case_time_stats,
+    get_ocel_metadata,
 };
 use axum::{Router, routing::get};
 
@@ -17,5 +18,9 @@ pub fn router() -> Router {
         .route(
             "/case_duration/{case_notion_file_id}",
             get(get_case_duration),
+        )
+        .route(
+            "/activity_successors/{case_notion_file_id}",
+            get(get_activity_successors),
         )
 }
