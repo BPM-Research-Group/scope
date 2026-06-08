@@ -1,7 +1,7 @@
 use crate::core::kpi::attribute_stats::{attr_to_f64, compute_numeric_stats};
 use crate::models::kpi::NumericStats;
 use crate::models::ocel::{OCELEvent, OCELObject};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 /// A single case: (event_ids, object_ids, e2o arches).
 pub type CaseEntry = (Vec<String>, Vec<String>, Vec<(String, String)>);
@@ -129,6 +129,55 @@ pub fn compute_case_time_stats(
     }
 
     compute_numeric_stats(&all_durations)
+}
+
+/// Computes the successors of each activity in the event timeline of each object in each case.
+pub fn compute_activity_successors(
+    cases: &[CaseEntry],
+    event_lookup: &FxHashMap<String, OCELEvent>,
+) -> FxHashMap<String, Vec<String>> {
+    let mut raw: FxHashMap<String, FxHashSet<String>> = FxHashMap::default();
+
+    for (event_ids, object_ids, arches) in cases {
+
+        let mut object_timelines: FxHashMap<
+            &str,
+            Vec<(chrono::DateTime<chrono::FixedOffset>, &str)>,
+        > = FxHashMap::default();
+
+        for (ev_id, obj_id) in arches {
+            if let Some(event) = event_lookup.get(ev_id.as_str()) {
+                object_timelines
+                    .entry(obj_id.as_str())
+                    .or_default()
+                    .push((event.time, event.event_type.as_str()));
+            }
+        }
+
+        for timeline in object_timelines.values_mut() {
+            timeline.sort_by_key(|(t, _)| *t);
+
+            for i in 0..timeline.len() {
+                let from = timeline[i].1;
+                for j in (i + 1)..timeline.len() {
+                    let to = timeline[j].1;
+                    if to != from {
+                        raw.entry(from.to_string())
+                            .or_default()
+                            .insert(to.to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    raw.into_iter()
+        .map(|(k, set)| {
+            let mut v: Vec<String> = set.into_iter().collect();
+            v.sort();
+            (k, v)
+        })
+        .collect()
 }
 
 /// For each case, measures the time from the first event to the last event.

@@ -1,10 +1,11 @@
 use crate::core::kpi::case_kpis::{
-    compute_case_attribute_stats, compute_case_duration, compute_case_time_stats,
+    compute_activity_successors, compute_case_attribute_stats, compute_case_duration,
+    compute_case_time_stats,
 };
 use crate::models::kpi::{
-    AttributeMetadata, CaseAttributeQuery, CaseAttributeStatsResponse, CaseDurationResponse,
-    CaseTimeQuery, CaseTimeStatsResponse, EventTypeMetadata, ObjectTypeMetadata,
-    OcelMetadataResponse,
+    ActivitySuccessorsResponse, AttributeMetadata, CaseAttributeQuery,
+    CaseAttributeStatsResponse, CaseDurationResponse, CaseTimeQuery, CaseTimeStatsResponse,
+    EventTypeMetadata, ObjectTypeMetadata, OcelMetadataResponse,
 };
 use crate::models::ocel::{OCELEvent, OCELObject, OCELType, OCEL};
 use crate::traits::import_export::ImportableFromPath;
@@ -206,6 +207,44 @@ pub async fn get_case_time_stats(
         stats,
     }))
     .into_response()
+}
+
+/// `GET /v1/kpi/activity_successors/{case_notion_file_id}`
+///
+/// Returns, for every activity, the sorted list of activities that genuinely
+/// follow it in at least one object's event timeline across all cases.
+///
+/// No query parameters. Call this once when the page loads and use the result
+/// to filter the `to_activity` dropdown whenever the user changes `from_activity`.
+pub async fn get_activity_successors(
+    Path(case_notion_file_id): Path<String>,
+) -> impl IntoResponse {
+    let persisted = match load_case_notion(&case_notion_file_id).await {
+        Ok(data) => data,
+        Err(response) => return response,
+    };
+
+    let ocel = match OCEL::import_from_path(&persisted.origin_file_id_ocel).await {
+        Ok(ocel) => ocel,
+        Err((status, message)) => return (status, message).into_response(),
+    };
+
+    let event_lookup: FxHashMap<String, OCELEvent> =
+        ocel.events.iter().map(|e| (e.id.clone(), e.clone())).collect();
+
+    let successors = compute_activity_successors(&persisted.case_notion, &event_lookup)
+        .into_iter()
+        .collect();
+
+    (
+        StatusCode::OK,
+        Json(ActivitySuccessorsResponse {
+            case_notion_file_id,
+            case_notion_type: persisted.case_notion_type,
+            successors,
+        }),
+    )
+        .into_response()
 }
 
 /// Returns aggregate stats over all case durations (first event → last event).

@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct AttributeMetadata {
@@ -86,6 +87,15 @@ pub struct CaseTimeStatsResponse {
     /// Absent if no valid from→to pairs were found.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stats: Option<NumericStats>,
+}
+
+
+#[derive(Serialize, Deserialize)]
+pub struct ActivitySuccessorsResponse {
+    pub case_notion_file_id: String,
+    pub case_notion_type: String,
+    /// Key: from_activity. Value: sorted list of valid to_activities.
+    pub successors: HashMap<String, Vec<String>>,
 }
 
 /// `GET /v1/kpi/case_duration/{case_notion_file_id}`
