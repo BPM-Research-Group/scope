@@ -236,7 +236,14 @@ export const mineKpi = async (fileId: string) => {
 };
 
 export const attributeStats = async (fileId: string, params: any) => { 
+    console.log('stats');
+        console.log(fileId);
+    console.log(params);
+
+
     const response = await api.get(`/v1/kpi/case_attribute_stats/${fileId}`, {params}); 
+        console.log(response.data);
+
     return response.data;
    
 };
