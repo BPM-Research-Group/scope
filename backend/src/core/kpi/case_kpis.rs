@@ -13,8 +13,17 @@ pub struct CaseDurationResult {
 }
 
 /// Collects a named numeric attribute from all cases and returns aggregate stats.
+///
 /// Pass either `filter_object_type` (reads object attributes) or
 /// `filter_event_type` (reads event attributes) — not both.
+///
+/// `intra_case_agg` controls how values are aggregated before the final stats:
+/// - `None`: pool all raw values across every case (original behavior)
+/// - `Some("sum")`: sum values within each case, then stats over those sums
+/// - `Some("mean")`: mean per case, then stats over those means
+/// - `Some("min")`: min per case, then stats over those mins
+/// - `Some("max")`: max per case, then stats over those maxes
+/// - `Some("count")`: count of matching values per case, then stats over those counts
 pub fn compute_case_attribute_stats(
     cases: &[CaseEntry],
     event_lookup: &FxHashMap<String, OCELEvent>,
@@ -22,10 +31,14 @@ pub fn compute_case_attribute_stats(
     attribute: &str,
     filter_object_type: Option<&str>,
     filter_event_type: Option<&str>,
+    intra_case_agg: Option<&str>,
 ) -> Option<NumericStats> {
-    let mut all_values: Vec<f64> = Vec::new();
+    let mut output_values: Vec<f64> = Vec::new();
 
     for (event_ids, object_ids, _) in cases {
+        // Collect raw values for this single case.
+        let mut case_values: Vec<f64> = Vec::new();
+
         if let Some(ot) = filter_object_type {
             for object_id in object_ids {
                 if let Some(obj) = object_lookup.get(object_id) {
@@ -35,7 +48,7 @@ pub fn compute_case_attribute_stats(
                     for attr in &obj.attributes {
                         if attr.name == attribute {
                             if let Some(v) = attr_to_f64(&attr.value) {
-                                all_values.push(v);
+                                case_values.push(v);
                             }
                         }
                     }
@@ -50,16 +63,51 @@ pub fn compute_case_attribute_stats(
                     for attr in &event.attributes {
                         if attr.name == attribute {
                             if let Some(v) = attr_to_f64(&attr.value) {
-                                all_values.push(v);
+                                case_values.push(v);
                             }
                         }
                     }
                 }
             }
         }
+
+        if case_values.is_empty() {
+            continue;
+        }
+
+        match intra_case_agg {
+            None => {
+                // Pool all raw values (original behavior).
+                output_values.extend(case_values);
+            }
+            Some("sum") => {
+                output_values.push(case_values.iter().sum());
+            }
+            Some("mean") => {
+                let mean = case_values.iter().sum::<f64>() / case_values.len() as f64;
+                output_values.push(mean);
+            }
+            Some("min") => {
+                if let Some(v) = case_values.iter().cloned().reduce(f64::min) {
+                    output_values.push(v);
+                }
+            }
+            Some("max") => {
+                if let Some(v) = case_values.iter().cloned().reduce(f64::max) {
+                    output_values.push(v);
+                }
+            }
+            Some("count") => {
+                output_values.push(case_values.len() as f64);
+            }
+            _ => {
+                // Unknown value, treat as pooled.
+                output_values.extend(case_values);
+            }
+        }
     }
 
-    compute_numeric_stats(&all_values)
+    compute_numeric_stats(&output_values)
 }
 
 /// For each object of `object_type` across all cases, finds (from_activity →
@@ -138,7 +186,7 @@ pub fn compute_activity_successors(
 ) -> FxHashMap<String, Vec<String>> {
     let mut raw: FxHashMap<String, FxHashSet<String>> = FxHashMap::default();
 
-    for (event_ids, object_ids, arches) in cases {
+    for (_event_ids, _object_ids, arches) in cases {
 
         let mut object_timelines: FxHashMap<
             &str,
