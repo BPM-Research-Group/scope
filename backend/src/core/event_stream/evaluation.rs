@@ -33,7 +33,7 @@ async fn run_full_evaluation() {
     // Sort logs to have a deterministic order
     logs.sort();
 
-    let mut csv_file = File::create("evaluation_results.csv").expect("Unable to create results file");
+    let mut csv_file = File::create("../evaluation/evaluation_results.csv").expect("Unable to create results file");
     writeln!(csv_file, "log,event_index,offline_ns,online_base_ns,online_heur_ns,total_mem_base_bytes,div_mem_base_bytes,seen_mem_base_bytes,active_objs_base,total_mem_heur_bytes,div_mem_heur_bytes,seen_mem_heur_bytes,active_objs_heur,base_extra_arcs,base_missing_arcs,heur_extra_arcs,heur_missing_arcs").unwrap();
 
     for log_path in logs {
@@ -83,7 +83,11 @@ async fn run_full_evaluation() {
         };
 
         let n_total = sorted_events.len();
-        let offline_every_n = 1_000;
+        let offline_every_n = if log_path.contains("age_of_empires_ocel2.json") {
+            50_000
+        } else {
+            1_000
+        };
         let memory_every_n = 250;
         
         for i in 1..=n_total {
@@ -200,7 +204,7 @@ async fn run_full_evaluation() {
         println!("Finished evaluating: {}", log_path);
     }
     
-    println!("Evaluation complete. Results saved to evaluation_results.csv");
+    println!("Evaluation complete. Results saved to evaluation/evaluation_results.csv");
 }
 
 #[tokio::test]
@@ -232,7 +236,7 @@ async fn run_unified_parameter_search_evaluation() {
     
     logs.sort();
 
-    let mut csv_file = File::create("parameter_search_results.csv").expect("Unable to create parameter results file");
+    let mut csv_file = File::create("../evaluation/parameter_search_results.csv").expect("Unable to create parameter results file");
     writeln!(
         csv_file,
         "log,total_events,max_inactive,min_inactive,ratio,total_mem_bytes,div_mem_bytes,seen_mem_bytes,active_objs,fitness,precision,f1_score,duration_ms"
@@ -304,7 +308,9 @@ async fn run_unified_parameter_search_evaluation() {
 
         let offline_output_json = crate::core::df2_miner::convert_to_json_tree::build_output(&process_forest, &con, &defi, &div, &rel);
         let offline_json = serde_json::to_string(&offline_output_json).unwrap();
-        let offline_ocpt_fe: crate::models::ocpt::OcptFE = serde_json::from_str(&offline_json).unwrap();
+        let mut deserializer = serde_json::Deserializer::from_str(&offline_json);
+        deserializer.disable_recursion_limit();
+        let offline_ocpt_fe: crate::models::ocpt::OcptFE = serde::Deserialize::deserialize(&mut deserializer).unwrap();
         let offline_ocpt = crate::core::struct_converters::ocpt_frontend_backend::frontend_to_backend(offline_ocpt_fe)
             .expect("Failed to convert offline process tree to backend shape");
         let offline_duration = offline_start.elapsed().as_millis();
@@ -402,7 +408,7 @@ async fn run_unified_parameter_search_evaluation() {
         println!("Finished parameter search for log: {}", log_name);
     }
     
-    println!("Evaluation complete. Results saved to parameter_search_results.csv");
+    println!("Evaluation complete. Results saved to evaluation/parameter_search_results.csv");
 }
 
 #[tokio::test]
@@ -464,7 +470,9 @@ async fn run_debug_ocpt_comparison() {
     let offline_json_str = serde_json::to_string_pretty(&offline_output_json).unwrap();
     fs::write("./temp/debug_offline_ocpt.json", &offline_json_str).expect("Failed to write offline OCPT");
 
-    let offline_ocpt_fe: crate::models::ocpt::OcptFE = serde_json::from_str(&offline_json_str).unwrap();
+    let mut deserializer = serde_json::Deserializer::from_str(&offline_json_str);
+    deserializer.disable_recursion_limit();
+    let offline_ocpt_fe: crate::models::ocpt::OcptFE = serde::Deserialize::deserialize(&mut deserializer).unwrap();
     let offline_ocpt = crate::core::struct_converters::ocpt_frontend_backend::frontend_to_backend(offline_ocpt_fe).unwrap();
 
     // 2. Compute Online OCPT (Heuristics disabled, representing perfect baseline online miner)

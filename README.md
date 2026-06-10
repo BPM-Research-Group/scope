@@ -1,3 +1,66 @@
+# Repo for Evaluation of Online DF$^2$ Graph Discovery
+
+## How to Perform Evaluation
+The raw data on which the evaluation of the proposed method is based is contained in the files `evaluation/evaluation_results.csv` and `evaluation/parameter_search_results.csv`.
+They can be reproduced as follows:
+
+1. **Place the Event Logs:**
+   Copy and paste the required OCEL log files into the `evaluation_ocels/` directory in the project root. (These files are not tracked in git due to size constraints).
+
+2. **Run the Evaluation Tests:**
+   Navigate to the `backend/` directory and execute the respective tests:
+
+   * **Full Stream Evaluation:**
+     To evaluate per-event processing times, memory usage, and structural conformance over the stream across all logs, run:
+     ```bash
+     cd backend
+     cargo test --release run_full_evaluation -- --ignored --nocapture
+     ```
+     This generates `evaluation/evaluation_results.csv`.
+
+   * **Parameter Grid Search Evaluation:**
+     To run the grid search across different combinations of $T_{\text{hint}}$ and $T_{\text{max}}$ configurations, run:
+     ```bash
+     cd backend
+     cargo test --release run_unified_parameter_search_evaluation -- --ignored --nocapture
+     ```
+     This generates `evaluation/parameter_search_results.csv`.
+
+The tests automatically save the output CSV files directly into the `evaluation/` directory in the project root.
+
+## How to Visualize Results
+To regenerate all results from the evaluation CSV files:
+
+```bash
+cd evaluation
+.venv/bin/python3 visualize_all.py
+```
+
+## Folder Structure
+
+### 1. Processing Time and Scalability (`plots/exp1_time/`)
+- **Stability** (`Plot_A_Stability.png`): Boxplots and scatter plots showing the distribution of per-event processing times across all logs.
+- **Scalability** (`Plot_B_Scalability.png`): Combined plot showing processing time vs. event index for representative logs (Age of Empires & Order Management).
+- **Scalability Individual**: Folder containing scalability plots for every individual log.
+
+### 2. Memory and Validity (`plots/exp2_memory_validity/`)
+- **Global Tradeoff** (`Plot_C_Global_Tradeoff.png`): Aggregate plot showing the global relationship between memory savings and structural deviation (FP/FN) with a combined legend.
+- **Memory Dynamics** (`Plot_D_Memory_Dynamics.png`): Combined plot showing memory consumption for representative logs (without scientific notation on x-axis).
+- **Memory Dynamics Individual**: Folder containing memory dynamics plots for every individual log.
+- **Recovery Curve** (`Plot_E_Recovery_Curve.png`): Combined plot showing structural deviation recovery over time for representative logs.
+- **Recovery Curve Individual**: Folder containing recovery curve plots for every individual log.
+- **Metrics Table** (`Table_Performance_Metrics.tex`): LaTeX table summarizing drift and memory metrics per log.
+
+### 3. Parameter Search (`plots/exp3_parameters/`)
+- **Pareto Frontier** (`Plot_F_Pareto_Frontier.png`): Detailed Pareto frontier for all logs, including sweet-spot annotations with inactivity ranges and optimized placement.
+
+## Requirements
+- Rust
+- Python 3.9+
+- pandas, matplotlib, seaborn, numpy
+
+
+
 # SCOPE
 
 SCOPE is an open-source software project which allows the user to discover and explore object-centric processes.

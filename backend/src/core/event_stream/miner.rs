@@ -116,6 +116,8 @@ pub struct MinerState {
     pub active_objects_by_last_seen: BTreeSet<(usize, u32)>,
     pub divergence_by_last_seen: BTreeSet<(usize, u32, u32, u64, u64)>,
     pub total_ends_per_type: HashMap<u32, usize>,
+    pub scheduled_deaths: BTreeSet<(usize, u32)>,
+    pub scheduled_death_per_object: HashMap<u32, usize>,
 
     pub dirty_dfg: bool,
     pub dirty_ocpt: bool,
@@ -287,7 +289,9 @@ impl MinerSnapshot {
             &self.related
         );
         let json = serde_json::to_string(&output_json).unwrap();
-        serde_json::from_str(&json).unwrap()
+        let mut deserializer = serde_json::Deserializer::from_str(&json);
+        deserializer.disable_recursion_limit();
+        serde::Deserialize::deserialize(&mut deserializer).unwrap()
     }
 }
 
@@ -446,6 +450,19 @@ impl MinerState {
             }
             self.last_event_per_object.insert(oid_id, (act_id, self._processed_count));
             self.active_objects_by_last_seen.insert((self._processed_count, oid_id));
+
+            if self.enable_heuristics {
+                let death_age = if self.heuristics_config.use_unified_heuristics {
+                    self.calculate_death_age_unified(act_id, ot_id)
+                } else {
+                    self.calculate_death_age(act_id, ot_id)
+                };
+                let new_death = self._processed_count + death_age;
+                if let Some(old_death) = self.scheduled_death_per_object.insert(oid_id, new_death) {
+                    self.scheduled_deaths.remove(&(old_death, oid_id));
+                }
+                self.scheduled_deaths.insert((new_death, oid_id));
+            }
         }
 
         if self.enable_heuristics && self._processed_count % self.heuristics_config.cleanup_interval == 0 {
@@ -457,62 +474,95 @@ impl MinerState {
         }
     }
 
-    pub fn run_heuristics_cleanup(&mut self) {
-        let max_inactive_events = self.heuristics_config.max_inactive_events; 
+    pub fn calculate_death_age(&self, act_id: u32, ot_id: u32) -> usize {
+        let max_inactive_events = self.heuristics_config.max_inactive_events;
         let end_hint_timeout = self.heuristics_config.end_hint_timeout;
+        
+        if max_inactive_events <= end_hint_timeout {
+            return max_inactive_events;
+        }
+
+        let total_ended = *self.total_ends_per_type.get(&ot_id).unwrap_or(&0);
         let min_samples = self.heuristics_config.min_end_histogram_samples as usize;
         let threshold = self.heuristics_config.end_probability_threshold;
+
+        if total_ended > min_samples {
+            let act_ends = *self.end_activities_hist.get(&(act_id, ot_id)).unwrap_or(&0);
+            if act_ends as f64 / total_ended as f64 > threshold {
+                return end_hint_timeout + 1;
+            }
+        }
+        max_inactive_events
+    }
+
+    pub fn calculate_death_age_unified(&self, act_id: u32, ot_id: u32) -> usize {
+        let max_inactive_events = self.heuristics_config.max_inactive_events;
+        let end_hint_timeout = self.heuristics_config.end_hint_timeout;
         
+        if max_inactive_events <= end_hint_timeout {
+            return max_inactive_events;
+        }
+
+        let n = *self.total_ends_per_type.get(&ot_id).unwrap_or(&0) as f64;
+        if n == 0.0 {
+            return max_inactive_events;
+        }
+
+        let k = *self.end_activities_hist.get(&(act_id, ot_id)).unwrap_or(&0) as f64;
+        let z: f64 = 1.0;
+        let decision_threshold: f64 = 0.95;
+
+        let mu = (k + 1.0) / (n + 2.0);
+        let var = ((k + 1.0) * (n - k + 1.0)) / ((n + 2.0) * (n + 2.0) * (n + 3.0));
+        let sigma = var.sqrt();
+        let confidence = (mu - z * sigma).max(0.0).min(1.0);
+
+        if confidence <= 0.0 {
+            max_inactive_events
+        } else if confidence >= 0.9999 {
+            end_hint_timeout + 1
+        } else {
+            let exponent = confidence / (1.0 - confidence);
+            let t_death_delay = decision_threshold.powf(exponent);
+            let added_age = ((max_inactive_events - end_hint_timeout) as f64 * t_death_delay).ceil() as usize;
+            end_hint_timeout + added_age
+        }
+    }
+
+    pub fn run_heuristics_cleanup(&mut self) {
+        let max_inactive_events = self.heuristics_config.max_inactive_events; 
         let current_count = self._processed_count;
 
-        // 1. Cleanup divergence_index based on max_inactive_events using divergence_by_last_seen
-        let mut expired_divergence = Vec::new();
-        for &(last_seen, act_id, ot_id, ot_set_hash, full_object_set_hash) in &self.divergence_by_last_seen {
-            if current_count.saturating_sub(last_seen) >= max_inactive_events {
-                expired_divergence.push((last_seen, act_id, ot_id, ot_set_hash, full_object_set_hash));
-            } else {
+        let mut dead_objects = Vec::new();
+        let mut rescheduled_objects = Vec::new();
+
+        while let Some(&(scheduled_death, oid_id)) = self.scheduled_deaths.iter().next() {
+            if scheduled_death > current_count {
                 break;
             }
-        }
-        for (last_seen, act_id, ot_id, ot_set_hash, full_object_set_hash) in expired_divergence {
-            self.divergence_by_last_seen.remove(&(last_seen, act_id, ot_id, ot_set_hash, full_object_set_hash));
-            if let Some(ot_map) = self.divergence_index.get_mut(&(act_id, ot_id)) {
-                if let Some(full_set_map) = ot_map.get_mut(&ot_set_hash) {
-                    full_set_map.remove(&full_object_set_hash);
-                    if full_set_map.is_empty() {
-                        ot_map.remove(&ot_set_hash);
+            self.scheduled_deaths.remove(&(scheduled_death, oid_id));
+            self.scheduled_death_per_object.remove(&oid_id);
+
+            if let Some(&(act_id, last_seen)) = self.last_event_per_object.get(&oid_id) {
+                if let Some(&ot_id) = self.object_type_map.get(&oid_id) {
+                    let current_d = self.calculate_death_age(act_id, ot_id);
+                    let actual_death_event = last_seen + current_d;
+
+                    if actual_death_event <= current_count {
+                        let is_true_dead = (current_count.saturating_sub(last_seen)) >= max_inactive_events;
+                        dead_objects.push((oid_id, act_id, is_true_dead));
+                    } else {
+                        rescheduled_objects.push((actual_death_event, oid_id));
                     }
-                }
-                if ot_map.is_empty() {
-                    self.divergence_index.remove(&(act_id, ot_id));
                 }
             }
         }
 
-        // 2. Find dead objects based on active_objects_by_last_seen
-        let mut dead_objects = Vec::new();
-        for &(last_seen, oid_id) in &self.active_objects_by_last_seen {
-            let age = current_count.saturating_sub(last_seen);
-            if age <= end_hint_timeout {
-                break;
-            }
-            if let Some(&(act_id, _)) = self.last_event_per_object.get(&oid_id) {
-                if age > max_inactive_events {
-                    dead_objects.push((oid_id, act_id, true)); 
-                } else if age > end_hint_timeout {
-                    if let Some(&ot_id) = self.object_type_map.get(&oid_id) {
-                        let total_ended = *self.total_ends_per_type.get(&ot_id).unwrap_or(&0);
-                        if total_ended > min_samples { 
-                            let act_ends = *self.end_activities_hist.get(&(act_id, ot_id)).unwrap_or(&0);
-                            if act_ends as f64 / total_ended as f64 > threshold {
-                                dead_objects.push((oid_id, act_id, false)); 
-                            }
-                        }
-                    }
-                }
-            }
+        for (new_death, oid_id) in rescheduled_objects {
+            self.scheduled_deaths.insert((new_death, oid_id));
+            self.scheduled_death_per_object.insert(oid_id, new_death);
         }
-        
+
         for (oid_id, act_id, is_true_dead) in dead_objects {
             if is_true_dead {
                 if let Some(&ot_id) = self.object_type_map.get(&oid_id) {
@@ -533,8 +583,6 @@ impl MinerState {
 
     pub fn run_heuristics_cleanup_unified(&mut self) {
         let max_inactive_events = self.heuristics_config.max_inactive_events; 
-        let end_hint_timeout = self.heuristics_config.end_hint_timeout;
-        
         let current_count = self._processed_count;
 
         // 1. Cleanup divergence_index based on max_inactive_events using divergence_by_last_seen
@@ -561,58 +609,37 @@ impl MinerState {
             }
         }
 
-        // 2. Find dead objects based on active_objects_by_last_seen and mathematically unified Option A
+        // 2. Find dead objects based on scheduled_deaths
         let mut dead_objects = Vec::new();
-        
-        // Statistical constant z (e.g. 1.0 for a standard 1-sigma lower bound)
-        let z = 1.0;
-        // Fixed cleanup decision threshold (e.g. 0.95 probability of being dead)
-        let decision_threshold = 0.95;
+        let mut rescheduled_objects = Vec::new();
 
-        for &(last_seen, oid_id) in &self.active_objects_by_last_seen {
-            let age = current_count.saturating_sub(last_seen);
-            if age <= end_hint_timeout {
+        while let Some(&(scheduled_death, oid_id)) = self.scheduled_deaths.iter().next() {
+            if scheduled_death > current_count {
                 break;
             }
-            if let Some(&(act_id, _)) = self.last_event_per_object.get(&oid_id) {
-                if age >= max_inactive_events {
-                    dead_objects.push((oid_id, act_id, true)); 
-                } else if age > end_hint_timeout {
-                    if let Some(&ot_id) = self.object_type_map.get(&oid_id) {
-                        let n = *self.total_ends_per_type.get(&ot_id).unwrap_or(&0) as f64;
-                        let k = *self.end_activities_hist.get(&(act_id, ot_id)).unwrap_or(&0) as f64;
+            self.scheduled_deaths.remove(&(scheduled_death, oid_id));
+            self.scheduled_death_per_object.remove(&oid_id);
 
-                        // Calculate confidence C using Bayesian Beta-binomial credible lower bound
-                        let confidence = if n == 0.0 {
-                            0.0
-                        } else {
-                            let mu = (k + 1.0) / (n + 2.0);
-                            let var = ((k + 1.0) * (n - k + 1.0)) / ((n + 2.0) * (n + 2.0) * (n + 3.0));
-                            let sigma = var.sqrt();
-                            (mu - z * sigma).max(0.0).min(1.0)
-                        };
+            if let Some(&(act_id, last_seen)) = self.last_event_per_object.get(&oid_id) {
+                if let Some(&ot_id) = self.object_type_map.get(&oid_id) {
+                    let current_d = self.calculate_death_age_unified(act_id, ot_id);
+                    let actual_death_event = last_seen + current_d;
 
-                        // Calculate P(dead)
-                        let p_dead = if confidence <= 0.0 {
-                            0.0
-                        } else {
-                            let x = (age - end_hint_timeout) as f64 / (max_inactive_events - end_hint_timeout) as f64;
-                            if confidence >= 0.9999 {
-                                1.0
-                            } else {
-                                let exponent = (1.0 - confidence) / confidence;
-                                x.powf(exponent)
-                            }
-                        };
-
-                        if p_dead >= decision_threshold {
-                            dead_objects.push((oid_id, act_id, false)); 
-                        }
+                    if actual_death_event <= current_count {
+                        let is_true_dead = (current_count.saturating_sub(last_seen)) >= max_inactive_events;
+                        dead_objects.push((oid_id, act_id, is_true_dead));
+                    } else {
+                        rescheduled_objects.push((actual_death_event, oid_id));
                     }
                 }
             }
         }
-        
+
+        for (new_death, oid_id) in rescheduled_objects {
+            self.scheduled_deaths.insert((new_death, oid_id));
+            self.scheduled_death_per_object.insert(oid_id, new_death);
+        }
+
         for (oid_id, act_id, is_true_dead) in dead_objects {
             if is_true_dead {
                 if let Some(&ot_id) = self.object_type_map.get(&oid_id) {
