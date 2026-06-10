@@ -49,10 +49,29 @@ def format_log_name(name):
     return name
 
 def prepare_eval_data(csv_path):
-    if not os.path.exists(csv_path):
-        print(f"Warning: {csv_path} not found.")
+    actual_path = csv_path
+    
+    # Prioritize unzipped version if it exists
+    if csv_path.endswith('.zip'):
+        unzipped_path = csv_path[:-4]
+        if os.path.exists(unzipped_path):
+            actual_path = unzipped_path
+            print(f"Prioritizing unzipped file: {actual_path}")
+            
+    # Fallback to zipped version if unzipped does not exist
+    if not os.path.exists(actual_path):
+        if not csv_path.endswith('.zip'):
+            zipped_path = csv_path + '.zip'
+            if os.path.exists(zipped_path):
+                actual_path = zipped_path
+                print(f"Unzipped file not found. Falling back to zipped file: {actual_path}")
+
+    if not os.path.exists(actual_path):
+        print(f"Warning: Neither {csv_path} nor its zipped/unzipped counterpart was found.")
         return None
-    df = pd.read_csv(csv_path)
+        
+    print(f"Loading evaluation data from: {actual_path}")
+    df = pd.read_csv(actual_path)
     df['offline_ms'] = df['offline_ns'] / 1_000_000
     df['online_base_ms'] = df['online_base_ns'] / 1_000_000
     df['online_heur_ms'] = df['online_heur_ns'] / 1_000_000
@@ -93,8 +112,8 @@ def plot_memory_dynamics(df_log, log_name, ax):
 def plot_recovery_curve(df_log, log_name, ax):
     """Recovery curve logic."""
     diff_heur = df_log.dropna(subset=['heur_extra_arcs', 'heur_missing_arcs'])
-    ax.plot(diff_heur['event_index'], diff_heur['heur_extra_arcs'], label='FP Ratio', color='#f59e0b', linewidth=2)
-    ax.plot(diff_heur['event_index'], diff_heur['heur_missing_arcs'], label='FN Ratio', color='#dc2626', linewidth=2, linestyle='--')
+    ax.plot(diff_heur['event_index'], diff_heur['heur_extra_arcs'], label='FDR (FP / (FP + TP))', color='#f59e0b', linewidth=2, linestyle='--')
+    ax.plot(diff_heur['event_index'], diff_heur['heur_missing_arcs'], label='FNR (FN / (FN + TP))', color='#dc2626', linewidth=2, linestyle='--')
     ax.set_xlabel('Event Index')
     ax.set_ylabel('Structural Deviation (0-1)')
     ax.set_ylim(-0.05, 1.05)
@@ -192,8 +211,8 @@ def run_experiment_2(df, base_dir):
         ln1 = axC1.plot(binned['replay_pct_bin'], binned['point_savings_pct'], color=COLOR_HEUR, linewidth=3, label='Memory Savings (%)')
         axC1.set_xlabel('Share of Log Replayed (%)'); axC1.set_ylabel('Avg. Savings (%)'); axC1.set_ylim(-5, 105)
         axC2 = axC1.twinx()
-        ln2 = axC2.plot(binned['replay_pct_bin'], binned['heur_extra_arcs'], color='#f59e0b', linestyle='--', label='Avg. FP')
-        ln3 = axC2.plot(binned['replay_pct_bin'], binned['heur_missing_arcs'], color='#dc2626', linestyle='--', label='Avg. FN')
+        ln2 = axC2.plot(binned['replay_pct_bin'], binned['heur_extra_arcs'], color='#f59e0b', linestyle='--', label='Avg. FDR (FP / (FP + TP)')
+        ln3 = axC2.plot(binned['replay_pct_bin'], binned['heur_missing_arcs'], color='#dc2626', linestyle='--', label='Avg. FNR (FN / (FN + TP))')
         axC2.set_ylabel('Avg. Deviation'); axC2.set_ylim(-0.05, 1.05)
         
         # Combine legends and put in upper left
