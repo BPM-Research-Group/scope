@@ -5,7 +5,7 @@ The raw data on which the evaluation of the proposed method is based is containe
 They can be reproduced as follows:
 
 1. **Place the Event Logs:**
-   Copy and paste the required OCEL log files into the `evaluation_ocels/` directory in the project root. (These files are not tracked in git due to size constraints).
+   Create the `evaluation_ocels/` directory in the project root. Copy and paste the required OCEL log files into the `evaluation_ocels/` (These files are not tracked in git due to size constraints).
 
 2. **Run the Evaluation Tests:**
    Navigate to the `backend/` directory and execute the respective tests:
