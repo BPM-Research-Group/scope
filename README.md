@@ -49,6 +49,7 @@ cd evaluation
 - **Memory Dynamics Individual**: Folder containing memory dynamics plots for every individual log.
 - **Recovery Curve** (`Plot_E_Recovery_Curve.png`): Combined plot showing structural deviation recovery over time for representative logs.
 - **Recovery Curve Individual**: Folder containing recovery curve plots for every individual log.
+- **Combined Memory & Accuracy** (`Plot_DE_Memory_Accuracy.png`): Combined side-by-side plots for representative logs showcasing absolute memory dynamics and structural deviation over event indices.
 - **Metrics Table** (`Table_Performance_Metrics.tex`): LaTeX table summarizing drift and memory metrics per log.
 
 ### 3. Parameter Search (`plots/exp3_parameters/`)

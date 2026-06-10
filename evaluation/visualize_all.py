@@ -249,6 +249,46 @@ def run_experiment_2(df, base_dir):
     figE.savefig(os.path.join(exp_dir, "Plot_E_Recovery_Curve.png"), bbox_inches='tight', dpi=300)
     plt.close(figE)
 
+    # Plot DE: Combined Memory & Accuracy Dynamics (Side-by-side)
+    if len(reps) > 0:
+        figDE, axesDE = plt.subplots(1, len(reps), figsize=(7 * len(reps), 5))
+        if len(reps) == 1: axesDE = [axesDE]
+        for idx, log in enumerate(reps):
+            ax_mem = axesDE[idx]
+            log_df = df[df['log'] == log]
+            
+            # Left Y Axis - Absolute Memory in MB
+            mem_base = log_df.dropna(subset=['total_mem_base_mb'])
+            mem_heur = log_df.dropna(subset=['total_mem_heur_mb'])
+            ln1 = ax_mem.plot(mem_base['event_index'], mem_base['total_mem_base_mb'], 
+                              label=NAME_BASE, color=COLOR_BASE, linewidth=2)
+            ln2 = ax_mem.plot(mem_heur['event_index'], mem_heur['total_mem_heur_mb'], 
+                              label=NAME_HEUR, color=COLOR_HEUR, linewidth=2)
+            ax_mem.set_xlabel('Event Index')
+            ax_mem.set_ylabel('Memory (MB)')
+            ax_mem.xaxis.set_major_formatter(ticker.ScalarFormatter())
+            ax_mem.xaxis.get_major_formatter().set_scientific(False)
+            
+            # Right Y Axis - Structural Deviation
+            ax_dev = ax_mem.twinx()
+            diff_heur = log_df.dropna(subset=['heur_extra_arcs', 'heur_missing_arcs'])
+            ln3 = ax_dev.plot(diff_heur['event_index'], diff_heur['heur_extra_arcs'], 
+                              label='FP Ratio', color='#f59e0b', linestyle='-', linewidth=2)
+            ln4 = ax_dev.plot(diff_heur['event_index'], diff_heur['heur_missing_arcs'], 
+                              label='FN Ratio', color='#dc2626', linestyle='--', linewidth=2)
+            ax_dev.set_ylabel('Structural Deviation (0-1)')
+            ax_dev.set_ylim(-0.05, 1.05)
+            
+            # Combine legends and place in upper left
+            lns = ln1 + ln2 + ln3 + ln4
+            labs = [l.get_label() for l in lns]
+            ax_mem.legend(lns, labs, loc='upper left')
+            
+            ax_mem.set_title(format_log_name(log))
+            
+        figDE.savefig(os.path.join(exp_dir, "Plot_DE_Memory_Accuracy.png"), bbox_inches='tight', dpi=300)
+        plt.close(figDE)
+
     # Individual Plot E
     sub_dir_e = os.path.join(exp_dir, "Plot_E_Recovery_Curve_Individual")
     os.makedirs(sub_dir_e, exist_ok=True)
