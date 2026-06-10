@@ -3,18 +3,15 @@ import { flexRender, getCoreRowModel, getSortedRowModel, SortingState, useReactT
 import { ParentSize } from '@visx/responsive';
 import { ReactFlowProvider } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { set } from 'lodash-es';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { Button } from '~/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
 import { SidebarInset, SidebarProvider } from '~/components/ui/sidebar';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '~/components/ui/table';
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 import ClusterVis from '~/components/ClusteringVis';
-import DotDiagram from '~/components/Voronoi';
 import { useExploreFlowStore } from '~/stores/exploreStore';
-import { type Node } from '~/types/ocpt/ocpt.types';
-import exampleClusterdata from '~/routes/CaseClusteringExamples/clustering_example_new3.json';
+import exampleClusterdata from '~/routes/CaseClusteringExamples/clustering_example_new.json';
 
 const CaseClustering: React.FC = () => {
     const [params, setParams] = useState({
