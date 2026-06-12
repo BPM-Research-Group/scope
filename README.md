@@ -2,6 +2,19 @@
 
 ## How to Perform Evaluation
 The raw data on which the evaluation of the proposed method is based is contained in the files `evaluation/evaluation_results.csv` and `evaluation/parameter_search_results.csv`.
+
+### Evaluated Event Logs
+Below is a summary of the statistics of the six evaluated event logs:
+
+| Log File | Events | Activities | Objects |
+| --- | ---: | ---: | ---: |
+| `age_of_empires_ocel2.json` | 2,372,505 | 829 | 361,935 |
+| `logistics.json` | 35,413 | 14 | 13,910 |
+| `lrmsCollection.json` | 28,278 | 22 | 8,819 |
+| `order-management.json` | 21,008 | 11 | 10,840 |
+| `procureToPay.json` | 14,671 | 10 | 9,543 |
+| `reasoning_benchmark.json` | 31,709 | 32 | 1,645 |
+
 They can be reproduced as follows:
 
 1. **Place the Event Logs:**
