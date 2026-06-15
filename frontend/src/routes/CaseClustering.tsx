@@ -11,20 +11,20 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 import ClusterVis from '~/components/ClusteringVis';
 import { useExploreFlowStore } from '~/stores/exploreStore';
-import exampleClusterdata from '~/routes/CaseClusteringExamples/clustering_example_new.json';
+import {useCaseClustering} from '~/services/queries';
 
 const CaseClustering: React.FC = () => {
     const [params, setParams] = useState({
         visMethod: 'tabular-simple', //'tabular-detailed', 'graphic'
         k: 2,
-        distanceMeasure: 'Dfg-typ', //'Dfg-obj'
+        distanceMeasure: 'dfg-typ', //'dfg-obj'
         algorithm: 'k-medoids', //'agglomerative'
     });
 
     const { nodeId } = useParams<{ nodeId: string }>();
     const { getNode } = useExploreFlowStore();
 
-    const [fileId, setFileId] = useState<string | undefined>(undefined);
+    const [fileId, setFileId] = useState<string | undefined>(undefined); //input asset
 
     const [clusteringRaw, setClusteringRaw] = useState<any | null>(null);
     const [reloadTable, setReloadTable] = useState(false);
@@ -33,22 +33,19 @@ const CaseClustering: React.FC = () => {
     const [sorting, setSorting] = useState<SortingState>([]);
     const [loadResult, setloadResult] = useState(false);
     const [submitted, setSubmitted] = useState(false);
+    const node = nodeId ? getNode(nodeId) : undefined;
 
-    //Simuliert API function
-    const getCaseNotionsMock = async () => {
-        // simuliert Netzwerkzeit
-        await new Promise((resolve) => setTimeout(resolve, 500));
-
-        return exampleClusterdata;
-    };
+    const [shouldFetch, setShouldFetch] = useState(false);
+    const query= useCaseClustering(node?.id ?? '', fileId ?? '', params.distanceMeasure, params.algorithm, params.k, false);
+    const data=query.data;
+    const { isLoading, isFetching } = query;
 
     //Get Assets
-    const node = nodeId ? getNode(nodeId) : undefined;
     useMemo(() => {
         if (node) {
             const inputFile = node.data.assets.find((asset) => asset.io === 'input');
             setFileId(inputFile?.id);
-            console.log('Node:', node);
+            //console.log('Node:', node);
         } else {
             setFileId(undefined);
         }
@@ -67,6 +64,7 @@ const CaseClustering: React.FC = () => {
             setGenerateTable(false);
             setGenerateMap(true);
         }
+
     }
 
     // Load the new clustering result from the backend when Load button is pressed. Right know a example file is read
@@ -75,8 +73,10 @@ const CaseClustering: React.FC = () => {
             return;
         }
         const loadData = async () => {
-            const data = await getCaseNotionsMock();
+            setShouldFetch(true);
+            await query.refetch(); // waits to update the table until the results are in
             setClusteringRaw(data);
+            setShouldFetch(false);
         };
         loadData();
         setloadResult(false);
@@ -210,10 +210,10 @@ const CaseClustering: React.FC = () => {
                                         <SelectValue placeholder="Measurement" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem className="text-xs text-amber-600 font-semibold" value="Dfg-typ">
+                                        <SelectItem className="text-xs text-amber-600 font-semibold" value="dfg-typ">
                                             Dfg-typ
                                         </SelectItem>
-                                        <SelectItem className="text-xs text-amber-600 font-semibold" value="Dfg-obj">
+                                        <SelectItem className="text-xs text-amber-600 font-semibold" value="dfg-obj">
                                             Dfg-obj
                                         </SelectItem>
                                     </SelectContent>
@@ -246,6 +246,9 @@ const CaseClustering: React.FC = () => {
                                 <Button
                                     onClick={() => {
                                         setloadResult(true);
+                                        //console.log('Load button clicked-----------------------------------------------');
+                                        //console.log('Data loaded:', data, isLoading, isFetching);
+                                        //set display on after data is received!
                                         display(params.visMethod);
                                     }}
                                     className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md mt-3"

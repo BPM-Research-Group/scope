@@ -29,6 +29,7 @@ import {
     mineOcpt,
     getActivityResource,
     postSpecialActivities,
+    caseClustering
 } from '~/services/api';
 import { getOcel } from '~/services/api';
 import { CaseNotionApiResponse } from '~/types/case_notion.types';
@@ -153,6 +154,7 @@ export const useMineIdentityOcpt = (nodeId: string, fileId: string | null, algor
 };
 
 export const useGetIdentityOcpt = (fileId: string | null, shouldFetch: boolean) => {
+    console.log('Api, file ID 2.2', fileId);
     return useQuery({
         queryKey: ['getIdentityOcpt', fileId],
         queryFn: () => getIdentityOcpt(fileId!),
@@ -287,6 +289,7 @@ export const useMineOcpn = (nodeId: string, fileId: string | null, shouldFetch: 
         refetchOnWindowFocus: false,
     });
 };
+<<<<<<< HEAD
 export const useGetOcpn = (fileId: string | null, enabled: boolean = true) => {
     return useQuery({
         queryKey: ['getOcpn', fileId],
@@ -295,3 +298,14 @@ export const useGetOcpn = (fileId: string | null, enabled: boolean = true) => {
         enabled: !!fileId && enabled,
     });
 };
+=======
+
+export const useCaseClustering = (nodeId: string, fileId: string | null, metric:string, algorithm: string, numberOfClusters: number, shouldFetch: boolean) => {
+    return useQuery({
+        queryKey: ['caseClustering', nodeId, fileId, metric, algorithm, numberOfClusters],
+        queryFn: () => caseClustering(fileId!, metric, algorithm, numberOfClusters),
+        enabled: Boolean(fileId) && shouldFetch,
+        refetchOnWindowFocus: false,
+    });
+};
+>>>>>>> 8a5cf04 (api and querie added and integrated)
