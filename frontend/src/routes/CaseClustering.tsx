@@ -11,7 +11,7 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 import ClusterVis from '~/components/ClusteringVis';
 import { useExploreFlowStore } from '~/stores/exploreStore';
-import {useCaseClustering} from '~/services/queries';
+import { useCaseClustering } from '~/services/queries';
 
 const CaseClustering: React.FC = () => {
     const [params, setParams] = useState({
@@ -26,7 +26,6 @@ const CaseClustering: React.FC = () => {
 
     const [fileId, setFileId] = useState<string | undefined>(undefined); //input asset
 
-    const [clusteringRaw, setClusteringRaw] = useState<any | null>(null);
     const [reloadTable, setReloadTable] = useState(false);
     const [generateTable, setGenerateTable] = useState(false);
     const [generateMap, setGenerateMap] = useState(false);
@@ -35,17 +34,21 @@ const CaseClustering: React.FC = () => {
     const [submitted, setSubmitted] = useState(false);
     const node = nodeId ? getNode(nodeId) : undefined;
 
-    const [shouldFetch, setShouldFetch] = useState(false);
-    const query= useCaseClustering(node?.id ?? '', fileId ?? '', params.distanceMeasure, params.algorithm, params.k, false);
-    const data=query.data;
-    const { isLoading, isFetching } = query;
+    const query = useCaseClustering(
+        node?.id ?? '',
+        fileId ?? '',
+        params.distanceMeasure,
+        params.algorithm,
+        params.k,
+        false
+    );
+    const data = query.data;
 
     //Get Assets
     useMemo(() => {
         if (node) {
             const inputFile = node.data.assets.find((asset) => asset.io === 'input');
             setFileId(inputFile?.id);
-            //console.log('Node:', node);
         } else {
             setFileId(undefined);
         }
@@ -64,7 +67,6 @@ const CaseClustering: React.FC = () => {
             setGenerateTable(false);
             setGenerateMap(true);
         }
-
     }
 
     // Load the new clustering result from the backend when Load button is pressed. Right know a example file is read
@@ -73,10 +75,8 @@ const CaseClustering: React.FC = () => {
             return;
         }
         const loadData = async () => {
-            setShouldFetch(true);
             await query.refetch(); // waits to update the table until the results are in
-            setClusteringRaw(data);
-            setShouldFetch(false);
+            display(params.visMethod);
         };
         loadData();
         setloadResult(false);
@@ -86,15 +86,15 @@ const CaseClustering: React.FC = () => {
         if (reloadTable === true) {
             setReloadTable(false);
         }
-        if (!generateTable || !clusteringRaw) return [];
+        if (!generateTable || !data) return [];
         if (params.visMethod === 'tabular-simple') {
-            return clusteringRaw.case_assignments.map(([caseId, cluster_id]: [number, number]) => ({
+            return data.case_assignments.map(([caseId, cluster_id]: [number, number]) => ({
                 caseId,
                 cluster_id,
             }));
         }
         if (params.visMethod === 'tabular-detailed') {
-            return clusteringRaw.case_points.map((point: any) => ({
+            return data.case_points.map((point: any) => ({
                 caseId: point.case_id,
                 case_index: point.case_index,
                 cluster_id: point.cluster_id,
@@ -104,7 +104,7 @@ const CaseClustering: React.FC = () => {
                 y_norm: point.y_norm,
             }));
         }
-    }, [clusteringRaw, generateTable, reloadTable]);
+    }, [data, generateTable, reloadTable]);
 
     const tableColumns = useMemo(() => {
         if (reloadTable === true) {
@@ -154,7 +154,7 @@ const CaseClustering: React.FC = () => {
                 header: 'Y Norm',
             },
         ];
-    }, [clusteringRaw, generateTable, reloadTable]);
+    }, [data, generateTable, reloadTable]);
 
     const table = useReactTable({
         data: tableData,
@@ -167,14 +167,14 @@ const CaseClustering: React.FC = () => {
 
     const chartData = useMemo(() => {
         return (
-            clusteringRaw?.case_points?.map((d: any) => ({
+            data?.case_points?.map((d: any) => ({
                 id: d.id,
                 x: d.x_norm,
                 y: d.y_norm,
                 cluster: d.cluster_id,
             })) ?? []
         );
-    }, [clusteringRaw]);
+    }, [data]);
 
     const handleSubmit = () => {
         setSubmitted(true);
@@ -197,7 +197,6 @@ const CaseClustering: React.FC = () => {
                                     Input-File:{' '}
                                     <strong>{node?.data.assets.find((asset) => asset.io === 'input')?.name}</strong>
                                 </div>
-
                                 <label className="block mb-2 text-sm mt-3">Distance Measure</label>
                                 <Select
                                     value={params.distanceMeasure}
@@ -218,7 +217,6 @@ const CaseClustering: React.FC = () => {
                                         </SelectItem>
                                     </SelectContent>
                                 </Select>
-
                                 <label className="block mb-2 text-sm mt-3">Algorithm</label>
                                 <Select
                                     value={params.algorithm}
@@ -242,21 +240,6 @@ const CaseClustering: React.FC = () => {
                                         </SelectItem>
                                     </SelectContent>
                                 </Select>
-
-                                <Button
-                                    onClick={() => {
-                                        setloadResult(true);
-                                        //console.log('Load button clicked-----------------------------------------------');
-                                        //console.log('Data loaded:', data, isLoading, isFetching);
-                                        //set display on after data is received!
-                                        display(params.visMethod);
-                                    }}
-                                    className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md mt-3"
-                                    aria-label="Load and display the result"
-                                >
-                                    <span className="text-xs text-blue-600">Load</span>
-                                </Button>
-
                                 <label className="block mb-2 text-sm mt-3">Number of clusters (k)</label>
                                 <input
                                     type="number"
@@ -264,11 +247,24 @@ const CaseClustering: React.FC = () => {
                                     onChange={(e) => setParams((s) => ({ ...s, k: Number(e.target.value) }))}
                                     className="mb-4 w-full rounded border px-2 py-1"
                                 />
-
+                                <Button
+                                    onClick={() => {
+                                        setloadResult(true);
+                                    }}
+                                    className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md mt-3"
+                                    aria-label="Load and display the result"
+                                >
+                                    <span className="text-xs text-blue-600">Load</span>
+                                </Button>
+                                {query.isFetching ? (
+                                    <p className="text-sm text-green-600">Loading...</p>
+                                ) : query.isSuccess ? (
+                                    <p className="text-sm text-green-600">Loading Successfull</p>
+                                ) : (
+                                    <p className="text-sm text-green-600">Nothing</p>
+                                )}
                                 <hr />
-
                                 <label className="block mb-2 text-s mt-3"> Visualisation</label>
-
                                 <div className="flex gap-2">
                                     {['tabular-simple', 'tabular-detailed', 'graphic'].map((option) => (
                                         <button
@@ -366,7 +362,7 @@ const CaseClustering: React.FC = () => {
                                     <div className="rounded-md border p-2">
                                         <p className="text-xs text-muted-foreground">Number of Clusters</p>
                                         <p className="text-lg font-semibold">
-                                            {clusteringRaw ? clusteringRaw.run.k : 0}
+                                            {data ? data.run.k : 0}
                                         </p>
                                     </div>
                                 </div>
@@ -374,7 +370,7 @@ const CaseClustering: React.FC = () => {
                                     <div className="rounded-md border p-2">
                                         <p className="text-xs text-muted-foreground">Number of Cases</p>
                                         <p className="text-lg font-semibold">
-                                            {clusteringRaw ? clusteringRaw.run.num_cases : 0}
+                                            {data ? data.run.num_cases : 0}
                                         </p>
                                     </div>
                                 </div>
@@ -382,7 +378,7 @@ const CaseClustering: React.FC = () => {
                                     <div className="rounded-md border p-2">
                                         <p className="text-xs text-muted-foreground">Average Cluster Size</p>
                                         <p className="text-lg font-semibold">
-                                            {clusteringRaw ? Math.round(clusteringRaw.run.avg_cluster_size) : 0}
+                                            {data ? Math.round(data.run.avg_cluster_size) : 0}
                                         </p>
                                     </div>
                                 </div>
@@ -390,42 +386,46 @@ const CaseClustering: React.FC = () => {
                                     <div className="rounded-md border p-2">
                                         <p className="text-xs text-muted-foreground">total_runtime_seconds</p>
                                         <p className="text-lg font-semibold">
-                                            {clusteringRaw ? clusteringRaw.run.total_runtime_seconds : 0}
+                                            {data ? data.run.total_runtime_seconds : 0}
                                         </p>
                                     </div>
                                 </div>
                                 <div className="space-y-3">
                                     <div className="rounded-md border p-2">
                                         <p className="text-xs text-muted-foreground">within_mean</p>
-                                        <p className="text-lg font-semibold">
-                                            {clusteringRaw
-                                                ? clusteringRaw?.run?.within_mean?.map((value: any, index: any) => (
-                                                      <div key={index}>
-                                                          Cluster {index + 1}: {value.toFixed(5)}
-                                                      </div>
-                                                  ))
-                                                : 0}
-                                        </p>
+                                        <div className="text-lg font-semibold">
+                                            {data ? (
+                                                data?.run?.within_mean?.map((value: any, index: any) => (
+                                                    <div key={index}>
+                                                        Cluster {index + 1}: {value.toFixed(5)}
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <span>0</span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="space-y-3">
                                     <div className="rounded-md border p-2">
                                         <p className="text-xs text-muted-foreground">within_std</p>
-                                        <p className="text-lg font-semibold">
-                                            {clusteringRaw
-                                                ? clusteringRaw?.run?.within_std?.map((value: any, index: any) => (
-                                                      <div key={index}>
-                                                          Cluster {index + 1}: {value.toFixed(5)}
-                                                      </div>
-                                                  ))
-                                                : 0}
-                                        </p>
+                                        <div className="text-lg font-semibold">
+                                            {data ? (
+                                                data?.run?.within_std?.map((value: any, index: any) => (
+                                                    <div key={index}>
+                                                        Cluster {index + 1}: {value.toFixed(5)}
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <span>0</span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="space-y-3">
                                     <div className="rounded-md border p-2">
                                         <p className="text-xs text-muted-foreground">cluster_event_counts</p>
-                                        {clusteringRaw?.run?.cluster_event_counts?.map(
+                                        {data?.run?.cluster_event_counts?.map(
                                             (group: any, groupIndex: any) => (
                                                 <div key={groupIndex} className="mb-3">
                                                     <p className="text-sm font-bold text-muted-foreground">
