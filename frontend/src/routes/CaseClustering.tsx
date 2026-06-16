@@ -12,6 +12,7 @@ import BreadcrumbNav from '~/components/BreadcrumbNav';
 import ClusterVis from '~/components/ClusteringVis';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { useCaseClustering } from '~/services/queries';
+import { isError } from 'lodash-es';
 
 const CaseClustering: React.FC = () => {
     const [params, setParams] = useState({
@@ -76,7 +77,9 @@ const CaseClustering: React.FC = () => {
         }
         const loadData = async () => {
             await query.refetch(); // waits to update the table until the results are in
-            display(params.visMethod);
+            if(!query.isError){
+                display(params.visMethod);
+            }
         };
         loadData();
         setloadResult(false);
@@ -256,12 +259,14 @@ const CaseClustering: React.FC = () => {
                                 >
                                     <span className="text-xs text-blue-600">Load</span>
                                 </Button>
-                                {query.isFetching ? (
+                                {query.isError ? (
+                                    <p className="text-sm text-green-600">Error occured during loading</p>
+                                ) : query.isFetching ? (
                                     <p className="text-sm text-green-600">Loading...</p>
                                 ) : query.isSuccess ? (
                                     <p className="text-sm text-green-600">Loading Successfull</p>
                                 ) : (
-                                    <p className="text-sm text-green-600">Nothing</p>
+                                    <p className="text-sm text-green-600"></p>
                                 )}
                                 <hr />
                                 <label className="block mb-2 text-s mt-3"> Visualisation</label>
