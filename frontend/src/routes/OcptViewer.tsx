@@ -10,7 +10,7 @@ import { useIsOcptMode } from '~/stores/store';
 import { getDeterministicColor } from '~/lib/colors';
 import { addIdsToTree } from '~/lib/ocpt/ocptAddIds';
 import { FileExploreNodeData } from '~/types/explore/nodeData/fileNodeData';
-import { VisualizationNode } from '~/types/explore/nodes';
+import { OcptFileNode } from '~/types/explore/nodes';
 import { type Node } from '~/types/ocpt/ocpt.types';
 
 const OcptViewer: React.FC = () => {
@@ -30,7 +30,7 @@ const OcptViewer: React.FC = () => {
     const { getNode, updateNodeData } = useExploreFlowStore();
     const { isOcptMode } = useIsOcptMode();
 
-    const node = nodeId ? (getNode(nodeId) as VisualizationNode) : undefined;
+    const node = nodeId ? (getNode(nodeId) as OcptFileNode) : undefined;
     const nodeData = node?.data;
     const isIdentityOcpt = nodeData?.assets?.some((a) => a.type === 'identityOcptAsset') ?? false;
     const viewState = nodeData?.viewState;
@@ -97,7 +97,7 @@ const OcptViewer: React.FC = () => {
                         <OCPT
                             treeData={treeData}
                             colorScale={colorScale}
-                            node={node}
+                            filteredObjectTypes={viewState?.filteredObjectTypes ?? []}
                             showDetails={showDetails}
                             isIdentityOcpt={isIdentityOcpt}
                             onExportReady={handleExportReady}
