@@ -1,7 +1,6 @@
 import { memo, useEffect, useMemo } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import { Position } from '@xyflow/react';
-import { Loader2 } from 'lucide-react';
 import BaseMinerNode from '~/components/explore/miner/BaseMinerNode';
 import { useMinerOutput } from '~/hooks/explore/useMinerAssets';
 import { useExploreFlowStore } from '~/stores/exploreStore';
@@ -138,6 +137,7 @@ const ConformanceMinerNode = memo<NodeProps<MinerNode>>((node) => {
             {...node}
             title="Conformance"
             iconName="radar"
+            primaryInputLabel="Model"
             handleOptions={[
                 { id: 'target', position: Position.Left, type: 'target' as const },
                 { id: 'source', position: Position.Right, type: 'source' as const },
@@ -145,22 +145,13 @@ const ConformanceMinerNode = memo<NodeProps<MinerNode>>((node) => {
             secondaryHandles={[
                 {
                     id: 'conformanceTargetSecondary',
-                    label: 'Second Input',
+                    label: 'Log',
                     hintTypes: ['ocptAsset', 'ocptFile', 'identityOcptAsset', 'ocelFile', 'ocelAsset', 'abstractionAsset'],
                 },
             ]}
             dropdownOptions={[]}
             isLoading={isLoading}
-        >
-            {primaryAsset && secondaryAsset && isLoading && (
-                <div className="mt-2 border-t pt-2">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                        Computing conformance...
-                    </div>
-                </div>
-            )}
-        </BaseMinerNode>
+        />
     );
 });
 
