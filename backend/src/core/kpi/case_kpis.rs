@@ -1,5 +1,5 @@
 use crate::core::kpi::attribute_stats::{attr_to_f64, compute_numeric_stats};
-use crate::models::kpi::NumericStats;
+use crate::models::kpi::{CombinationOperator, NumericStats};
 use crate::models::ocel::{OCELEvent, OCELObject};
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -12,18 +12,79 @@ pub struct CaseDurationResult {
     pub stats: Option<NumericStats>,
 }
 
-/// Collects a named numeric attribute from all cases and returns aggregate stats.
+pub struct CaseAttributeCombinationResult {
+    pub cases_with_value: usize,
+    /// Missing operand or divide-by-zero.
+    pub cases_skipped: usize,
+    pub stats: Option<NumericStats>,
+}
+
+fn reduce_values(values: &[f64], intra_case_agg: &str) -> Option<f64> {
+    if values.is_empty() {
+        return None;
+    }
+    match intra_case_agg {
+        "sum" => Some(values.iter().sum()),
+        "mean" => Some(values.iter().sum::<f64>() / values.len() as f64),
+        "min" => values.iter().cloned().reduce(f64::min),
+        "max" => values.iter().cloned().reduce(f64::max),
+        "count" => Some(values.len() as f64),
+        _ => None,
+    }
+}
+
+fn collect_case_attribute_values(
+    event_ids: &[String],
+    object_ids: &[String],
+    event_lookup: &FxHashMap<String, OCELEvent>,
+    object_lookup: &FxHashMap<String, OCELObject>,
+    attribute: &str,
+    filter_object_type: Option<&str>,
+    filter_event_type: Option<&str>,
+) -> Vec<f64> {
+    let mut values: Vec<f64> = Vec::new();
+
+    if let Some(ot) = filter_object_type {
+        for object_id in object_ids {
+            if let Some(obj) = object_lookup.get(object_id) {
+                if obj.object_type != ot {
+                    continue;
+                }
+                for attr in &obj.attributes {
+                    if attr.name == attribute {
+                        if let Some(v) = attr_to_f64(&attr.value) {
+                            values.push(v);
+                        }
+                    }
+                }
+            }
+        }
+    } else if let Some(et) = filter_event_type {
+        for event_id in event_ids {
+            if let Some(event) = event_lookup.get(event_id) {
+                if event.event_type != et {
+                    continue;
+                }
+                for attr in &event.attributes {
+                    if attr.name == attribute {
+                        if let Some(v) = attr_to_f64(&attr.value) {
+                            values.push(v);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    values
+}
+
+/// Stats for a numeric attribute across cases.
 ///
-/// Pass either `filter_object_type` (reads object attributes) or
-/// `filter_event_type` (reads event attributes) — not both.
+/// Read from objects (`filter_object_type`) or events (`filter_event_type`) — pick one.
 ///
-/// `intra_case_agg` controls how values are aggregated before the final stats:
-/// - `None`: pool all raw values across every case (original behavior)
-/// - `Some("sum")`: sum values within each case, then stats over those sums
-/// - `Some("mean")`: mean per case, then stats over those means
-/// - `Some("min")`: min per case, then stats over those mins
-/// - `Some("max")`: max per case, then stats over those maxes
-/// - `Some("count")`: count of matching values per case, then stats over those counts
+/// `intra_case_agg` decides whether stats are over raw values or per-case summaries:
+/// none = all values together; `sum` / `mean` / `min` / `max` / `count` = one number per case first.
 pub fn compute_case_attribute_stats(
     cases: &[CaseEntry],
     event_lookup: &FxHashMap<String, OCELEvent>,
@@ -36,78 +97,97 @@ pub fn compute_case_attribute_stats(
     let mut output_values: Vec<f64> = Vec::new();
 
     for (event_ids, object_ids, _) in cases {
-        // Collect raw values for this single case.
-        let mut case_values: Vec<f64> = Vec::new();
-
-        if let Some(ot) = filter_object_type {
-            for object_id in object_ids {
-                if let Some(obj) = object_lookup.get(object_id) {
-                    if obj.object_type != ot {
-                        continue;
-                    }
-                    for attr in &obj.attributes {
-                        if attr.name == attribute {
-                            if let Some(v) = attr_to_f64(&attr.value) {
-                                case_values.push(v);
-                            }
-                        }
-                    }
-                }
-            }
-        } else if let Some(et) = filter_event_type {
-            for event_id in event_ids {
-                if let Some(event) = event_lookup.get(event_id) {
-                    if event.event_type != et {
-                        continue;
-                    }
-                    for attr in &event.attributes {
-                        if attr.name == attribute {
-                            if let Some(v) = attr_to_f64(&attr.value) {
-                                case_values.push(v);
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        let case_values = collect_case_attribute_values(
+            event_ids,
+            object_ids,
+            event_lookup,
+            object_lookup,
+            attribute,
+            filter_object_type,
+            filter_event_type,
+        );
 
         if case_values.is_empty() {
             continue;
         }
 
         match intra_case_agg {
-            None => {
-                // Pool all raw values (original behavior).
-                output_values.extend(case_values);
-            }
-            Some("sum") => {
-                output_values.push(case_values.iter().sum());
-            }
-            Some("mean") => {
-                let mean = case_values.iter().sum::<f64>() / case_values.len() as f64;
-                output_values.push(mean);
-            }
-            Some("min") => {
-                if let Some(v) = case_values.iter().cloned().reduce(f64::min) {
+            None => output_values.extend(case_values),
+            Some(agg) => {
+                if let Some(v) = reduce_values(&case_values, agg) {
                     output_values.push(v);
                 }
-            }
-            Some("max") => {
-                if let Some(v) = case_values.iter().cloned().reduce(f64::max) {
-                    output_values.push(v);
-                }
-            }
-            Some("count") => {
-                output_values.push(case_values.len() as f64);
-            }
-            _ => {
-                // Unknown value, treat as pooled.
-                output_values.extend(case_values);
             }
         }
     }
 
     compute_numeric_stats(&output_values)
+}
+
+/// Per-case attribute operands combined with one operator; stats over the results.
+pub fn compute_case_attribute_combination_stats(
+    cases: &[CaseEntry],
+    event_lookup: &FxHashMap<String, OCELEvent>,
+    object_lookup: &FxHashMap<String, OCELObject>,
+    left_attribute: &str,
+    left_object_type: Option<&str>,
+    left_event_type: Option<&str>,
+    left_intra_case_agg: &str,
+    right_attribute: &str,
+    right_object_type: Option<&str>,
+    right_event_type: Option<&str>,
+    right_intra_case_agg: &str,
+    operation: CombinationOperator,
+) -> CaseAttributeCombinationResult {
+    let mut combined_values: Vec<f64> = Vec::new();
+    let mut cases_skipped: usize = 0;
+
+    for (event_ids, object_ids, _) in cases {
+        let left_raw = collect_case_attribute_values(
+            event_ids,
+            object_ids,
+            event_lookup,
+            object_lookup,
+            left_attribute,
+            left_object_type,
+            left_event_type,
+        );
+        let right_raw = collect_case_attribute_values(
+            event_ids,
+            object_ids,
+            event_lookup,
+            object_lookup,
+            right_attribute,
+            right_object_type,
+            right_event_type,
+        );
+
+        let (Some(left_value), Some(right_value)) =
+            (reduce_values(&left_raw, left_intra_case_agg), reduce_values(&right_raw, right_intra_case_agg))
+        else {
+            cases_skipped += 1;
+            continue;
+        };
+
+        let combined = match operation {
+            CombinationOperator::Add => left_value + right_value,
+            CombinationOperator::Subtract => left_value - right_value,
+            CombinationOperator::Multiply => left_value * right_value,
+            CombinationOperator::Divide if right_value == 0.0 => {
+                cases_skipped += 1;
+                continue;
+            }
+            CombinationOperator::Divide => left_value / right_value,
+        };
+
+        combined_values.push(combined);
+    }
+
+    CaseAttributeCombinationResult {
+        cases_with_value: combined_values.len(),
+        cases_skipped,
+        stats: compute_numeric_stats(&combined_values),
+    }
 }
 
 /// For each object of `object_type` across all cases, finds (from_activity →

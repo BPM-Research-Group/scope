@@ -1,9 +1,10 @@
 use crate::core::kpi::case_kpis::{
-    compute_activity_successors, compute_case_attribute_stats, compute_case_duration,
-    compute_case_time_stats,
+    compute_activity_successors, compute_case_attribute_combination_stats,
+    compute_case_attribute_stats, compute_case_duration, compute_case_time_stats,
 };
 use crate::models::kpi::{
-    ActivitySuccessorsResponse, AttributeMetadata, CaseAttributeQuery,
+    ActivitySuccessorsResponse, AttributeMetadata,
+    CaseAttributeCombinationRequest, CaseAttributeCombinationStatsResponse, CaseAttributeQuery,
     CaseAttributeStatsResponse, CaseDurationResponse, CaseTimeQuery, CaseTimeStatsResponse,
     EventTypeMetadata, ObjectTypeMetadata, OcelMetadataResponse,
 };
@@ -110,6 +111,48 @@ pub async fn get_ocel_metadata(Path(file_id): Path<String>) -> impl IntoResponse
 
 const VALID_INTRA_CASE_AGG: &[&str] = &["sum", "mean", "min", "max", "count"];
 
+fn validate_attribute_source(
+    object_type: &Option<String>,
+    event_type: &Option<String>,
+    side: &str,
+) -> Result<(), String> {
+    match (object_type, event_type) {
+        (None, None) => Err(format!(
+            "For {}, either object_type or event_type must be provided",
+            side
+        )),
+        (Some(_), Some(_)) => Err(format!(
+            "For {}, object_type and event_type are mutually exclusive",
+            side
+        )),
+        _ => Ok(()),
+    }
+}
+
+fn resolve_intra_case_agg(value: Option<String>, field: &str) -> Result<String, String> {
+    let agg = value.unwrap_or_else(|| "sum".to_string());
+    if !VALID_INTRA_CASE_AGG.contains(&agg.as_str()) {
+        return Err(format!(
+            "Invalid {} '{}'. Must be one of: {}",
+            field,
+            agg,
+            VALID_INTRA_CASE_AGG.join(", ")
+        ));
+    }
+    Ok(agg)
+}
+
+fn ocel_lookups(
+    ocel: &OCEL,
+) -> (
+    FxHashMap<String, OCELEvent>,
+    FxHashMap<String, OCELObject>,
+) {
+    let event_lookup = ocel.events.iter().map(|e| (e.id.clone(), e.clone())).collect();
+    let object_lookup = ocel.objects.iter().map(|o| (o.id.clone(), o.clone())).collect();
+    (event_lookup, object_lookup)
+}
+
 /// Computes aggregate stats for a numeric attribute across all cases.
 /// Provide either `object_type` (reads object attributes) or
 /// `event_type` (reads event attributes) — not both.
@@ -119,35 +162,14 @@ pub async fn get_case_attribute_stats(
     Path(case_notion_file_id): Path<String>,
     Query(query): Query<CaseAttributeQuery>,
 ) -> impl IntoResponse {
-    match (&query.object_type, &query.event_type) {
-        (None, None) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                "Either object_type or event_type must be provided".to_string(),
-            )
-                .into_response();
-        }
-        (Some(_), Some(_)) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                "object_type and event_type are mutually exclusive".to_string(),
-            )
-                .into_response();
-        }
-        _ => {}
+    match validate_attribute_source(&query.object_type, &query.event_type, "query") {
+        Ok(()) => {}
+        Err(message) => return (StatusCode::BAD_REQUEST, message).into_response(),
     }
 
     if let Some(agg) = &query.intra_case_agg {
-        if !VALID_INTRA_CASE_AGG.contains(&agg.as_str()) {
-            return (
-                StatusCode::BAD_REQUEST,
-                format!(
-                    "Invalid intra_case_agg '{}'. Must be one of: {}",
-                    agg,
-                    VALID_INTRA_CASE_AGG.join(", ")
-                ),
-            )
-                .into_response();
+        if let Err(message) = resolve_intra_case_agg(Some(agg.clone()), "intra_case_agg") {
+            return (StatusCode::BAD_REQUEST, message).into_response();
         }
     }
 
@@ -161,10 +183,7 @@ pub async fn get_case_attribute_stats(
         Err((status, message)) => return (status, message).into_response(),
     };
 
-    let event_lookup: FxHashMap<String, OCELEvent> =
-        ocel.events.iter().map(|e| (e.id.clone(), e.clone())).collect();
-    let object_lookup: FxHashMap<String, OCELObject> =
-        ocel.objects.iter().map(|o| (o.id.clone(), o.clone())).collect();
+    let (event_lookup, object_lookup) = ocel_lookups(&ocel);
 
     let stats = compute_case_attribute_stats(
         &persisted.case_notion,
@@ -187,6 +206,77 @@ pub async fn get_case_attribute_stats(
     .into_response()
 }
 
+/// Combines two per-case attribute operands, then returns stats over the results.
+pub async fn post_attribute_combination(
+    Path(case_notion_file_id): Path<String>,
+    Json(payload): Json<CaseAttributeCombinationRequest>,
+) -> impl IntoResponse {
+    if let Err(message) =
+        validate_attribute_source(&payload.left_object_type, &payload.left_event_type, "left")
+    {
+        return (StatusCode::BAD_REQUEST, message).into_response();
+    }
+    if let Err(message) =
+        validate_attribute_source(&payload.right_object_type, &payload.right_event_type, "right")
+    {
+        return (StatusCode::BAD_REQUEST, message).into_response();
+    }
+
+    let left_intra_case_agg =
+        match resolve_intra_case_agg(payload.left_intra_case_agg.clone(), "left_intra_case_agg") {
+            Ok(agg) => agg,
+            Err(message) => return (StatusCode::BAD_REQUEST, message).into_response(),
+        };
+    let right_intra_case_agg = match resolve_intra_case_agg(
+        payload.right_intra_case_agg.clone(),
+        "right_intra_case_agg",
+    ) {
+        Ok(agg) => agg,
+        Err(message) => return (StatusCode::BAD_REQUEST, message).into_response(),
+    };
+
+    let persisted = match load_case_notion(&case_notion_file_id).await {
+        Ok(data) => data,
+        Err(response) => return response,
+    };
+
+    let ocel = match OCEL::import_from_path(&persisted.origin_file_id_ocel).await {
+        Ok(ocel) => ocel,
+        Err((status, message)) => return (status, message).into_response(),
+    };
+
+    let (event_lookup, object_lookup) = ocel_lookups(&ocel);
+
+    let result = compute_case_attribute_combination_stats(
+        &persisted.case_notion,
+        &event_lookup,
+        &object_lookup,
+        &payload.left_attribute,
+        payload.left_object_type.as_deref(),
+        payload.left_event_type.as_deref(),
+        &left_intra_case_agg,
+        &payload.right_attribute,
+        payload.right_object_type.as_deref(),
+        payload.right_event_type.as_deref(),
+        &right_intra_case_agg,
+        payload.operation,
+    );
+
+    (
+        StatusCode::OK,
+        Json(CaseAttributeCombinationStatsResponse {
+            case_notion_file_id,
+            origin_file_id_ocel: persisted.origin_file_id_ocel,
+            case_notion_type: persisted.case_notion_type,
+            operation: payload.operation,
+            cases_with_value: result.cases_with_value,
+            cases_skipped: result.cases_skipped,
+            stats: result.stats,
+        }),
+    )
+        .into_response()
+}
+
 /// Measures elapsed time (seconds) between two activities per object lifecycle
 /// and returns aggregate stats across all cases.
 pub async fn get_case_time_stats(
@@ -203,10 +293,7 @@ pub async fn get_case_time_stats(
         Err((status, message)) => return (status, message).into_response(),
     };
 
-    let event_lookup: FxHashMap<String, OCELEvent> =
-        ocel.events.iter().map(|e| (e.id.clone(), e.clone())).collect();
-    let object_lookup: FxHashMap<String, OCELObject> =
-        ocel.objects.iter().map(|o| (o.id.clone(), o.clone())).collect();
+    let (event_lookup, object_lookup) = ocel_lookups(&ocel);
 
     let stats = compute_case_time_stats(
         &persisted.case_notion,
@@ -249,8 +336,7 @@ pub async fn get_activity_successors(
         Err((status, message)) => return (status, message).into_response(),
     };
 
-    let event_lookup: FxHashMap<String, OCELEvent> =
-        ocel.events.iter().map(|e| (e.id.clone(), e.clone())).collect();
+    let (event_lookup, _) = ocel_lookups(&ocel);
 
     let successors = compute_activity_successors(&persisted.case_notion, &event_lookup)
         .into_iter()
@@ -280,8 +366,7 @@ pub async fn get_case_duration(Path(case_notion_file_id): Path<String>) -> impl 
         Err((status, message)) => return (status, message).into_response(),
     };
 
-    let event_lookup: FxHashMap<String, OCELEvent> =
-        ocel.events.iter().map(|e| (e.id.clone(), e.clone())).collect();
+    let (event_lookup, _) = ocel_lookups(&ocel);
 
     let result = compute_case_duration(&persisted.case_notion, &event_lookup);
 

@@ -74,6 +74,41 @@ pub struct CaseAttributeStatsResponse {
     pub stats: Option<NumericStats>,
 }
 
+#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum CombinationOperator {
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+}
+
+/// Body for `POST /v1/kpi/attribute_combination/{case_notion_file_id}`.
+#[derive(Deserialize)]
+pub struct CaseAttributeCombinationRequest {
+    pub left_attribute: String,
+    pub left_object_type: Option<String>,
+    pub left_event_type: Option<String>,
+    pub left_intra_case_agg: Option<String>,
+    pub right_attribute: String,
+    pub right_object_type: Option<String>,
+    pub right_event_type: Option<String>,
+    pub right_intra_case_agg: Option<String>,
+    pub operation: CombinationOperator,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct CaseAttributeCombinationStatsResponse {
+    pub case_notion_file_id: String,
+    pub origin_file_id_ocel: String,
+    pub case_notion_type: String,
+    pub operation: CombinationOperator,
+    pub cases_with_value: usize,
+    /// Cases skipped (missing operand or divide-by-zero).
+    pub cases_skipped: usize,
+    pub stats: Option<NumericStats>,
+}
+
 /// `GET /v1/kpi/case_time_stats/{case_notion_file_id}`
 /// All three parameters are required.
 #[derive(Deserialize)]
