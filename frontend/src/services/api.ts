@@ -284,14 +284,21 @@ export const saveOcpt = async (ocpt: any): Promise<{ file_id: string }> => {
 };
 
 export const caseClustering = async (fileId: string, metric: string, algorithm: string = 'dfg-typ', k: number) => {
+    console.log("caseClustering");
     if(algorithm === 'k-medoids') {
-        console.log('Api, caseClustering k-medoids called:', fileId, metric, algorithm, k);
         const response = await api.get(`/v1/clustering/cluster/${fileId}`, { params: { k, metric } });
         return response.data;
     } else if (algorithm === 'agglomerative') {
-        console.log('Api, caseClustering agglomerative called:', fileId, metric, algorithm, k);
-        const response = await api.get(`/v1/clustering/agglomerative/${fileId}`, { params: { k, metric } });
-        return response.data;
+            const response = await api.get(`/v1/clustering/agglomerative/${fileId}`, { params: { k, metric} });
+            return response.data;        
     }
     throw new Error(`Algorithm ${algorithm} not supported`);
+};
+
+export const agglomerativeClustering = async (aggFileId: string, k: number) => {
+    const start1 = performance.now();
+    const response = await api.get(`/v1/clustering/agglomerative/${aggFileId}/cut?k=${k}`);
+    const end1 = performance.now();
+    console.log('time:', (end1-start1));
+    return response.data;
 };

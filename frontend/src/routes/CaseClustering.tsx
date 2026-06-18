@@ -3,6 +3,7 @@ import { flexRender, getCoreRowModel, getSortedRowModel, SortingState, useReactT
 import { ParentSize } from '@visx/responsive';
 import { ReactFlowProvider } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { isError } from 'lodash-es';
 import { useParams } from 'react-router-dom';
 import { Button } from '~/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
@@ -11,8 +12,7 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 import ClusterVis from '~/components/ClusteringVis';
 import { useExploreFlowStore } from '~/stores/exploreStore';
-import { useCaseClustering } from '~/services/queries';
-import { isError } from 'lodash-es';
+import { useAgglomerativeClustering, useCaseClustering } from '~/services/queries';
 
 const CaseClustering: React.FC = () => {
     const [params, setParams] = useState({
@@ -34,16 +34,15 @@ const CaseClustering: React.FC = () => {
     const [loadResult, setloadResult] = useState(false);
     const [submitted, setSubmitted] = useState(false);
     const node = nodeId ? getNode(nodeId) : undefined;
+    const [aggTypFileId, setaggTypFileId] = useState<string | undefined>(undefined);
+    const [aggObjFileId, setaggObjFileId] = useState<string | undefined>(undefined);
+    const [inputFileId, setInputFileId] = useState<string | undefined>(undefined);
+    const [useAggFile, setUseAggFile] = useState(false);
+    const [slider, setSlider] = useState(false);
 
-    const query = useCaseClustering(
-        node?.id ?? '',
-        fileId ?? '',
-        params.distanceMeasure,
-        params.algorithm,
-        params.k,
-        false
-    );
-    const data = query.data;
+    const query = useCaseClustering(node?.id ?? '', fileId ?? '', params.distanceMeasure, params.algorithm, params.k, false);
+    const aggQuery = useAgglomerativeClustering(node?.id ?? '', inputFileId ?? '', params.k, false);
+    const data = slider ? aggQuery.data : query.data;
 
     //Get Assets
     useMemo(() => {
@@ -75,15 +74,36 @@ const CaseClustering: React.FC = () => {
         if (!loadResult) {
             return;
         }
+        setUseAggFile(false);
         const loadData = async () => {
-            await query.refetch(); // waits to update the table until the results are in
-            if(!query.isError){
+            const result = await query.refetch(); // waits to update the table until the results are in
+            if (!query.isError && !result.isError) {
                 display(params.visMethod);
+            }
+            if (params.algorithm === 'agglomerative') {
+                if (params.distanceMeasure === 'dfg-typ') {
+                    setaggTypFileId(result.data.file_id);
+                } else if (params.distanceMeasure === 'dfg-obj') {
+                    setaggObjFileId(result.data.file_id);
+                }
             }
         };
         loadData();
         setloadResult(false);
     }, [loadResult]);
+
+    useEffect(() => {
+        if(!slider){
+            return;
+        }
+        const loadAggData = async () => {
+            const aggResult = await aggQuery.refetch();
+            if (!aggQuery.isError && !aggResult.isError) {
+                display(params.visMethod);
+            }
+        };
+        loadAggData();
+    }, [params.k]);
 
     const tableData = useMemo(() => {
         if (reloadTable === true) {
@@ -243,22 +263,53 @@ const CaseClustering: React.FC = () => {
                                         </SelectItem>
                                     </SelectContent>
                                 </Select>
-                                <label className="block mb-2 text-sm mt-3">Number of clusters (k)</label>
-                                <input
-                                    type="number"
-                                    value={params.k}
-                                    onChange={(e) => setParams((s) => ({ ...s, k: Number(e.target.value) }))}
-                                    className="mb-4 w-full rounded border px-2 py-1"
-                                />
+                                {params.algorithm !== 'agglomerative' ? (
+                                    <label className="block mb-2 text-sm mt-3">Number of clusters (k)</label>
+                                ) : null}
+                                {params.algorithm !== 'agglomerative' ? (
+                                    <input
+                                        type="number"
+                                        value={params.k}
+                                        onChange={(e) => setParams((s) => ({ ...s, k: Number(e.target.value) }))}
+                                        className="mb-4 w-full rounded border px-2 py-1"
+                                    />
+                                ) : null}
                                 <Button
                                     onClick={() => {
                                         setloadResult(true);
+                                        setSlider(false);
+                                        if(params.distanceMeasure === 'dfg-typ'){ setInputFileId(aggTypFileId);}
+                                        if(params.distanceMeasure === 'dfg-obj'){ setInputFileId(aggObjFileId);}
                                     }}
                                     className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md mt-3"
                                     aria-label="Load and display the result"
                                 >
                                     <span className="text-xs text-blue-600">Load</span>
                                 </Button>
+                                {params.algorithm === 'agglomerative' ? (
+                                    <div className="mb-4">
+                                        <div className="flex items-center justify-between text-xs mb-1">
+                                            <span className="block mb-2 text-sm mt-3">Number of clusters (k)</span>
+                                            <span className="font-semibold">{params.k}</span>
+                                        </div>
+                                        <input
+                                            id="kRange"
+                                            type="range"
+                                            min={1}
+                                            max={20}
+                                            step={1}
+                                            value={params.k}
+                                            onChange={(e) => {
+                                                setParams((s) => ({ ...s, k: Number(e.target.value) }));
+                                                setUseAggFile(true);
+                                                setSlider(true);
+                                            }}
+                                            className="w-full"
+                                            aria-label="Number of clusters"
+                                        />
+                                    </div>
+                                ) : null}
+                                
                                 {query.isError ? (
                                     <p className="text-sm text-green-600">Error occured during loading</p>
                                 ) : query.isFetching ? (
@@ -366,17 +417,13 @@ const CaseClustering: React.FC = () => {
                                 <div className="space-y-3">
                                     <div className="rounded-md border p-2">
                                         <p className="text-xs text-muted-foreground">Number of Clusters</p>
-                                        <p className="text-lg font-semibold">
-                                            {data ? data.run.k : 0}
-                                        </p>
+                                        <p className="text-lg font-semibold">{data ? data.run.k : 0}</p>
                                     </div>
                                 </div>
                                 <div className="space-y-3">
                                     <div className="rounded-md border p-2">
                                         <p className="text-xs text-muted-foreground">Number of Cases</p>
-                                        <p className="text-lg font-semibold">
-                                            {data ? data.run.num_cases : 0}
-                                        </p>
+                                        <p className="text-lg font-semibold">{data ? data.run.num_cases : 0}</p>
                                     </div>
                                 </div>
                                 <div className="space-y-3">
@@ -430,23 +477,21 @@ const CaseClustering: React.FC = () => {
                                 <div className="space-y-3">
                                     <div className="rounded-md border p-2">
                                         <p className="text-xs text-muted-foreground">cluster_event_counts</p>
-                                        {data?.run?.cluster_event_counts?.map(
-                                            (group: any, groupIndex: any) => (
-                                                <div key={groupIndex} className="mb-3">
-                                                    <p className="text-sm font-bold text-muted-foreground">
-                                                        Cluster {groupIndex + 1}
-                                                    </p>
+                                        {data?.run?.cluster_event_counts?.map((group: any, groupIndex: any) => (
+                                            <div key={groupIndex} className="mb-3">
+                                                <p className="text-sm font-bold text-muted-foreground">
+                                                    Cluster {groupIndex + 1}
+                                                </p>
 
-                                                    <div className="ml-2">
-                                                        {group.map(([name, value]: [string, number]) => (
-                                                            <p key={name} className="text-base font-semibold">
-                                                                {name}: {value}
-                                                            </p>
-                                                        ))}
-                                                    </div>
+                                                <div className="ml-2">
+                                                    {group.map(([name, value]: [string, number]) => (
+                                                        <p key={name} className="text-base font-semibold">
+                                                            {name}: {value}
+                                                        </p>
+                                                    ))}
                                                 </div>
-                                            )
-                                        )}
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             </div>

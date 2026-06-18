@@ -29,7 +29,8 @@ import {
     mineOcpt,
     getActivityResource,
     postSpecialActivities,
-    caseClustering
+    caseClustering,
+    agglomerativeClustering
 } from '~/services/api';
 import { getOcel } from '~/services/api';
 import { CaseNotionApiResponse } from '~/types/case_notion.types';
@@ -308,4 +309,16 @@ export const useCaseClustering = (nodeId: string, fileId: string | null, metric:
         refetchOnWindowFocus: false,
     });
 };
+<<<<<<< HEAD
 >>>>>>> 8a5cf04 (api and querie added and integrated)
+=======
+
+export const useAgglomerativeClustering = (nodeId: string, fileId: string | null, numberOfClusters: number, shouldFetch: boolean) => {
+    return useQuery({
+        queryKey: ['agglomerativeClustering', nodeId, fileId, numberOfClusters],
+        queryFn: () => agglomerativeClustering(fileId!,numberOfClusters),
+        enabled: Boolean(fileId) && shouldFetch,
+        refetchOnWindowFocus: false,
+    });
+};
+>>>>>>> f03d58f (slider works but is still quite slow)
