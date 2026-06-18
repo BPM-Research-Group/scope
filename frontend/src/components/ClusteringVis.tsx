@@ -28,6 +28,7 @@ const defaultMargin = { top: verge, left: verge, right: verge, bottom: verge };
 const COLORS = ['#6366F1', '#22C55E', '#F97316', '#EC4899', '#06B6D4', '#A855F7', '#EAB308', '#EF4444'];
 
 export default function ClusterScatter({ width, height, data, margin = defaultMargin }: Props) {
+    console.log("bevore Error!", width, height, data, margin );
     const innerWidth = Math.max(0, width - margin.left - margin.right);
     const innerHeight = Math.max(0, height - margin.top - margin.bottom);
     const [hoveredCluster, setHoveredCluster] = useState<string | number | null>(null);
@@ -56,7 +57,6 @@ export default function ClusterScatter({ width, height, data, margin = defaultMa
 
         return map;
     }, [data]);
-
     const aggregatedData = useMemo(() => {
         const map = new Map<string, AggregatedDatum>();
 
@@ -74,12 +74,10 @@ export default function ClusterScatter({ width, height, data, margin = defaultMa
                 map.get(key)!.count += 1;
             }
         });
-
         return Array.from(map.values());
     }, [data]);
 
     if (width < 10 || height < 10) return null;
-
     return (
         <svg
             width={width}
@@ -111,13 +109,11 @@ export default function ClusterScatter({ width, height, data, margin = defaultMa
                             />
                         );
                     }
-
                     const hull = polygonHull(points.map((p) => [p.x * innerWidth, p.y * innerHeight]));
 
                     if (!hull) return null;
 
                     const isHovered = hoveredCluster === cluster;
-
                     return (
                         <path
                             key={`hull-${cluster}`}
@@ -132,10 +128,11 @@ export default function ClusterScatter({ width, height, data, margin = defaultMa
                         />
                     );
                 })}
-
+                
                 {/*Points */}
                 {aggregatedData.map((d) => (
                     <circle
+                        key={`${d.cluster}-${d.x}-${d.y}`}
                         cx={d.x * innerWidth}
                         cy={d.y * innerHeight}
                         r={(100 / data.length) * d.count}
