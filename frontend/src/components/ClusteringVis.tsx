@@ -28,7 +28,6 @@ const defaultMargin = { top: verge, left: verge, right: verge, bottom: verge };
 const COLORS = ['#6366F1', '#22C55E', '#F97316', '#EC4899', '#06B6D4', '#A855F7', '#EAB308', '#EF4444'];
 
 export default function ClusterScatter({ width, height, data, margin = defaultMargin }: Props) {
-    console.log("bevore Error!", width, height, data, margin );
     const innerWidth = Math.max(0, width - margin.left - margin.right);
     const innerHeight = Math.max(0, height - margin.top - margin.bottom);
     const [hoveredCluster, setHoveredCluster] = useState<string | number | null>(null);
