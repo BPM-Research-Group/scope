@@ -14,6 +14,7 @@ import HistViz from '~/routes/Hist-Viz';
 import Home from '~/routes/Home';
 import OcelViewer from '~/routes/OcelViewer';
 import ResourceViewer from '~/routes/ResourceViewer';
+import KpiViewer from '~/routes/KpiViewer';
 import OcptViewer from '~/routes/OcptViewer';
 import Pipeline from '~/routes/Pipeline';
 import Upload from '~/routes/Upload';
@@ -104,6 +105,14 @@ const router = createBrowserRouter([
         element: (
              <RedirectErrorBoundary>
                 <ResourceViewer />
+            </RedirectErrorBoundary>
+        ),
+    },
+    {
+        path: '/data/pipeline/explore/kpi/:nodeId',
+        element: (
+            <RedirectErrorBoundary>
+                <KpiViewer />
             </RedirectErrorBoundary>
         ),
     },

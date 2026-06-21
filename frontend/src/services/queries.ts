@@ -29,6 +29,8 @@ import {
     mineOcpt,
     getActivityResource,
     postSpecialActivities,
+    mineKpi,
+    attributeStats,
 } from '~/services/api';
 import { getOcel } from '~/services/api';
 import { CaseNotionApiResponse } from '~/types/case_notion.types';
@@ -140,6 +142,34 @@ export const useMineOcpt = (nodeId: string, fileId: string | null, algorithm: st
         queryFn: () => mineOcpt(fileId!, algorithm),
         enabled: Boolean(fileId) && shouldFetch,
         refetchOnWindowFocus: false,
+    });
+};
+
+export const useMineKpi = ( fileId: string | null) => {
+    return useQuery({
+        queryKey: ['mineKpi',  fileId],
+        queryFn: () => mineKpi(fileId!),
+        enabled: Boolean(fileId) ,
+        refetchOnWindowFocus: false,
+    });
+};
+
+
+export const useAttributeStats = (
+    fileId: string | null,
+    params: any,
+    options = {}
+) => {
+    return useQuery({
+        queryKey: ['attributeStats', fileId, params],
+
+        queryFn: () => attributeStats(fileId!, params),
+
+        enabled: Boolean(fileId) && Boolean(params),
+
+        refetchOnWindowFocus: false,
+
+        ...options,
     });
 };
 

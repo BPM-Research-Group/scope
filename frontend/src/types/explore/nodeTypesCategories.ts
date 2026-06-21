@@ -10,6 +10,7 @@ export const minerNodeTypes = [
     'abstractionMinerNode',
     'ocpnMinerNode',
     'resourceMinerNode',
+    'kpiBuilderNode',
     'conformanceMinerNode',
 ] as const;
 export type ExploreMinerNodeType = (typeof minerNodeTypes)[number];

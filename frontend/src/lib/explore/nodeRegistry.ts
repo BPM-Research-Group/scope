@@ -118,6 +118,11 @@ export const nodeRegistry = {
         allowedAssetTypes: ['ocelFile'],
         sidebar: { label: 'Resource Miner', icon: 'waves', group: 'miners' },
         },
+        kpiBuilderNode: {
+        category: 'miner',
+        allowedAssetTypes: ['ocelFile'],
+        sidebar: { label: 'KPI Builder', icon: 'network', group: 'miners' },
+        },
     conformanceMinerNode: {
         category: 'miner',
         allowedAssetTypes: ['ocptAsset', 'ocptFile', 'identityOcptAsset', 'ocelFile', 'ocelAsset', 'abstractionAsset'],

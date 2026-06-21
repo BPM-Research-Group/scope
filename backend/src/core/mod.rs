@@ -1,5 +1,9 @@
 pub mod case_notion;
+<<<<<<< HEAD
 pub mod clustering;
+=======
+pub mod kpi;
+>>>>>>> c0b6f571e418c437f3c5248f40912fcc8959e76f
 pub mod df2_miner;
 pub mod event_object_frequencies;
 pub mod identity_relations;
