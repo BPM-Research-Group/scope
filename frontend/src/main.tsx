@@ -18,6 +18,7 @@ import ResourceViewer from '~/routes/ResourceViewer';
 import OcptViewer from '~/routes/OcptViewer';
 import Pipeline from '~/routes/Pipeline';
 import Upload from '~/routes/Upload';
+import OcpnViewer from './routes/OcpnViewer';
 
 // Create a client
 const queryClient = new QueryClient();
@@ -100,6 +101,14 @@ const router = createBrowserRouter([
         ),
     },
     {
+        path: '/data/pipeline/explore/ocpn/:nodeId',
+        element: (
+            <RedirectErrorBoundary>
+                <OcpnViewer />
+            </RedirectErrorBoundary>    
+         ),
+     },
+     {       
         path: '/data/pipeline/explore/resource_graph/:nodeId',
         element: (
              <RedirectErrorBoundary>

@@ -14,6 +14,7 @@ interface ProcessTreeNodeProps {
     onMouseEnter?: () => void;
     onMouseMove?: () => void;
     onMouseLeave?: () => void;
+    onClick?: () => void;
 }
 
 const ProcessTreeOperatorNode: React.FC<ProcessTreeNodeProps> = ({
@@ -27,6 +28,7 @@ const ProcessTreeOperatorNode: React.FC<ProcessTreeNodeProps> = ({
     onMouseEnter,
     onMouseMove,
     onMouseLeave,
+    onClick,
 }) => {
     return (
         <Group
@@ -36,7 +38,24 @@ const ProcessTreeOperatorNode: React.FC<ProcessTreeNodeProps> = ({
             onMouseEnter={onMouseEnter}
             onMouseMove={onMouseMove}
             onMouseLeave={onMouseLeave}
+            onClick={onClick}
+            style={{ cursor: onClick ? 'pointer' : undefined }}
         >
+            {onClick && (
+                <rect
+                    height={height + 8}
+                    width={width + 8}
+                    y={-(height + 8) / 2}
+                    x={-(width + 8) / 2}
+                    fill="none"
+                    stroke="#6366f1"
+                    strokeWidth={1.5}
+                    strokeDasharray="4 3"
+                    rx={28}
+                    ry={28}
+                    opacity={opacity}
+                />
+            )}
             <rect
                 height={height}
                 width={width}

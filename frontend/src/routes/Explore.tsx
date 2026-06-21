@@ -9,6 +9,7 @@ import AbstractionFileNode from '~/components/explore/file/AbstractionFileNode';
 import ConformanceFileNode from '~/components/explore/file/ConformanceFileNode';
 import OcelCollectionNode from '~/components/explore/file/OcelCollectionNode';
 import OcelFileNode from '~/components/explore/file/OcelFileNode';
+import OcpnFileNode from '~/components/explore/file/OcpnFileNode';
 import OcptFileNode from '~/components/explore/file/OcptFileNode';
 import FileSelectionDialog from '~/components/explore/file/ui/FileSelectionDialog';
 import AbstractionMinerNode from '~/components/explore/miner/AbstractionMinerNode';
@@ -17,6 +18,7 @@ import ConformanceMinerNode from '~/components/explore/miner/ConformanceMinerNod
 import ExtendWithIdentityNode from '~/components/explore/miner/ExtendWithIdentityNode';
 import FlowVisualizationNode from '~/components/explore/miner/FlowVisualizationNode';
 import HistogramMinerNode from '~/components/explore/miner/HistogramMinerNode';
+import OcpnMinerNode from '~/components/explore/miner/OcpnMinerNode';
 import ResourceMinerNode from '~/components/explore/miner/ResourceMinerNode';
 import OcptMinerNode from '~/components/explore/miner/OcptMinerNode';
 import { RefocusProgressPanel } from '~/components/explore/RefocusProgressPanel';
@@ -32,8 +34,10 @@ import KpiMinerNode from '~/components/explore/miner/KpiMinerNode';
 const nodeTypes = {
     ocptFileNode: OcptFileNode,
     ocelFileNode: OcelFileNode,
+    ocpnFileNode: OcpnFileNode,
     ocelCollectionNode: OcelCollectionNode,
     ocptMinerNode: OcptMinerNode,
+    ocpnMinerNode: OcpnMinerNode,
     histogramMinerNode: HistogramMinerNode,
     caseNotionMinerNode: CaseNotionMinerNode,
     identityExtendMinerNode: ExtendWithIdentityNode,

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Group } from '@visx/group';
 import { hierarchy } from '@visx/hierarchy';
 import { HierarchyNode, HierarchyPointNode } from '@visx/hierarchy/lib/types';
@@ -6,9 +6,11 @@ import { ParentSize } from '@visx/responsive';
 import { Zoom } from '@visx/zoom';
 import type { ProvidedZoom, TransformMatrix } from '@visx/zoom/lib/types';
 import { ScaleOrdinal } from 'd3';
+import IdentityRelationViewer from '~/components/identity_relations/IdentityRelationViewer';
 import { RenderTree } from '~/components/ocpt/OcptRendering';
 import NodeTooltip from '~/components/ocpt/ui/NodeTooltip';
 import ZoomButtons from '~/components/ocpt/ui/ZoomButtons';
+import { isExtendedProcessTreeOperatorNode, isIdentityOperatorApi } from '~/lib/ocpt/ocptGuards';
 import { VisualizationNode } from '~/types/explore/nodes';
 import { type Node } from '~/types/ocpt/ocpt.types';
 
@@ -25,6 +27,7 @@ export type OCPTProps = {
     node?: VisualizationNode;
     filteredObjectTypes?: string[];
     showDetails?: boolean;
+    isIdentityOcpt?: boolean;
     onExportReady?: (exportFn: () => void) => void;
 };
 
@@ -44,13 +47,56 @@ const OCPTContent: React.FC<OCPTContentProps> = ({
     node,
     filteredObjectTypes: filteredObjectTypesProp,
     showDetails,
+    isIdentityOcpt,
     onExportReady,
 }) => {
     const [hoveredNode, setHoveredNode] = useState<HierarchyPointNode<Node> | null>(null);
+    const [clickedNode, setClickedNode] = useState<HierarchyPointNode<Node> | null>(null);
     const [tree, setTree] = useState<HierarchyNode<Node> | null>(null);
     const treeGroupRef = useRef<SVGGElement>(null);
     const viewState = node?.data.viewState;
     const filteredObjectTypes = filteredObjectTypesProp ?? viewState?.filteredObjectTypes ?? [];
+
+    const identityData = useMemo(() => {
+        if (!clickedNode) return null;
+        const value = clickedNode.data.value;
+
+        const otsFromRelations = (relations: { left: string[]; right: string[] }[]) => {
+            const s = new Set<string>();
+            relations.forEach((r) => {
+                r.left.forEach((ot) => s.add(ot));
+                r.right.forEach((ot) => s.add(ot));
+            });
+            return s;
+        };
+
+        const operatorLabel: Record<string, string> = {
+            sequence: 'Sequence',
+            parallel: 'Parallel',
+            loop: 'Loop',
+            xor: 'XOR',
+        };
+
+        if (isExtendedProcessTreeOperatorNode(value)) {
+            const relations = value.identity ?? [];
+            const otSet = otsFromRelations(relations);
+            value.ots.forEach((ot) => otSet.add(ot.ot));
+            return {
+                title: operatorLabel[value.operator] ?? value.operator,
+                objectTypes: Array.from(otSet),
+                relations,
+            };
+        }
+        if (isIdentityOperatorApi(value)) {
+            const relations = value.identity ?? [];
+            return {
+                title: operatorLabel[value.operator] ?? value.operator,
+                objectTypes: Array.from(otsFromRelations(relations)),
+                relations,
+            };
+        }
+        return null;
+    }, [clickedNode]);
 
     useEffect(() => {
         const copyTreeData = JSON.parse(JSON.stringify(treeData));
@@ -175,11 +221,22 @@ const OCPTContent: React.FC<OCPTContentProps> = ({
                                             sizeWidth={sizeWidth}
                                             sizeHeight={sizeHeight}
                                             showDetails={showDetails}
+                                            onOperatorClick={isIdentityOcpt ? setClickedNode : undefined}
                                         />
                                     </Group>
                                 </g>
                             </svg>
                             <ZoomButtons zoom={zoom} />
+                            <IdentityRelationViewer
+                                open={clickedNode !== null}
+                                onOpenChange={(open) => {
+                                    if (!open) setClickedNode(null);
+                                }}
+                                title={identityData?.title}
+                                objectTypes={identityData?.objectTypes ?? []}
+                                relations={identityData?.relations ?? []}
+                                getObjectColor={colorScale}
+                            />
                             <NodeTooltip
                                 hoverPoint={
                                     hoveredNode && {

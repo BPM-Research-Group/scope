@@ -25,5 +25,6 @@ export interface ConformanceResult {
 
 export interface MinerExploreNodeData extends BaseExploreNodeData {
     algorithm?: string;
+    noiseThreshold?: number;
     conformanceResult?: ConformanceResult;
 }

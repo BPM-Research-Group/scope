@@ -155,30 +155,31 @@ pub async fn get_conformance_extended_ocpt_abstraction(
     Json(conformance_payload(fitness, precision, footprint.as_ref())).into_response()
 }
 
-/// GET /v1/conformance/abstraction_1/{abstraction_id_1}/abstraction_2/{abstraction_id_2}
-/// -> loads ./temp/abstraction_{abstraction_id_1}.json and ./temp/abstraction_{abstraction_id_2}.json
+/// GET /v1/conformance/abstraction_1/{model_abstraction_id}/abstraction_2/{log_abstraction_id}
+/// -> loads ./temp/abstraction_{model_abstraction_id}.json and ./temp/abstraction_{log_abstraction_id}.json
 pub async fn get_conformance_abstraction_abstraction(
-    AxumPath((abstraction_id_1, abstraction_id_2)): AxumPath<(String, String)>,
+    AxumPath((model_abstraction_id, log_abstraction_id)): AxumPath<(String, String)>,
 ) -> impl IntoResponse {
-    let abstraction_1 = match OCLanguageAbstraction::import_from_path(&abstraction_id_1).await {
-        Ok(abstraction) => abstraction,
-        Err((status, message)) => return (status, message).into_response(),
-    };
-    let abstraction_2 = match OCLanguageAbstraction::import_from_path(&abstraction_id_2).await {
+    let model_abstraction =
+        match OCLanguageAbstraction::import_from_path(&model_abstraction_id).await {
+            Ok(abstraction) => abstraction,
+            Err((status, message)) => return (status, message).into_response(),
+        };
+    let log_abstraction = match OCLanguageAbstraction::import_from_path(&log_abstraction_id).await {
         Ok(abstraction) => abstraction,
         Err((status, message)) => return (status, message).into_response(),
     };
 
-    let footprint = maybe_compute_footprint(&abstraction_1, &abstraction_2, || {
-        compute_footprint_conformance_abstractions(&abstraction_1, &abstraction_2)
+    let footprint = maybe_compute_footprint(&log_abstraction, &model_abstraction, || {
+        compute_footprint_conformance_abstractions(&log_abstraction, &model_abstraction)
     });
     let (fitness, precision) =
-        select_top_level_scores(&abstraction_1, &abstraction_2, footprint.as_ref());
+        select_top_level_scores(&log_abstraction, &model_abstraction, footprint.as_ref());
 
     println!(
-        "[conformance abstraction_abstraction] abstraction_id_1={} abstraction_id_2={} fitness={} precision={}{}",
-        abstraction_id_1,
-        abstraction_id_2,
+        "[conformance abstraction_abstraction] model_abstraction_id={} log_abstraction_id={} fitness={} precision={}{}",
+        model_abstraction_id,
+        log_abstraction_id,
         fitness,
         precision,
         footprint_log_suffix(footprint.as_ref())

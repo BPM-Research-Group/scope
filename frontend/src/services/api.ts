@@ -1,10 +1,10 @@
 import axios, { type AxiosResponse } from 'axios';
 import { GetCaseNotionsResponse } from '~/services/response.types';
+import type { OCLanguageAbstraction } from '~/types/abstraction.types';
 import { CaseOcelResponse } from '~/types/api/ocel_collection.api';
 import { CaseNotionApiResponse } from '~/types/case_notion.types';
 import { ExtendedFile } from '~/types/files.types';
 import { OcptSchemaApi } from '~/types/ocpt/ocpt.types';
-import type { OCLanguageAbstraction } from '~/types/abstraction.types';
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_BACKEND_BASE_URL,
@@ -15,7 +15,6 @@ export const uploadFile = async (file: ExtendedFile) => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('file_id', file.id);
-    // formData.append('file_type', file.fileType);
 
     let response;
     switch (file.fileType) {
@@ -54,8 +53,8 @@ export const mineIdentityOcpt = async (ocelFileId: string, baseAlgorithm: string
     return { file_id: extendedResponse.data.file_id, ocpt: extendedResponse.data.extended_ocpt };
 };
 
-export const extendOcptWithIdentity = async (ocptFileId: string, ocelFileId: string): Promise<GetOcptResponse> => {
-    const response = await api.get(`v1/ocpt/extend/${ocptFileId}?ocel_id=${ocelFileId}`);
+export const extendOcptWithIdentity = async (ocptFileId: string, ocelFileId: string, noiseThreshold: number): Promise<GetOcptResponse> => {
+    const response = await api.get(`v1/ocpt/extend/${ocptFileId}`, { params: { ocel_id: ocelFileId, noise_threshold: noiseThreshold } });
     return { file_id: response.data.file_id, ocpt: response.data.extended_ocpt };
 };
 
@@ -78,13 +77,11 @@ export const postSpecialActivities= async (fileId : string, activities: string[]
 }
 
 export const getHistogramEventPersp = async (fileId: string) => {
-    //const response = await api.get(`/v1/event_object_frequencies/histogram/${fileId}`);
     const response = await api.get(`/v1/event_object_frequencies/event_perspective_histogram/${fileId}`);
     return response.data;
 };
 
 export const getHistogramObjectPersp = async (fileId: string) => {
-    //const response = await api.get(`/v1/event_object_frequencies/histogram/${fileId}`);
     const response = await api.get(`/v1/event_object_frequencies/object_perspective_histogram/${fileId}`);
     return response.data;
 };
@@ -218,6 +215,21 @@ export const getAbstractionById = async (fileId: string): Promise<GetAbstraction
     return response.data;
 };
 
+export type ExportPm4pyResponse = {
+    status: string;
+    kind: string;
+    source_file_id: string;
+    schema: string;
+    schema_version: string;
+    filename: string;
+    path: string;
+};
+
+export const exportOcptPm4py = async (fileId: string): Promise<ExportPm4pyResponse> => {
+    const response = await api.get(`/v1/export/pm4py/ocpt/${fileId}`);
+    return response.data;
+};
+
 export const mineOcpt = async (fileId: string, algorithm: string = 'DF2'): Promise<GetOcptResponse> => {
     if (algorithm === 'DF2') {
         const response = await api.get(`v1/ocpt/df2/${fileId}`);
@@ -252,8 +264,14 @@ export const attributeStats = async (fileId: string, params: any) => {
    
 };
 
-export const getCaseNotions = async (cnFileId: string) => { 
-    const response = await api.get<GetCaseNotionsResponse>(`v1/case_notion/case_ocel/${cnFileId}`);   
+   
+export const mineOcpn = async (fileId: string): Promise<GetOcpnResponse> => {
+    const response = await api.get(`/v1/ocpn/from_ocpt/${fileId}`);
+    return response.data;
+};
+
+export const getCaseNotions = async (cnFileId: string) => {
+    const response = await api.get<GetCaseNotionsResponse>(`v1/case_notion/case_ocel/${cnFileId}`);
     return response.data;
 };
 
@@ -264,5 +282,15 @@ export const getLogGraphs = async (ocelFileId: string) => {
 
 export const getOcelCollection = async (ocelCollectionFileId: string): Promise<CaseOcelResponse> => {
     const response = await api.get(`v1/objects/ocel_collection/${ocelCollectionFileId}`);
+    return response.data;
+};
+
+export type GetOcpnResponse = {
+    file_id: string;
+    ocpn: any;
+};
+
+export const getOcpn = async (fileId: string) => {
+    const response = await api.get(`/v1/objects/ocpn/${fileId}`);
     return response.data;
 };

@@ -45,5 +45,8 @@ export const assetTypeToNodeType = (assetType: AssetType): ExploreFileNodeType |
     if (assetType === 'ocelCollectionFile') {
         return 'ocelCollectionNode';
     }
+    if (assetType === 'ocpnFile') {
+        return 'ocpnFileNode';
+    }
     return null;
 };

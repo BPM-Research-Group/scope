@@ -32,6 +32,7 @@ const OcptViewer: React.FC = () => {
 
     const node = nodeId ? (getNode(nodeId) as VisualizationNode) : undefined;
     const nodeData = node?.data;
+    const isIdentityOcpt = nodeData?.assets?.some((a) => a.type === 'identityOcptAsset') ?? false;
     const viewState = nodeData?.viewState;
 
     // Reactively subscribe to colorMap so the tree re-renders when colors change
@@ -98,6 +99,7 @@ const OcptViewer: React.FC = () => {
                             colorScale={colorScale}
                             node={node}
                             showDetails={showDetails}
+                            isIdentityOcpt={isIdentityOcpt}
                             onExportReady={handleExportReady}
                         />
                     ) : treeData ? (
@@ -106,6 +108,7 @@ const OcptViewer: React.FC = () => {
                             colorScale={colorScale}
                             filteredObjectTypes={filteredObjectTypes}
                             showDetails={showDetails}
+                            isIdentityOcpt={isIdentityOcpt}
                             onExportReady={handleExportReady}
                         />
                     ) : (

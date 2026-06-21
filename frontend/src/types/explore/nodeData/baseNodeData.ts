@@ -7,7 +7,8 @@ export type BaseExploreNodeDropdownActionType =
     | 'changeSourceFile'
     | 'exportJson'
     | 'viewObjectEventGraph'
-    | 'setCustomColor';
+    | 'setCustomColor'
+    | 'exportPm4pyOcpt';
 
 export type HandleId = 'target' | 'source' | 'conformanceTarget' | 'ocptTarget' | 'ocelTarget' | 'conformanceTargetSecondary';
 

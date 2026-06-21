@@ -9,8 +9,7 @@ import CaseNotionDialog from '~/components/case_notion/ui/CaseNotionDialog';
 import BaseMinerNode from '~/components/explore/miner/BaseMinerNode';
 import { useMineCaseNotionMutation } from '~/services/mutation';
 import { useGetCaseNotions, useGetOcelObjectTypes } from '~/services/queries';
-import { handleMinerOutput } from '~/lib/explore/flowActions';
-import { useInputAsset } from '~/hooks/explore/useMinerAssets';
+import { useInputAsset, useMinerOutput } from '~/hooks/explore/useMinerAssets';
 import { BaseExploreNodeDropdownOption } from '~/types/explore/nodeData/baseNodeData';
 import { MinerNode } from '~/types/explore/nodes';
 
@@ -33,6 +32,7 @@ const CaseNotionMinerNode = memo<NodeProps<MinerNode>>((node) => {
     // Mining Execution State
     const [currentCnFileId, setCurrentCnFileId] = useState<string>('');
     const [makeFinalFetch, setMakeFinalFetch] = useState(false);
+    const [pendingOutputId, setPendingOutputId] = useState<string | null>(null);
 
     // Hooks
     const { data: objectTypesData } = useGetOcelObjectTypes(fileId);
@@ -44,20 +44,15 @@ const CaseNotionMinerNode = memo<NodeProps<MinerNode>>((node) => {
     } = useMineCaseNotionMutation();
     const { data: exportData, isFetching: isExportingData } = useGetCaseNotions(currentCnFileId, makeFinalFetch);
 
-    // Handle Export Effect
     useEffect(() => {
         if (makeFinalFetch && exportData) {
-            handleMinerOutput({
-                nodeId: node.id,
-                outputAssetId: exportData.case_ocels_file_id,
-                outputAssetType: 'ocelCollectionFile',
-                outputNodeType: 'ocelCollectionNode',
-                inputFileName: fileName,
-            });
+            setPendingOutputId(exportData.case_ocels_file_id);
             setIsDialogOpen(false);
             setMakeFinalFetch(false);
         }
-    }, [makeFinalFetch, exportData, node.id, fileName]);
+    }, [makeFinalFetch, exportData]);
+
+    useMinerOutput(node.id, pendingOutputId, fileName, 'ocelCollectionFile', 'ocelCollectionNode');
 
     const handleReset = useCallback(() => {
         queryClient.cancelQueries({ queryKey: ['getOcelObjectTypes', fileId] });
@@ -79,6 +74,7 @@ const CaseNotionMinerNode = memo<NodeProps<MinerNode>>((node) => {
         setHasUnminedChanges(false);
         setCurrentCnFileId('');
         setMakeFinalFetch(false);
+        setPendingOutputId(null);
         resetCaseNotionMutation();
     }, [queryClient, fileId, currentCnFileId, resetCaseNotionMutation]);
 

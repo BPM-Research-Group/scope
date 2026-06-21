@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { Handle, type Node, NodeProps, Position } from '@xyflow/react';
 import { BaseNode } from '~/components/ui/base-node';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '~/components/ui/tooltip';
 
 type AbstractionEvNodeProps = {
     eventName: string;
@@ -44,14 +45,36 @@ const AbstractionEvNode = memo(({ data, id }: NodeProps<Node<AbstractionEvNodePr
                 <Handle type="target" id="otev-target" position={Position.Left} style={{ visibility: 'hidden' }} />
                 <p className="text-xs font-medium">{data.eventName}</p>
 
-                {data.multiplicity && (
-                    <div
-                        className="absolute -top-2.5 -right-2.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold text-black bg-white whitespace-nowrap z-10"
-                        style={{ border: `1.5px solid ${data.color}` }}
-                    >
-                        {data.multiplicity}
-                    </div>
-                )}
+                {data.multiplicity && (() => {
+                    const [left, right] = data.multiplicity.split(':');
+                    return (
+                        <TooltipProvider delayDuration={300}>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <div
+                                        className="absolute -top-2.5 -right-2.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold text-black bg-white whitespace-nowrap z-10 cursor-default"
+                                        style={{ border: `1.5px solid ${data.color}` }}
+                                    >
+                                        {data.multiplicity}
+                                    </div>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="text-xs max-w-56">
+                                    <p className="font-semibold mb-1">Object–Activity Multiplicity</p>
+                                    <div className="flex flex-col gap-0.5">
+                                        <div className="flex items-baseline gap-1.5">
+                                            <span className="font-mono font-bold" style={{ color: data.color }}>{left}</span>
+                                            <span className="text-muted-foreground">objects of this type per event execution</span>
+                                        </div>
+                                        <div className="flex items-baseline gap-1.5">
+                                            <span className="font-mono font-bold" style={{ color: data.color }}>{right}</span>
+                                            <span className="text-muted-foreground">event executions per object instance</span>
+                                        </div>
+                                    </div>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    );
+                })()}
             </BaseNode>
 
             {data.isEndEvent && (
