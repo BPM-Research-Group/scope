@@ -36,6 +36,8 @@ const KpiViewer: React.FC = () => {
 
     
     const fileId = firstAsset?.id ?? null;
+    
+    
 
     
     const sourceType: Extract<

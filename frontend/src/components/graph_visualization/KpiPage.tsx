@@ -210,6 +210,7 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
 
         return {
             attribute: selectedAttribute,
+            algorithm: algorithm,
             ...(selectedObjectType && {
                 object_type: selectedObjectType,
             }),
@@ -220,8 +221,9 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
                 intra_case_agg: intraCaseAgg,
             }),
         };
-    }, [selectedAttribute, selectedObjectType, selectedEventType, intraCaseAgg]);
-
+    }, [selectedAttribute, algorithm, selectedObjectType, selectedEventType, intraCaseAgg]);
+console.log(params);
+console.log('params');
     const {
         data: attributeStatsData,
         isLoading: attributeStatsLoading,
@@ -335,6 +337,36 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Case Notion Type</label>
+
+                             <select
+                                value={algorithm}
+                                onChange={(e) => {
+                                    setAlgorithm(e.target.value as any);
+                                    setShouldFetchStats(false);
+                                }}
+                                className="
+            w-full
+            border
+            border-slate-300
+            rounded-xl
+            px-4
+            py-3
+            bg-white
+            focus:ring-2
+            focus:ring-blue-500
+            focus:border-blue-500
+            outline-none
+        "
+                            >
+                                <option value="traditional">Traditional</option>
+                                <option value="advanced">Advanced</option>
+                                <option value="connected_components">Connected Components</option>
+                            </select>
+                        </div>
+
+
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-2">Object Type</label>
 
