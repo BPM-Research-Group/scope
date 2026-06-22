@@ -273,9 +273,9 @@ def run_experiment_2(df, base_dir):
             ax_dev = ax_mem.twinx()
             diff_heur = log_df.dropna(subset=['heur_extra_arcs', 'heur_missing_arcs'])
             ln3 = ax_dev.plot(diff_heur['event_index'], diff_heur['heur_extra_arcs'], 
-                              label='FP Ratio', color='#f59e0b', linestyle='-', linewidth=2)
+                              label='FDR (FP / (FP + TP))', color='#f59e0b', linestyle='-', linewidth=2)
             ln4 = ax_dev.plot(diff_heur['event_index'], diff_heur['heur_missing_arcs'], 
-                              label='FN Ratio', color='#dc2626', linestyle='--', linewidth=2)
+                              label='FNR (FN / (FN + TP))', color='#dc2626', linestyle='--', linewidth=2)
             ax_dev.set_ylabel('Structural Deviation (0-1)')
             ax_dev.set_ylim(-0.05, 1.05)
             
