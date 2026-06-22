@@ -12,6 +12,7 @@ use std::fs;
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 
+#[allow(dead_code)]
 #[derive(Default, Clone, Debug)]
 pub struct MemoryStats {
     pub total_mem: usize,
@@ -709,6 +710,7 @@ impl MinerState {
         model
     }
 
+    #[allow(dead_code)]
     pub fn estimate_memory_usage(&self) -> MemoryStats {
         let mut total_mem = 0;
         let mut div_mem = 0;

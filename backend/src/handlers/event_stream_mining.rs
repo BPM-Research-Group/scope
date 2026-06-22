@@ -33,6 +33,7 @@ pub struct WsParams {
 #[derive(Deserialize)]
 pub struct MinerConfigMsg {
     pub id: String,
+    #[allow(dead_code)]
     pub miner_type: Option<String>,
     pub use_heuristics: bool,
     pub heuristics_config: crate::core::event_stream::miner::HeuristicsConfig,
