@@ -8,7 +8,7 @@ import BaseFileNode from '~/components/explore/file/BaseFileNode';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { useGetOcelObjectTypes } from '~/services/queries';
 import { generateColorMap } from '~/lib/colors';
-import { propagateMapDownstream, syncMatchingColorsGlobally } from '~/lib/explore/flowActions';
+import { propagateMapDownstream, syncMatchingColorsGlobally } from '~/lib/flow/flowActions';
 import { FileExploreNodeData } from '~/types/explore/nodeData/fileNodeData';
 import { FileNode } from '~/types/explore/nodes';
 import { EventDistributionDialog } from '~/components/explore/visualization/EventDistributionNode';

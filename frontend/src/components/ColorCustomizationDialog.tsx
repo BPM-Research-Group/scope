@@ -6,7 +6,7 @@ import { Label } from '~/components/ui/label';
 import { ScrollArea } from '~/components/ui/scroll-area';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { getDeterministicColor } from '~/lib/colors';
-import { updateNodeColorAndPropagate } from '~/lib/explore/flowActions';
+import { updateNodeColorAndPropagate } from '~/lib/flow/flowActions';
 import { FileExploreNodeData } from '~/types/explore/nodeData/fileNodeData';
 
 interface ColorCustomizationDialogProps {

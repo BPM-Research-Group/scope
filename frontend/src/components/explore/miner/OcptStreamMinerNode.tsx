@@ -13,7 +13,7 @@ import OCPT from '~/components/ocpt/OCPT';
 import { scaleOrdinal } from '@visx/scale';
 import { addIdsToTree } from '~/lib/ocpt/ocptAddIds';
 import { saveOcpt } from '~/services/api';
-import { handleMinerOutput } from '~/lib/explore/flowActions';
+import { handleMinerOutput } from '~/lib/flow/flowActions';
 import { toast } from 'sonner';
 
 const OcptStreamMinerNode = memo<NodeProps<MinerNode>>((props) => {

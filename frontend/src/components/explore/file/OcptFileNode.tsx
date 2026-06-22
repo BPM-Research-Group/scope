@@ -20,7 +20,7 @@ import { useExploreFlowStore } from '~/stores/exploreStore';
 import { useGetIdentityOcpt, useGetOcpt } from '~/services/queries';
 import { exportOcptPm4py } from '~/services/api';
 import { generateColorMap, getDeterministicColor } from '~/lib/colors';
-import { propagateMapDownstream, syncMatchingColorsGlobally } from '~/lib/explore/flowActions';
+import { propagateMapDownstream, syncMatchingColorsGlobally } from '~/lib/flow/flowActions';
 import { FileExploreNodeData } from '~/types/explore/nodeData/fileNodeData';
 import { FileNode } from '~/types/explore/nodes';
 
