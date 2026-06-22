@@ -1,22 +1,14 @@
-use crate::core::kpi::attribute_stats::{attr_to_f64, compute_numeric_stats};
-use crate::models::kpi::{CombinationOperator, NumericStats};
+use crate::core::kpi::attribute_stats::attr_to_f64;
+use crate::models::kpi::CombinationOperator;
 use crate::models::ocel::{OCELEvent, OCELObject};
 use rustc_hash::{FxHashMap, FxHashSet};
 
 /// A single case: (event_ids, object_ids, e2o arches).
 pub type CaseEntry = (Vec<String>, Vec<String>, Vec<(String, String)>);
 
-pub struct CaseDurationResult {
-    pub cases_with_duration: usize,
+pub struct CaseKpiValues {
+    pub values: Vec<f64>,
     pub cases_skipped: usize,
-    pub stats: Option<NumericStats>,
-}
-
-pub struct CaseAttributeCombinationResult {
-    pub cases_with_value: usize,
-    /// Missing operand or divide-by-zero.
-    pub cases_skipped: usize,
-    pub stats: Option<NumericStats>,
 }
 
 fn reduce_values(values: &[f64], intra_case_agg: &str) -> Option<f64> {
@@ -79,22 +71,18 @@ fn collect_case_attribute_values(
     values
 }
 
-/// Stats for a numeric attribute across cases.
-///
-/// Read from objects (`filter_object_type`) or events (`filter_event_type`) — pick one.
-///
-/// `intra_case_agg` decides whether stats are over raw values or per-case summaries:
-/// none = all values together; `sum` / `mean` / `min` / `max` / `count` = one number per case first.
-pub fn compute_case_attribute_stats(
+/// One KPI value per case (requires `intra_case_agg`).
+pub fn collect_case_attribute_kpi_values(
     cases: &[CaseEntry],
     event_lookup: &FxHashMap<String, OCELEvent>,
     object_lookup: &FxHashMap<String, OCELObject>,
     attribute: &str,
     filter_object_type: Option<&str>,
     filter_event_type: Option<&str>,
-    intra_case_agg: Option<&str>,
-) -> Option<NumericStats> {
-    let mut output_values: Vec<f64> = Vec::new();
+    intra_case_agg: &str,
+) -> CaseKpiValues {
+    let mut values: Vec<f64> = Vec::new();
+    let mut cases_skipped = 0;
 
     for (event_ids, object_ids, _) in cases {
         let case_values = collect_case_attribute_values(
@@ -107,25 +95,44 @@ pub fn compute_case_attribute_stats(
             filter_event_type,
         );
 
-        if case_values.is_empty() {
-            continue;
-        }
-
-        match intra_case_agg {
-            None => output_values.extend(case_values),
-            Some(agg) => {
-                if let Some(v) = reduce_values(&case_values, agg) {
-                    output_values.push(v);
-                }
-            }
+        match reduce_values(&case_values, intra_case_agg) {
+            Some(v) => values.push(v),
+            None => cases_skipped += 1,
         }
     }
 
-    compute_numeric_stats(&output_values)
+    CaseKpiValues {
+        values,
+        cases_skipped,
+    }
 }
 
-/// Per-case attribute operands combined with one operator; stats over the results.
-pub fn compute_case_attribute_combination_stats(
+/// All raw attribute values pooled across all cases (no intra-case aggregation).
+pub fn collect_pooled_attribute_values(
+    cases: &[CaseEntry],
+    event_lookup: &FxHashMap<String, OCELEvent>,
+    object_lookup: &FxHashMap<String, OCELObject>,
+    attribute: &str,
+    filter_object_type: Option<&str>,
+    filter_event_type: Option<&str>,
+) -> Vec<f64> {
+    let mut pooled: Vec<f64> = Vec::new();
+    for (event_ids, object_ids, _) in cases {
+        pooled.extend(collect_case_attribute_values(
+            event_ids,
+            object_ids,
+            event_lookup,
+            object_lookup,
+            attribute,
+            filter_object_type,
+            filter_event_type,
+        ));
+    }
+    pooled
+}
+
+/// One combined KPI value per case.
+pub fn collect_case_attribute_combination_values(
     cases: &[CaseEntry],
     event_lookup: &FxHashMap<String, OCELEvent>,
     object_lookup: &FxHashMap<String, OCELObject>,
@@ -138,9 +145,9 @@ pub fn compute_case_attribute_combination_stats(
     right_event_type: Option<&str>,
     right_intra_case_agg: &str,
     operation: CombinationOperator,
-) -> CaseAttributeCombinationResult {
-    let mut combined_values: Vec<f64> = Vec::new();
-    let mut cases_skipped: usize = 0;
+) -> CaseKpiValues {
+    let mut values: Vec<f64> = Vec::new();
+    let mut cases_skipped = 0;
 
     for (event_ids, object_ids, _) in cases {
         let left_raw = collect_case_attribute_values(
@@ -162,9 +169,10 @@ pub fn compute_case_attribute_combination_stats(
             right_event_type,
         );
 
-        let (Some(left_value), Some(right_value)) =
-            (reduce_values(&left_raw, left_intra_case_agg), reduce_values(&right_raw, right_intra_case_agg))
-        else {
+        let (Some(left_value), Some(right_value)) = (
+            reduce_values(&left_raw, left_intra_case_agg),
+            reduce_values(&right_raw, right_intra_case_agg),
+        ) else {
             cases_skipped += 1;
             continue;
         };
@@ -180,37 +188,37 @@ pub fn compute_case_attribute_combination_stats(
             CombinationOperator::Divide => left_value / right_value,
         };
 
-        combined_values.push(combined);
+        values.push(combined);
     }
 
-    CaseAttributeCombinationResult {
-        cases_with_value: combined_values.len(),
+    CaseKpiValues {
+        values,
         cases_skipped,
-        stats: compute_numeric_stats(&combined_values),
     }
 }
 
-/// For each object of `object_type` across all cases, finds (from_activity →
-/// to_activity) pairs in its event timeline and records the elapsed seconds.
-/// Returns aggregate stats over all found pairs.
-pub fn compute_case_time_stats(
+/// Elapsed seconds for each `from → to` transition across all object timelines.
+pub fn collect_case_time_values(
     cases: &[CaseEntry],
     event_lookup: &FxHashMap<String, OCELEvent>,
     object_lookup: &FxHashMap<String, OCELObject>,
     object_type: &str,
     from_activity: &str,
     to_activity: &str,
-) -> Option<NumericStats> {
+) -> Vec<f64> {
     let mut all_durations: Vec<f64> = Vec::new();
 
     for (event_ids, object_ids, arches) in cases {
+        let event_set: FxHashSet<&str> = event_ids.iter().map(String::as_str).collect();
+        let object_set: FxHashSet<&str> = object_ids.iter().map(String::as_str).collect();
+
         let mut object_timelines: FxHashMap<
             &str,
             Vec<(chrono::DateTime<chrono::FixedOffset>, &str)>,
         > = FxHashMap::default();
 
         for (ev_id, obj_id) in arches {
-            if !event_ids.contains(ev_id) || !object_ids.contains(obj_id) {
+            if !event_set.contains(ev_id.as_str()) || !object_set.contains(obj_id.as_str()) {
                 continue;
             }
             if let Some(obj) = object_lookup.get(obj_id.as_str()) {
@@ -256,10 +264,10 @@ pub fn compute_case_time_stats(
         }
     }
 
-    compute_numeric_stats(&all_durations)
+    all_durations
 }
 
-/// Computes the successors of each activity in the event timeline of each object in each case.
+/// Returns, for each activity, the set of activities that follow it in any object's timeline.
 pub fn compute_activity_successors(
     cases: &[CaseEntry],
     event_lookup: &FxHashMap<String, OCELEvent>,
@@ -267,7 +275,6 @@ pub fn compute_activity_successors(
     let mut raw: FxHashMap<String, FxHashSet<String>> = FxHashMap::default();
 
     for (_event_ids, _object_ids, arches) in cases {
-
         let mut object_timelines: FxHashMap<
             &str,
             Vec<(chrono::DateTime<chrono::FixedOffset>, &str)>,
@@ -308,14 +315,13 @@ pub fn compute_activity_successors(
         .collect()
 }
 
-/// For each case, measures the time from the first event to the last event.
-/// Cases with fewer than 2 events are skipped.
-pub fn compute_case_duration(
+/// One duration (seconds) per case with at least two events.
+pub fn collect_case_duration_values(
     cases: &[CaseEntry],
     event_lookup: &FxHashMap<String, OCELEvent>,
-) -> CaseDurationResult {
-    let mut durations: Vec<f64> = Vec::new();
-    let mut skipped: usize = 0;
+) -> CaseKpiValues {
+    let mut values: Vec<f64> = Vec::new();
+    let mut cases_skipped = 0;
 
     for (event_ids, _, _) in cases {
         let mut times: Vec<_> = event_ids
@@ -328,15 +334,14 @@ pub fn compute_case_duration(
             let secs = (*times.last().unwrap() - *times.first().unwrap())
                 .num_milliseconds() as f64
                 / 1000.0;
-            durations.push(secs);
+            values.push(secs);
         } else {
-            skipped += 1;
+            cases_skipped += 1;
         }
     }
 
-    CaseDurationResult {
-        cases_with_duration: durations.len(),
-        cases_skipped: skipped,
-        stats: compute_numeric_stats(&durations),
+    CaseKpiValues {
+        values,
+        cases_skipped,
     }
 }
