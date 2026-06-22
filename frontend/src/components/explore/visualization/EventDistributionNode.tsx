@@ -430,21 +430,15 @@ const DistributionChart: React.FC<ChartProps> = ({ series, binTimes, enabledActi
     );
 };
 
-const EventDistributionNode = memo<NodeProps<VisualizationNode>>((props) => {
-    const { id } = props;
-    const getNode = useExploreFlowStore((s) => s.getNode);
-    const [isMaximized, setIsMaximized] = useState(false);
-
-    // Get the upstream OCEL file from the connected source node
-    const inConnections = useNodeConnections({ handleType: 'target' });
-    const sourceNode = inConnections[0] ? getNode(inConnections[0].source) : undefined;
-    const fileId = sourceNode?.data.assets.find((a) => a.io === 'output' || a.type === 'ocelFile')?.id
-        ?? sourceNode?.data.assets[0]?.id;
-
+export const EventDistributionDialog = memo<{
+    fileId: string;
+    isOpen: boolean;
+    onClose: () => void;
+}>(({ fileId, isOpen, onClose }) => {
     const { data: ocel, isLoading } = useQuery({
         queryKey: ['getOcel', fileId],
-        queryFn: () => getOcel(fileId!),
-        enabled: !!fileId,
+        queryFn: () => getOcel(fileId),
+        enabled: !!fileId && isOpen,
         staleTime: Infinity,
     });
 
@@ -483,91 +477,6 @@ const EventDistributionNode = memo<NodeProps<VisualizationNode>>((props) => {
         });
     }, [allActivities]);
 
-    const renderContent = () => {
-        if (!fileId) {
-            return (
-                <div className="py-6 flex flex-col items-center justify-center border-2 border-dashed border-gray-100 rounded-lg mt-2">
-                    <BarChart3 className="h-6 w-6 text-gray-200 mb-1" />
-                    <p className="text-[9px] text-gray-400 text-center px-4">
-                        Connect to an OCEL File node to see the event distribution
-                    </p>
-                </div>
-            );
-        }
-
-        if (isLoading) {
-            return (
-                <div className="flex flex-col items-center justify-center h-24 mt-2">
-                    <div className="h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-2" />
-                    <span className="text-[10px] text-gray-500">Loading OCEL data...</span>
-                </div>
-            );
-        }
-
-        if (!binnedData) {
-            return (
-                <div className="py-4 text-center mt-2">
-                    <p className="text-[10px] text-gray-400">No event data available</p>
-                </div>
-            );
-        }
-
-        return (
-            <div className="mt-2 border-t pt-2 space-y-2">
-                {/* Mini chart */}
-                <div className="flex items-center justify-between px-1">
-                    <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
-                        Event Distribution
-                    </span>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-5 w-5 text-gray-400 hover:text-blue-600"
-                        onClick={() => setIsMaximized(true)}
-                    >
-                        <Maximize2 className="h-3 w-3" />
-                    </Button>
-                </div>
-                <DistributionChart
-                    series={binnedData.series}
-                    binTimes={binnedData.binTimes}
-                    enabledActivities={enabledActivities}
-                    width={280}
-                    height={160}
-                    numBins={numBins}
-                />
-
-                {/* Bucket count config */}
-                <div className="flex items-center justify-between px-1">
-                    <span className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider">Buckets</span>
-                    <input
-                        type="number"
-                        min={10}
-                        max={10000}
-                        value={numBins}
-                        onChange={(e) => setNumBins(Math.max(10, Math.min(10000, Number(e.target.value) || DEFAULT_NUM_BINS)))}
-                        className="h-5 w-16 text-[10px] px-1 py-0 text-right border border-gray-200 rounded"
-                    />
-                </div>
-
-                {/* Stats */}
-                <div className="grid grid-cols-2 gap-2">
-                    <div className="bg-blue-50 p-1.5 rounded border border-blue-100 flex flex-col items-center">
-                        <span className="text-[9px] font-semibold text-blue-700 uppercase">Events</span>
-                        <span className="text-sm font-bold text-blue-900">
-                            {ocel.events.length.toLocaleString()}
-                        </span>
-                    </div>
-                    <div className="bg-amber-50 p-1.5 rounded border border-amber-100 flex flex-col items-center">
-                        <span className="text-[9px] font-semibold text-amber-700 uppercase">Activities</span>
-                        <span className="text-sm font-bold text-amber-900">{allActivities.length}</span>
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
-    // Activity legend with checkboxes
     const activityColorMap = useMemo(() => {
         const map = new Map<string, string>();
         binnedData?.series.forEach((s) => map.set(s.activity, s.color));
@@ -575,49 +484,73 @@ const EventDistributionNode = memo<NodeProps<VisualizationNode>>((props) => {
     }, [binnedData]);
 
     return (
-        <>
-            <BaseExploreNode
-                id={id}
-                selected={props.selected}
-                title="Event Distribution"
-                iconName="chartBar"
-                handleOptions={[{ id: 'target', position: Position.Left, type: 'target' as const }]}
-                dropdownOptions={[]}
-                customContent={renderContent()}
-            />
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent className="max-w-[95vw] w-[1100px] h-[80vh] flex flex-col p-0 gap-0 overflow-hidden">
+                <DialogHeader className="p-4 border-b bg-white">
+                    <DialogTitle className="flex items-center gap-2">
+                        <BarChart3 className="h-5 w-5 text-blue-600" />
+                        Event Distribution Over Time
+                    </DialogTitle>
+                </DialogHeader>
 
-            {/* Maximized dialog */}
-            <Dialog open={isMaximized} onOpenChange={setIsMaximized}>
-                <DialogContent className="max-w-[95vw] w-[1100px] h-[80vh] flex flex-col p-0 gap-0 overflow-hidden">
-                    <DialogHeader className="p-4 border-b bg-white">
-                        <DialogTitle className="flex items-center gap-2">
-                            <BarChart3 className="h-5 w-5 text-blue-600" />
-                            Event Distribution Over Time
-                        </DialogTitle>
-                    </DialogHeader>
+                {isLoading ? (
+                    <div className="flex flex-1 flex-col items-center justify-center bg-slate-50">
+                        <div className="h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
+                        <span className="text-sm text-slate-500">Loading OCEL data...</span>
+                    </div>
+                ) : !binnedData ? (
+                    <div className="flex flex-1 items-center justify-center bg-slate-50">
+                        <span className="text-sm text-slate-400">No event data available</span>
+                    </div>
+                ) : (
                     <div className="flex flex-1 min-h-0 overflow-hidden">
                         {/* Chart area */}
-                        <div className="flex-1 min-w-0 p-4">
-                            {binnedData && (
+                        <div className="flex-1 min-w-0 p-6 flex flex-col justify-between bg-white">
+                            <div className="flex-1 min-h-0">
                                 <DistributionChart
                                     series={binnedData.series}
                                     binTimes={binnedData.binTimes}
                                     enabledActivities={enabledActivities}
                                     width={760}
-                                    height={550}
+                                    height={460}
                                     numBins={numBins}
                                 />
-                            )}
+                            </div>
+
+                            <div className="flex items-center justify-between border-t pt-4 mt-2">
+                                <div className="flex items-center gap-6">
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Total Events</span>
+                                        <span className="text-sm font-bold text-slate-700">{ocel.events.length.toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Activities</span>
+                                        <span className="text-sm font-bold text-slate-700">{allActivities.length}</span>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-medium text-slate-500">Resolution (Buckets):</span>
+                                    <input
+                                        type="number"
+                                        min={10}
+                                        max={10000}
+                                        value={numBins}
+                                        onChange={(e) => setNumBins(Math.max(10, Math.min(10000, Number(e.target.value) || DEFAULT_NUM_BINS)))}
+                                        className="h-7 w-20 text-xs px-2 py-0 text-right border border-slate-200 rounded font-semibold"
+                                    />
+                                </div>
+                            </div>
                         </div>
 
                         {/* Activity legend sidebar */}
                         <div className="w-[260px] border-l bg-slate-50 flex flex-col overflow-hidden">
-                            <div className="px-3 py-2 border-b bg-white flex items-center justify-between">
-                                <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                            <div className="px-3 py-2.5 border-b bg-white flex items-center justify-between">
+                                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
                                     Activities
                                 </span>
                                 <button
-                                    className="text-[10px] text-blue-600 hover:text-blue-800 font-medium"
+                                    className="text-[10px] text-blue-600 hover:text-blue-800 font-semibold"
                                     onClick={toggleAll}
                                 >
                                     {enabledActivities.size === allActivities.length ? 'Deselect All' : 'Select All'}
@@ -631,7 +564,7 @@ const EventDistributionNode = memo<NodeProps<VisualizationNode>>((props) => {
                                         <label
                                             key={activity}
                                             className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition-colors ${
-                                                enabled ? 'hover:bg-white' : 'opacity-50 hover:opacity-75'
+                                                enabled ? 'hover:bg-white bg-slate-100/40' : 'opacity-50 hover:opacity-75'
                                             }`}
                                         >
                                             <input
@@ -659,10 +592,10 @@ const EventDistributionNode = memo<NodeProps<VisualizationNode>>((props) => {
                             </div>
                         </div>
                     </div>
-                </DialogContent>
-            </Dialog>
-        </>
+                )}
+            </DialogContent>
+        </Dialog>
     );
 });
 
-export default EventDistributionNode;
+export default EventDistributionDialog;

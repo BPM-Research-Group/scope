@@ -1,7 +1,7 @@
-import { memo, useEffect, useMemo } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import { Position } from '@xyflow/react';
-import { Grip } from 'lucide-react';
+import { Grip, BarChart3 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '~/components/ui/button';
 import BaseFileNode from '~/components/explore/file/BaseFileNode';
@@ -11,12 +11,14 @@ import { generateColorMap } from '~/lib/colors';
 import { propagateMapDownstream, syncMatchingColorsGlobally } from '~/lib/explore/flowActions';
 import { FileExploreNodeData } from '~/types/explore/nodeData/fileNodeData';
 import { FileNode } from '~/types/explore/nodes';
+import { EventDistributionDialog } from '~/components/explore/visualization/EventDistributionNode';
 
 const OcelFileNode = memo<NodeProps<FileNode>>((props) => {
     const navigate = useNavigate();
     const { id, data: nodeData } = props;
     const hasFile = nodeData.assets.length > 0;
     const { updateNodeData } = useExploreFlowStore();
+    const [isDistributionOpen, setIsDistributionOpen] = useState(false);
 
     const ocelFileId = useMemo(() => {
         const ocelAsset = nodeData.assets.find((a) => a.io === 'output' && a.type === 'ocelFile');
@@ -80,8 +82,24 @@ const OcelFileNode = memo<NodeProps<FileNode>>((props) => {
                             <Grip className="h-3.5 w-3.5 text-blue-500" />
                             Object Event Graph
                         </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full justify-start h-7 px-2 text-xs"
+                            onClick={() => setIsDistributionOpen(true)}
+                        >
+                            <BarChart3 className="h-3.5 w-3.5 text-blue-500" />
+                            Event Distribution
+                        </Button>
                     </div>
                 </div>
+            )}
+            {ocelFileId && (
+                <EventDistributionDialog
+                    fileId={ocelFileId}
+                    isOpen={isDistributionOpen}
+                    onClose={() => setIsDistributionOpen(false)}
+                />
             )}
         </BaseFileNode>
     );

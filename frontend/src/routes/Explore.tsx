@@ -26,7 +26,6 @@ import ResourceMinerNode from '~/components/explore/miner/ResourceMinerNode';
 import OcptMinerNode from '~/components/explore/miner/OcptMinerNode';
 import { RefocusProgressPanel } from '~/components/explore/RefocusProgressPanel';
 import OcptStreamMinerNode from '~/components/explore/miner/OcptStreamMinerNode';
-import EventDistributionNode from '~/components/explore/visualization/EventDistributionNode';
 import { useConnections } from '~/hooks/explore/useConnections';
 import { useDragDrop } from '~/hooks/explore/useDragDrop';
 import { useNodeOperations } from '~/hooks/explore/useNodeOperations';
@@ -54,7 +53,6 @@ const nodeTypes = {
     eventStreamNode: EventStreamNode,
     df2StreamMinerNode: Df2StreamMinerNode,
     ocptStreamMinerNode: OcptStreamMinerNode,
-    eventDistributionNode: EventDistributionNode,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } satisfies Record<keyof typeof nodeRegistry, React.ComponentType<NodeProps<any>>>;
 
