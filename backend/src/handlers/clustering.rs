@@ -128,7 +128,7 @@ pub struct MaterializeClusteredCasesRequest {
 #[derive(Serialize)]
 pub struct MaterializedClusterResponse {
     pub cluster_id: usize,
-    pub clustered_cases_id: String,
+    pub case_ocels_file_id: String,
     pub case_count: usize,
 }
 
@@ -203,8 +203,8 @@ fn agglomerative_clustering_path(file_id: &str) -> String {
     format!("./temp/agglomerative_clustering_{}.json", file_id)
 }
 
-fn clustered_cases_path(file_id: &str) -> String {
-    format!("./temp/clustered_cases_{}.json", file_id)
+fn case_ocels_collection_path(file_id: &str) -> String {
+    format!("./temp/case_ocels_{}.json", file_id)
 }
 
 fn case_id_or_index(case_ocel: &serde_json::Value, idx: usize) -> String {
@@ -536,8 +536,8 @@ pub async fn materialize_clustered_case_ocels(
             continue;
         }
 
-        let clustered_cases_id = Uuid::new_v4().to_string();
-        let path = clustered_cases_path(&clustered_cases_id);
+        let cluster_case_ocels_file_id = Uuid::new_v4().to_string();
+        let path = case_ocels_collection_path(&cluster_case_ocels_file_id);
         if let Err(err) = ensure_parent_dir_exists(&path) {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -594,7 +594,7 @@ pub async fn materialize_clustered_case_ocels(
 
         materialized_clusters.push(MaterializedClusterResponse {
             cluster_id,
-            clustered_cases_id,
+            case_ocels_file_id: cluster_case_ocels_file_id,
             case_count: indices.len(),
         });
     }
@@ -608,42 +608,6 @@ pub async fn materialize_clustered_case_ocels(
         }),
     )
         .into_response()
-}
-
-pub async fn get_materialized_clustered_cases(
-    Path(clustered_cases_id): Path<String>,
-) -> impl IntoResponse {
-    if clustered_cases_id.trim().is_empty() {
-        return (
-            StatusCode::BAD_REQUEST,
-            "clustered_cases_id cannot be empty".to_string(),
-        )
-            .into_response();
-    }
-
-    let path = clustered_cases_path(&clustered_cases_id);
-    let content = match fs::read_to_string(&path).await {
-        Ok(content) => content,
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
-            return (StatusCode::NOT_FOUND, format!("File not found: {path}")).into_response();
-        }
-        Err(err) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to read clustered cases file: {err}"),
-            )
-                .into_response();
-        }
-    };
-
-    match serde_json::from_str::<Value>(&content) {
-        Ok(payload) => (StatusCode::OK, Json(payload)).into_response(),
-        Err(err) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to parse clustered cases file: {err}"),
-        )
-            .into_response(),
-    }
 }
 
 pub async fn agglomerative_cluster_case_ocels(
@@ -1298,8 +1262,8 @@ mod tests {
 
         for cluster in clusters {
             let cluster_id = cluster["cluster_id"].as_u64().unwrap();
-            let clustered_cases_id = cluster["clustered_cases_id"].as_str().unwrap();
-            let path = clustered_cases_path(clustered_cases_id);
+            let cluster_case_ocels_file_id = cluster["case_ocels_file_id"].as_str().unwrap();
+            let path = case_ocels_collection_path(cluster_case_ocels_file_id);
             let stored: Value =
                 serde_json::from_str(&fs::read_to_string(&path).await.unwrap()).unwrap();
 
@@ -1317,16 +1281,20 @@ mod tests {
                 Some(true)
             );
 
-            let get_response =
-                get_materialized_clustered_cases(Path(clustered_cases_id.to_string()))
-                    .await
-                    .into_response();
-            assert_eq!(get_response.status(), StatusCode::OK);
-            let get_body = to_bytes(get_response.into_body(), usize::MAX)
+            let loaded_collection = OCELCollection::import_from_path(cluster_case_ocels_file_id)
                 .await
                 .unwrap();
-            let returned: Value = serde_json::from_slice(&get_body).unwrap();
-            assert_eq!(returned, stored);
+            assert_eq!(
+                loaded_collection.ocels.len(),
+                cluster["case_count"].as_u64().unwrap() as usize
+            );
+            assert_eq!(
+                loaded_collection
+                    .attributes
+                    .get("materialized_from_case_assignments")
+                    .and_then(Value::as_bool),
+                Some(true)
+            );
 
             created_paths.push(path);
         }
