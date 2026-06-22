@@ -27,6 +27,7 @@ relations2.json
 # Local assistant context files
 AGENTS.md
 backend/BACKEND_CONTEXT.md
+backend/summaries/
 
 # Local conformance compare helper scripts
 backend/tools/conformance_compare/compare_original_vs_backend.py
