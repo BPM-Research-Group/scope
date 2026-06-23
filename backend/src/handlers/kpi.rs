@@ -1,12 +1,16 @@
+use crate::core::kpi::attribute_stats::compute_numeric_stats;
+use crate::core::kpi::histogram::{build_range_histogram, default_bin_count};
 use crate::core::kpi::case_kpis::{
-    compute_activity_successors, compute_case_attribute_combination_stats,
-    compute_case_attribute_stats, compute_case_duration, compute_case_time_stats,
+    collect_case_attribute_combination_values, collect_case_attribute_kpi_values,
+    collect_case_duration_values, collect_case_time_values, collect_pooled_attribute_values,
+    compute_activity_successors,
 };
 use crate::models::kpi::{
     ActivitySuccessorsResponse, AttributeMetadata,
     CaseAttributeCombinationRequest, CaseAttributeCombinationStatsResponse, CaseAttributeQuery,
-    CaseAttributeStatsResponse, CaseDurationResponse, CaseTimeQuery, CaseTimeStatsResponse,
-    EventTypeMetadata, ObjectTypeMetadata, OcelMetadataResponse,
+    CaseAttributeStatsResponse, CaseDurationQuery, CaseDurationResponse,
+    CaseTimeQuery, CaseTimeStatsResponse, EventTypeMetadata,
+    KpiHistogramBin, ObjectTypeMetadata, OcelMetadataResponse,
 };
 use crate::models::ocel::{OCELEvent, OCELObject, OCELType, OCEL};
 use crate::traits::import_export::ImportableFromPath;
@@ -18,17 +22,19 @@ use axum::{
     response::IntoResponse,
 };
 use rustc_hash::FxHashMap;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 type RawCaseNotionEntry = (Vec<String>, Vec<String>, Vec<(String, String)>);
 
-#[derive(Serialize, Deserialize)]
+#[derive(Deserialize)]
 struct PersistedCaseNotion {
     case_notion: Vec<RawCaseNotionEntry>,
     origin_file_id_ocel: String,
     case_notion_type: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    // Present in the JSON file but not needed by any KPI handler.
+    #[allow(dead_code)]
     object_type: Option<String>,
+    #[allow(dead_code)]
     case_notion_file_id: String,
 }
 
@@ -55,7 +61,7 @@ async fn load_case_notion(
     }
 }
 
-// Builds attribute metadata for a single OCELType (shared by object and event types).
+// Builds attribute metadata for a single OCELType.
 fn build_attribute_metadata(ocel_type: &OCELType) -> Vec<AttributeMetadata> {
     let mut attrs: Vec<AttributeMetadata> = ocel_type
         .attributes
@@ -153,25 +159,36 @@ fn ocel_lookups(
     (event_lookup, object_lookup)
 }
 
-/// Computes aggregate stats for a numeric attribute across all cases.
-/// Provide either `object_type` (reads object attributes) or
-/// `event_type` (reads event attributes) — not both.
-/// Optionally provide `intra_case_agg` (sum/mean/min/max/count) to aggregate
-/// within each case first before computing the final stats.
+/// Returns histogram data when `histogram=true`; bin count is automatic.
+fn optional_histogram(
+    values: &[f64],
+    histogram_flag: Option<bool>,
+) -> (Option<usize>, Option<Vec<KpiHistogramBin>>) {
+    if !histogram_flag.unwrap_or(false) {
+        return (None, None);
+    }
+    let bins_used = default_bin_count(values.len());
+    let histogram = build_range_histogram(values, bins_used);
+    (Some(bins_used), Some(histogram))
+}
+
+/// With `intra_case_agg`: one value per case. Without: all raw values pooled.
+/// Add `?histogram=true` to get histogram data alongside stats.
 pub async fn get_case_attribute_stats(
     Path(case_notion_file_id): Path<String>,
     Query(query): Query<CaseAttributeQuery>,
 ) -> impl IntoResponse {
-    match validate_attribute_source(&query.object_type, &query.event_type, "query") {
-        Ok(()) => {}
-        Err(message) => return (StatusCode::BAD_REQUEST, message).into_response(),
+    if let Err(message) = validate_attribute_source(&query.object_type, &query.event_type, "query") {
+        return (StatusCode::BAD_REQUEST, message).into_response();
     }
 
-    if let Some(agg) = &query.intra_case_agg {
-        if let Err(message) = resolve_intra_case_agg(Some(agg.clone()), "intra_case_agg") {
-            return (StatusCode::BAD_REQUEST, message).into_response();
-        }
-    }
+    let agg = match query.intra_case_agg.clone() {
+        Some(a) => match resolve_intra_case_agg(Some(a), "intra_case_agg") {
+            Ok(agg) => Some(agg),
+            Err(message) => return (StatusCode::BAD_REQUEST, message).into_response(),
+        },
+        None => None,
+    };
 
     let persisted = match load_case_notion(&case_notion_file_id).await {
         Ok(data) => data,
@@ -185,15 +202,30 @@ pub async fn get_case_attribute_stats(
 
     let (event_lookup, object_lookup) = ocel_lookups(&ocel);
 
-    let stats = compute_case_attribute_stats(
-        &persisted.case_notion,
-        &event_lookup,
-        &object_lookup,
-        &query.attribute,
-        query.object_type.as_deref(),
-        query.event_type.as_deref(),
-        query.intra_case_agg.as_deref(),
-    );
+    // intra_case_agg present → per-case value; absent → pool all raw attribute values.
+    let values: Vec<f64> = if let Some(ref agg_str) = agg {
+        collect_case_attribute_kpi_values(
+            &persisted.case_notion,
+            &event_lookup,
+            &object_lookup,
+            &query.attribute,
+            query.object_type.as_deref(),
+            query.event_type.as_deref(),
+            agg_str,
+        ).values
+    } else {
+        collect_pooled_attribute_values(
+            &persisted.case_notion,
+            &event_lookup,
+            &object_lookup,
+            &query.attribute,
+            query.object_type.as_deref(),
+            query.event_type.as_deref(),
+        )
+    };
+
+    let stats = compute_numeric_stats(&values);
+    let (bins_used, histogram) = optional_histogram(&values, query.histogram);
 
     (StatusCode::OK, Json(CaseAttributeStatsResponse {
         case_notion_file_id,
@@ -202,6 +234,8 @@ pub async fn get_case_attribute_stats(
         attribute: query.attribute,
         intra_case_agg: query.intra_case_agg,
         stats,
+        bins_used,
+        histogram,
     }))
     .into_response()
 }
@@ -247,7 +281,7 @@ pub async fn post_attribute_combination(
 
     let (event_lookup, object_lookup) = ocel_lookups(&ocel);
 
-    let result = compute_case_attribute_combination_stats(
+    let result = collect_case_attribute_combination_values(
         &persisted.case_notion,
         &event_lookup,
         &object_lookup,
@@ -262,6 +296,9 @@ pub async fn post_attribute_combination(
         payload.operation,
     );
 
+    let stats = compute_numeric_stats(&result.values);
+    let (bins_used, histogram) = optional_histogram(&result.values, payload.histogram);
+
     (
         StatusCode::OK,
         Json(CaseAttributeCombinationStatsResponse {
@@ -269,9 +306,11 @@ pub async fn post_attribute_combination(
             origin_file_id_ocel: persisted.origin_file_id_ocel,
             case_notion_type: persisted.case_notion_type,
             operation: payload.operation,
-            cases_with_value: result.cases_with_value,
+            cases_with_value: result.values.len(),
             cases_skipped: result.cases_skipped,
-            stats: result.stats,
+            stats,
+            bins_used,
+            histogram,
         }),
     )
         .into_response()
@@ -295,7 +334,7 @@ pub async fn get_case_time_stats(
 
     let (event_lookup, object_lookup) = ocel_lookups(&ocel);
 
-    let stats = compute_case_time_stats(
+    let values = collect_case_time_values(
         &persisted.case_notion,
         &event_lookup,
         &object_lookup,
@@ -303,6 +342,9 @@ pub async fn get_case_time_stats(
         &query.from_activity,
         &query.to_activity,
     );
+
+    let stats = compute_numeric_stats(&values);
+    let (bins_used, histogram) = optional_histogram(&values, query.histogram);
 
     (StatusCode::OK, Json(CaseTimeStatsResponse {
         case_notion_file_id,
@@ -312,17 +354,15 @@ pub async fn get_case_time_stats(
         from_activity: query.from_activity,
         to_activity: query.to_activity,
         stats,
+        bins_used,
+        histogram,
     }))
     .into_response()
 }
 
 /// `GET /v1/kpi/activity_successors/{case_notion_file_id}`
-///
-/// Returns, for every activity, the sorted list of activities that genuinely
-/// follow it in at least one object's event timeline across all cases.
-///
-/// No query parameters. Call this once when the page loads and use the result
-/// to filter the `to_activity` dropdown whenever the user changes `from_activity`.
+/// For each activity, returns the activities that follow it in at least one case.
+/// Use this to populate the `to_activity` dropdown.
 pub async fn get_activity_successors(
     Path(case_notion_file_id): Path<String>,
 ) -> impl IntoResponse {
@@ -336,7 +376,8 @@ pub async fn get_activity_successors(
         Err((status, message)) => return (status, message).into_response(),
     };
 
-    let (event_lookup, _) = ocel_lookups(&ocel);
+    let event_lookup: FxHashMap<String, OCELEvent> =
+        ocel.events.iter().map(|e| (e.id.clone(), e.clone())).collect();
 
     let successors = compute_activity_successors(&persisted.case_notion, &event_lookup)
         .into_iter()
@@ -354,8 +395,10 @@ pub async fn get_activity_successors(
 }
 
 /// Returns aggregate stats over all case durations (first event → last event).
-/// No query parameters needed.
-pub async fn get_case_duration(Path(case_notion_file_id): Path<String>) -> impl IntoResponse {
+pub async fn get_case_duration(
+    Path(case_notion_file_id): Path<String>,
+    Query(query): Query<CaseDurationQuery>,
+) -> impl IntoResponse {
     let persisted = match load_case_notion(&case_notion_file_id).await {
         Ok(data) => data,
         Err(response) => return response,
@@ -366,17 +409,22 @@ pub async fn get_case_duration(Path(case_notion_file_id): Path<String>) -> impl 
         Err((status, message)) => return (status, message).into_response(),
     };
 
-    let (event_lookup, _) = ocel_lookups(&ocel);
+    let event_lookup: FxHashMap<String, OCELEvent> =
+        ocel.events.iter().map(|e| (e.id.clone(), e.clone())).collect();
 
-    let result = compute_case_duration(&persisted.case_notion, &event_lookup);
+    let result = collect_case_duration_values(&persisted.case_notion, &event_lookup);
+    let stats = compute_numeric_stats(&result.values);
+    let (bins_used, histogram) = optional_histogram(&result.values, query.histogram);
 
     (StatusCode::OK, Json(CaseDurationResponse {
         case_notion_file_id,
         origin_file_id_ocel: persisted.origin_file_id_ocel,
         case_notion_type: persisted.case_notion_type,
-        cases_with_duration: result.cases_with_duration,
+        cases_with_duration: result.values.len(),
         cases_skipped: result.cases_skipped,
-        stats: result.stats,
+        stats,
+        bins_used,
+        histogram,
     }))
     .into_response()
 }

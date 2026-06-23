@@ -1,7 +1,6 @@
 use crate::handlers::kpi::{
-    post_attribute_combination,
-    get_activity_successors, get_case_attribute_stats,
-    get_case_duration, get_case_time_stats, get_ocel_metadata,
+    get_activity_successors, get_case_attribute_stats, get_case_duration, get_case_time_stats,
+    get_ocel_metadata, post_attribute_combination,
 };
 use axum::{Router, routing::{get, post}};
 

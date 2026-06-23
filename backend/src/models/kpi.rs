@@ -6,7 +6,7 @@ pub struct AttributeMetadata {
     pub name: String,
     /// One of: `"integer"`, `"float"`, `"string"`, `"boolean"`, `"time"`.
     pub value_type: String,
-    /// Only integer and float attributes can be used for KPI statistics.
+    /// true for integer/float — only numeric attributes work in KPI calls.
     pub numeric: bool,
 }
 
@@ -22,9 +22,7 @@ pub struct EventTypeMetadata {
     pub attributes: Vec<AttributeMetadata>,
 }
 
-/// `GET /v1/kpi/ocel_metadata/{file_id}`
-/// Lists all object/event types and their attributes. Use this to populate
-/// dropdowns in the UI before making any KPI calls.
+/// `GET /v1/kpi/ocel_metadata/{file_id}` — object/event types with their attributes.
 #[derive(Serialize, Deserialize)]
 pub struct OcelMetadataResponse {
     pub file_id: String,
@@ -46,32 +44,29 @@ pub struct NumericStats {
 }
 
 /// `GET /v1/kpi/case_attribute_stats/{case_notion_file_id}`
-/// Requires exactly one of `object_type` or `event_type` (not both).
-/// Optional `intra_case_agg`: if provided, first aggregate values within each
-/// case using the chosen function, then compute stats across those per-case
-/// values. Allowed values: `"sum"`, `"mean"`, `"min"`, `"max"`, `"count"`.
-/// If omitted, all raw values are pooled across cases (original behavior).
+/// Provide exactly one of `object_type` or `event_type`. Add `histogram=true` for a chart.
 #[derive(Deserialize)]
 pub struct CaseAttributeQuery {
     pub attribute: String,
     pub object_type: Option<String>,
     pub event_type: Option<String>,
     pub intra_case_agg: Option<String>,
+    pub histogram: Option<bool>,
 }
 
-/// `GET /v1/kpi/case_attribute_stats/{case_notion_file_id}`
 #[derive(Serialize, Deserialize)]
 pub struct CaseAttributeStatsResponse {
     pub case_notion_file_id: String,
     pub origin_file_id_ocel: String,
     pub case_notion_type: String,
     pub attribute: String,
-    /// Which intra-case aggregation was applied before computing stats.
-    /// Absent when raw pooling was used (no `intra_case_agg` param).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub intra_case_agg: Option<String>,
-    /// `null` if the attribute was not found in any case.
     pub stats: Option<NumericStats>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bins_used: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub histogram: Option<Vec<KpiHistogramBin>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
@@ -83,7 +78,7 @@ pub enum CombinationOperator {
     Divide,
 }
 
-/// Body for `POST /v1/kpi/attribute_combination/{case_notion_file_id}`.
+/// `POST /v1/kpi/attribute_combination/{case_notion_file_id}`
 #[derive(Deserialize)]
 pub struct CaseAttributeCombinationRequest {
     pub left_attribute: String,
@@ -95,6 +90,7 @@ pub struct CaseAttributeCombinationRequest {
     pub right_event_type: Option<String>,
     pub right_intra_case_agg: Option<String>,
     pub operation: CombinationOperator,
+    pub histogram: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -104,21 +100,33 @@ pub struct CaseAttributeCombinationStatsResponse {
     pub case_notion_type: String,
     pub operation: CombinationOperator,
     pub cases_with_value: usize,
-    /// Cases skipped (missing operand or divide-by-zero).
+    /// Cases skipped due to missing operand or divide-by-zero.
     pub cases_skipped: usize,
     pub stats: Option<NumericStats>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bins_used: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub histogram: Option<Vec<KpiHistogramBin>>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct KpiHistogramBin {
+    /// Bin midpoint → x axis.
+    pub count: f64,
+    /// Number of cases in this bin → bar height.
+    pub frequency: usize,
 }
 
 /// `GET /v1/kpi/case_time_stats/{case_notion_file_id}`
-/// All three parameters are required.
+/// All three params required. `histogram=true` bins per-transition times, not per-case.
 #[derive(Deserialize)]
 pub struct CaseTimeQuery {
     pub object_type: String,
     pub from_activity: String,
     pub to_activity: String,
+    pub histogram: Option<bool>,
 }
 
-/// `GET /v1/kpi/case_time_stats/{case_notion_file_id}`
 #[derive(Serialize, Deserialize)]
 pub struct CaseTimeStatsResponse {
     pub case_notion_file_id: String,
@@ -127,28 +135,37 @@ pub struct CaseTimeStatsResponse {
     pub object_type: String,
     pub from_activity: String,
     pub to_activity: String,
-    /// `null` if no valid from→to pairs were found.
+    /// null if no from→to pairs were found.
     pub stats: Option<NumericStats>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bins_used: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub histogram: Option<Vec<KpiHistogramBin>>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct ActivitySuccessorsResponse {
     pub case_notion_file_id: String,
     pub case_notion_type: String,
-    /// Key: from_activity. Value: sorted list of valid to_activities.
     pub successors: HashMap<String, Vec<String>>,
 }
 
 /// `GET /v1/kpi/case_duration/{case_notion_file_id}`
+#[derive(Deserialize)]
+pub struct CaseDurationQuery {
+    pub histogram: Option<bool>,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct CaseDurationResponse {
     pub case_notion_file_id: String,
     pub origin_file_id_ocel: String,
     pub case_notion_type: String,
-    /// Cases that had at least 2 events and a measurable duration.
     pub cases_with_duration: usize,
-    /// Cases with only 1 event — duration is undefined, these are excluded.
     pub cases_skipped: usize,
-    /// `null` if no case had at least 2 events.
     pub stats: Option<NumericStats>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bins_used: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub histogram: Option<Vec<KpiHistogramBin>>,
 }
