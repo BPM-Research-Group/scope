@@ -112,6 +112,8 @@ export const mineCaseNotion = async (
     } else {
         params.append('object_type', objectType);
         const response = await api.get(`/v1/case_notion/${endpoint}/${fileId}?${params.toString()}`);
+        console.log("generic response");
+        console.log(response.data);
         return response.data;
     }
 };
@@ -250,11 +252,11 @@ export const mineKpi = async (fileId: string) => {
 
 export const attributeStats = async (fileId: string, params: any) => { 
     console.log('stats');
-        console.log(fileId);
+       console.log("json", JSON.stringify(params, null, 2));
     console.log(params);
 
 
-    const response = await api.get(`/v1/kpi/case_attribute_stats/${fileId}`, {params}); 
+    const response = await api.post(`/v1/kpi/attribute_combination/${fileId}`, params); 
     console.log('att stats');
      
         console.log(response.data);
