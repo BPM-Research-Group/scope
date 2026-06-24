@@ -27,7 +27,7 @@ pub fn router() -> Router {
             post(post_conformance_ocpt_case_ocels_ocgraphconf),
         )
         .route(
-            "/abstraction_1/{abstraction_id_1}/abstraction_2/{abstraction_id_2}",
+            "/abstraction_1/{model_abstraction_id}/abstraction_2/{log_abstraction_id}",
             get(get_conformance_abstraction_abstraction),
         )
         .route(

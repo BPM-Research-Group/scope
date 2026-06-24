@@ -105,8 +105,7 @@ export const toObjectTypeGroup = (
         else if (isDeficient && !isConvergent) right = '0..1';
         else right = '0..n';
 
-        // Only show badge when it deviates from the trivial 1:1 case
-        const multiplicity = left !== '1' || right !== '1' ? `${left}:${right}` : undefined;
+        const multiplicity = `${left}:${right}`;
 
         return {
             id: `ev-${objectType}-${eventType}`,

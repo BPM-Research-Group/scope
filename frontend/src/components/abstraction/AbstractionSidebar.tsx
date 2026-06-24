@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ScanEye } from 'lucide-react';
 import { Checkbox } from '~/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
 
@@ -18,6 +18,9 @@ interface AbstractionSidebarProps {
     compareB: string;
     onCompareAChange: (ot: string) => void;
     onCompareBChange: (ot: string) => void;
+    // Identity relations
+    identityRelationCount: number;
+    onOpenIdentityRelations: () => void;
 }
 
 const PANEL_WIDTH = 'w-64'; // must match the translate-x value below (translate-x-64)
@@ -35,6 +38,8 @@ const AbstractionSidebar: React.FC<AbstractionSidebarProps> = ({
     compareB,
     onCompareAChange,
     onCompareBChange,
+    identityRelationCount,
+    onOpenIdentityRelations,
 }) => {
     const handleToggle = (ot: string) => {
         const next = filteredObjectTypes.includes(ot)
@@ -183,6 +188,19 @@ const AbstractionSidebar: React.FC<AbstractionSidebarProps> = ({
                         </>
                     )}
                 </div>
+
+                {identityRelationCount > 0 && (
+                    <div className="p-3 border-t shrink-0">
+                        <button
+                            onClick={onOpenIdentityRelations}
+                            className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium border hover:bg-muted transition-colors"
+                        >
+                            <ScanEye className="h-4 w-4 shrink-0" />
+                            <span>Identity Relations</span>
+                            <span className="ml-auto text-xs text-muted-foreground">{identityRelationCount}</span>
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );

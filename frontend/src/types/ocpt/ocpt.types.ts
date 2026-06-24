@@ -1,11 +1,21 @@
 import { HierarchyPointLink } from '@visx/hierarchy/lib/types';
 
-export type IdentityRelationKind = 'sync' | 'impConcurrent' | 'tempImp';
+export type IdentityRelationKind =
+    | 'sync'
+    | 'subsetSync'
+    | 'subsetSyncPartition'
+    | 'subsetSyncOverlap'
+    | 'impConcurrent'
+    | 'impOrdered'
+    | 'impBatch'
+    | 'objectSplit'
+    | 'objectMerge';
 
 export interface IdentityRelation {
     left: string[];
     right: string[];
     kind: IdentityRelationKind;
+    batchSize?: number;
 }
 
 export type Exhibit = 'div' | 'con' | 'def';

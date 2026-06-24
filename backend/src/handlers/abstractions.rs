@@ -3,7 +3,9 @@ use serde_json::json;
 use std::io::ErrorKind;
 use tokio::fs;
 
-use crate::models::abstraction::OCLanguageAbstraction;
+use crate::models::abstraction::{
+    EnrichedOCLanguageAbstraction, OCLanguageAbstraction, identity_relations_from_ocpt,
+};
 use crate::models::ocel::{IndexLinkedOCEL, OCEL};
 use crate::models::ocpt::OCPT as BackendOCPT;
 use crate::traits::import_export::{ExportableToPath, ImportableFromPath};
@@ -12,7 +14,7 @@ fn abstraction_payload(
     file_id: &str,
     source_file_id: &str,
     source_kind: &str,
-    abstraction: &OCLanguageAbstraction,
+    abstraction: &EnrichedOCLanguageAbstraction,
 ) -> serde_json::Value {
     json!({
         "file_id": file_id,
@@ -63,7 +65,8 @@ pub async fn get_ocel_abstraction(AxumPath(source_file_id): AxumPath<String>) ->
         Ok(abstraction) => abstraction,
         Err((status, message)) => return (status, message).into_response(),
     };
-    let file_id = match abstraction.export_to_path().await {
+    let enriched = EnrichedOCLanguageAbstraction::new(abstraction, Vec::new());
+    let file_id = match enriched.export_to_path().await {
         Ok(file_id) => file_id,
         Err((status, message)) => return (status, message).into_response(),
     };
@@ -72,7 +75,7 @@ pub async fn get_ocel_abstraction(AxumPath(source_file_id): AxumPath<String>) ->
         &file_id,
         &source_file_id,
         "ocel",
-        &abstraction,
+        &enriched,
     ))
     .into_response()
 }
@@ -91,11 +94,13 @@ pub async fn get_ocpt_abstraction(AxumPath(source_file_id): AxumPath<String>) ->
             .into_response();
     }
 
+    let identity_relations = identity_relations_from_ocpt(&ocpt);
     let abstraction = match compute_ocpt_abstraction(ocpt).await {
         Ok(abstraction) => abstraction,
         Err((status, message)) => return (status, message).into_response(),
     };
-    let file_id = match abstraction.export_to_path().await {
+    let enriched = EnrichedOCLanguageAbstraction::new(abstraction, identity_relations);
+    let file_id = match enriched.export_to_path().await {
         Ok(file_id) => file_id,
         Err((status, message)) => return (status, message).into_response(),
     };
@@ -104,7 +109,7 @@ pub async fn get_ocpt_abstraction(AxumPath(source_file_id): AxumPath<String>) ->
         &file_id,
         &source_file_id,
         "ocpt",
-        &abstraction,
+        &enriched,
     ))
     .into_response()
 }
@@ -126,11 +131,13 @@ pub async fn get_extended_ocpt_abstraction(
             .into_response();
     }
 
+    let identity_relations = identity_relations_from_ocpt(&ocpt);
     let abstraction = match compute_ocpt_abstraction(ocpt).await {
         Ok(abstraction) => abstraction,
         Err((status, message)) => return (status, message).into_response(),
     };
-    let file_id = match abstraction.export_to_path().await {
+    let enriched = EnrichedOCLanguageAbstraction::new(abstraction, identity_relations);
+    let file_id = match enriched.export_to_path().await {
         Ok(file_id) => file_id,
         Err((status, message)) => return (status, message).into_response(),
     };
@@ -139,13 +146,13 @@ pub async fn get_extended_ocpt_abstraction(
         &file_id,
         &source_file_id,
         "extended_ocpt",
-        &abstraction,
+        &enriched,
     ))
     .into_response()
 }
 
 pub async fn get_abstraction(AxumPath(file_id): AxumPath<String>) -> impl IntoResponse {
-    match OCLanguageAbstraction::import_from_path(&file_id).await {
+    match EnrichedOCLanguageAbstraction::import_from_path(&file_id).await {
         Ok(abstraction) => {
             let payload = json!({
                 "file_id": file_id,
