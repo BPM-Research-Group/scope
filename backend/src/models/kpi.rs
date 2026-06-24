@@ -143,6 +143,13 @@ pub struct CaseTimeStatsResponse {
     pub histogram: Option<Vec<KpiHistogramBin>>,
 }
 
+/// `GET /v1/kpi/activity_successors/{case_notion_file_id}`
+/// `object_type` is required — returns only successors within that object type's timelines.
+#[derive(Deserialize)]
+pub struct ActivitySuccessorsQuery {
+    pub object_type: String,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct ActivitySuccessorsResponse {
     pub case_notion_file_id: String,

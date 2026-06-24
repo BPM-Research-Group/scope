@@ -6,7 +6,7 @@ use crate::core::kpi::case_kpis::{
     compute_activity_successors,
 };
 use crate::models::kpi::{
-    ActivitySuccessorsResponse, AttributeMetadata,
+    ActivitySuccessorsQuery, ActivitySuccessorsResponse, AttributeMetadata,
     CaseAttributeCombinationRequest, CaseAttributeCombinationStatsResponse, CaseAttributeQuery,
     CaseAttributeStatsResponse, CaseDurationQuery, CaseDurationResponse,
     CaseTimeQuery, CaseTimeStatsResponse, EventTypeMetadata,
@@ -360,11 +360,12 @@ pub async fn get_case_time_stats(
     .into_response()
 }
 
-/// `GET /v1/kpi/activity_successors/{case_notion_file_id}`
-/// For each activity, returns the activities that follow it in at least one case.
-/// Use this to populate the `to_activity` dropdown.
+/// `GET /v1/kpi/activity_successors/{case_notion_file_id}?object_type=...`
+/// Returns successor activities within that object type's timelines only.
+/// Use this to populate the `to_activity` dropdown for `case_time_stats`.
 pub async fn get_activity_successors(
     Path(case_notion_file_id): Path<String>,
+    Query(query): Query<ActivitySuccessorsQuery>,
 ) -> impl IntoResponse {
     let persisted = match load_case_notion(&case_notion_file_id).await {
         Ok(data) => data,
@@ -376,12 +377,16 @@ pub async fn get_activity_successors(
         Err((status, message)) => return (status, message).into_response(),
     };
 
-    let event_lookup: FxHashMap<String, &OCELEvent> =
-        ocel.events.iter().map(|e| (e.id.clone(), e)).collect();
+    let (event_lookup, object_lookup) = ocel_lookups(&ocel);
 
-    let successors = compute_activity_successors(&persisted.case_notion, &event_lookup)
-        .into_iter()
-        .collect();
+    let successors = compute_activity_successors(
+        &persisted.case_notion,
+        &event_lookup,
+        &object_lookup,
+        &query.object_type,
+    )
+    .into_iter()
+    .collect();
 
     (
         StatusCode::OK,

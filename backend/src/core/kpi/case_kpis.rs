@@ -267,10 +267,13 @@ pub fn collect_case_time_values(
     all_durations
 }
 
-/// Returns, for each activity, the set of activities that follow it in any object's timeline.
+/// Returns, for each activity, the set of activities that follow it within
+/// the timelines of objects matching `object_type`.
 pub fn compute_activity_successors(
     cases: &[CaseEntry],
     event_lookup: &FxHashMap<String, &OCELEvent>,
+    object_lookup: &FxHashMap<String, &OCELObject>,
+    object_type: &str,
 ) -> FxHashMap<String, Vec<String>> {
     let mut raw: FxHashMap<String, FxHashSet<String>> = FxHashMap::default();
 
@@ -281,6 +284,10 @@ pub fn compute_activity_successors(
         > = FxHashMap::default();
 
         for (ev_id, obj_id) in arches {
+            match object_lookup.get(obj_id.as_str()) {
+                Some(obj) if obj.object_type == object_type => {}
+                _ => continue,
+            }
             if let Some(event) = event_lookup.get(ev_id.as_str()) {
                 object_timelines
                     .entry(obj_id.as_str())
