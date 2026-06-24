@@ -42,9 +42,17 @@ interface FlowWithAnimationProps {
     ocel: OcelEventData[];
     objectFlowMap: ObjectFlowMapRecord;
     objectTypes: string[];
+    /** Object types to project onto. Empty = project onto all object types. */
+    filteredObjectTypes: string[];
 }
 
-const FlowWithAnimation: React.FC<FlowWithAnimationProps> = ({ ocptHierarchy, ocel, objectFlowMap, objectTypes }) => {
+const FlowWithAnimation: React.FC<FlowWithAnimationProps> = ({
+    ocptHierarchy,
+    ocel,
+    objectFlowMap,
+    objectTypes,
+    filteredObjectTypes,
+}) => {
     // Graph Information from React Flow
     const [nodes, setNodes] = useNodesState([] as Node[]);
     const [edges, setEdges] = useEdgesState([] as Edge<AnimatedSvgEdgeData>[]);
@@ -173,7 +181,12 @@ const FlowWithAnimation: React.FC<FlowWithAnimationProps> = ({ ocptHierarchy, oc
         if (objectTypes) {
             const flowJsons: AltFlowJson[] = [];
 
-            objectTypes.forEach((objectType) => {
+            // Project onto the selected object types only; empty selection = all.
+            const objectTypesToRender = objectTypes.filter(
+                (ot) => filteredObjectTypes.length === 0 || filteredObjectTypes.includes(ot)
+            );
+
+            objectTypesToRender.forEach((objectType) => {
                 if (ocptHierarchy && objectType) {
                     const newTree = cloneDeep(ocptHierarchy);
                     projectTreeOntoOT(newTree, [objectType]);
@@ -237,7 +250,7 @@ const FlowWithAnimation: React.FC<FlowWithAnimationProps> = ({ ocptHierarchy, oc
                 setTokens(allTokens);
             }
         }
-    }, [ocptHierarchy, objectFlowMap, ocel]);
+    }, [ocptHierarchy, objectFlowMap, ocel, filteredObjectTypes]);
 
     const edgeTypes = useMemo(
         () => ({
