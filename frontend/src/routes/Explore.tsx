@@ -13,11 +13,12 @@ import FileSelectionDialog from '~/components/explore/file/ui/FileSelectionDialo
 
 import AbstractionFileNode from '~/components/explore/file/AbstractionFileNode';
 import ConformanceFileNode from '~/components/explore/file/ConformanceFileNode';
+import FlowFileNode from '~/components/explore/file/FlowFileNode';
 import AbstractionMinerNode from '~/components/explore/miner/AbstractionMinerNode';
 import ConformanceMinerNode from '~/components/explore/miner/ConformanceMinerNode';
 import CaseNotionMinerNode from '~/components/explore/miner/CaseNotionMinerNode';
 import ExtendWithIdentityNode from '~/components/explore/miner/ExtendWithIdentityNode';
-import FlowVisualizationNode from '~/components/explore/miner/FlowVisualizationNode';
+import FlowMinerNode from '~/components/explore/miner/FlowMinerNode';
 import HistogramMinerNode from '~/components/explore/miner/HistogramMinerNode';
 import OcpnMinerNode from '~/components/explore/miner/OcpnMinerNode';
 import ResourceMinerNode from '~/components/explore/miner/ResourceMinerNode';
@@ -41,12 +42,13 @@ const nodeTypes = {
     histogramMinerNode: HistogramMinerNode,
     caseNotionMinerNode: CaseNotionMinerNode,
     identityExtendMinerNode: ExtendWithIdentityNode,
-    flowVisualizationNode: FlowVisualizationNode,
+    flowMinerNode: FlowMinerNode,
     abstractionMinerNode: AbstractionMinerNode,
     conformanceMinerNode: ConformanceMinerNode,
     abstractionFileNode: AbstractionFileNode,
     resourceMinerNode: ResourceMinerNode,
     conformanceFileNode: ConformanceFileNode,
+    flowFileNode: FlowFileNode,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } satisfies Record<keyof typeof nodeRegistry, React.ComponentType<NodeProps<any>>>;
 

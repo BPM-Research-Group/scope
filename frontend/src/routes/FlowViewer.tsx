@@ -18,7 +18,11 @@ const FlowViewer: React.FC = () => {
     const { nodeId } = useParams<{ nodeId: string }>();
     const { getNode } = useExploreFlowStore();
 
-    const node = nodeId ? getNode(nodeId) : undefined;
+    // The route id refers to the FlowFileNode; the OCPT/OCEL inputs live on the
+    // upstream FlowMinerNode, reachable via the file node's output asset id.
+    const fileNode = nodeId ? getNode(nodeId) : undefined;
+    const minerNodeId = fileNode?.data.assets.find((a) => a.io === 'output')?.id;
+    const node = (minerNodeId ? getNode(minerNodeId) : undefined) ?? fileNode;
 
     // Extract asset IDs from the node's inputs
     const ocptAsset = useMemo(
