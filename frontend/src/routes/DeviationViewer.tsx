@@ -33,10 +33,11 @@ const DeviationViewer: React.FC = () => {
         return (getNode(minerNodeId)?.data as MinerExploreNodeData | undefined)?.conformanceResult ?? null;
     }, [nodeId, getNode]);
 
+    // inputA is always the model asset, inputB the log asset (see ConformanceMinerNode).
     const inputA = conformanceResult?.inputA ?? null;
     const inputB = conformanceResult?.inputB ?? null;
-    const labelA = inputA ? ASSET_TYPE_VISUALS[inputA.type].label : 'Input A';
-    const labelB = inputB ? ASSET_TYPE_VISUALS[inputB.type].label : 'Input B';
+    const labelA = inputA ? `Model (${ASSET_TYPE_VISUALS[inputA.type].label})` : 'Model';
+    const labelB = inputB ? `Log (${ASSET_TYPE_VISUALS[inputB.type].label})` : 'Log';
 
     const isAbstractionA = inputA?.type === 'abstractionAsset';
     const isAbstractionB = inputB?.type === 'abstractionAsset';
