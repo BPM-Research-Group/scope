@@ -19,10 +19,16 @@ import {
     getLogGraphs,
     getOcelCollection,
     getOcelObjectTypes,
+    getOcpn,
+    getOcpnFromOcpt,
+    getIdentityOcpt,
     getOcpt,
     getTraditionalCN,
     mineIdentityOcpt,
+    mineOcpn,
     mineOcpt,
+    getActivityResource,
+    postSpecialActivities,
 } from '~/services/api';
 import { getOcel } from '~/services/api';
 import { CaseNotionApiResponse } from '~/types/case_notion.types';
@@ -51,6 +57,53 @@ export const useGetOcel = (fileId: string | null) => {
         queryFn: () => getOcel(fileId!),
         refetchOnWindowFocus: false,
         enabled: Boolean(fileId),
+    });
+};
+
+
+export const useGetActivityResource = (fileId: string | null) => {
+   
+
+    return useQuery({
+        queryKey: ['getActivityResource', fileId],
+        queryFn: () => getActivityResource(fileId!),
+        refetchOnWindowFocus: false,
+        enabled: Boolean(fileId),
+    });
+};
+
+// export const usePostSpecialActivity = (fileId: string | null, ac) => {
+//     console.log('query');
+//         console.log(fileId);
+
+//     return useQuery({
+//         queryKey: ['postSpecialActivities', fileId],
+//         queryFn: () => getActivityResource(fileId!),
+//         refetchOnWindowFocus: false,
+//         enabled: Boolean(fileId),
+//     });
+// };
+
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+
+export const usePostSpecialActivity = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({
+            fileId,
+            activities,
+        }: {
+            fileId: string;
+            activities: string[];
+        }) => postSpecialActivities(fileId, activities),
+
+        onSuccess: (data, variables) => {
+            // 🔁 Refetch activity resource after POST
+            queryClient.invalidateQueries({
+                queryKey: ['getActivityResource', variables.fileId],
+            });
+        },
     });
 };
 
@@ -193,11 +246,12 @@ export const useExtendOcptWithIdentity = (
     nodeId: string,
     ocptFileId: string | null,
     ocelFileId: string | null,
+    noiseThreshold: number,
     shouldFetch: boolean
 ) => {
     return useQuery({
-        queryKey: ['extendOcptWithIdentity', nodeId, ocptFileId, ocelFileId],
-        queryFn: () => extendOcptWithIdentity(ocptFileId!, ocelFileId!),
+        queryKey: ['extendOcptWithIdentity', nodeId, ocptFileId, ocelFileId, noiseThreshold],
+        queryFn: () => extendOcptWithIdentity(ocptFileId!, ocelFileId!, noiseThreshold),
         enabled: Boolean(ocptFileId) && Boolean(ocelFileId) && shouldFetch,
         refetchOnWindowFocus: false,
     });
@@ -222,6 +276,22 @@ export const useGetAbstraction = (
         queryKey: ['getAbstraction', nodeId, fileId, sourceKind],
         queryFn: () => getAbstraction(fileId!, sourceKind!),
         enabled: Boolean(fileId) && Boolean(sourceKind) && shouldFetch,
+    });
+};
+
+export const useMineOcpn = (nodeId: string, fileId: string | null, shouldFetch: boolean) => {
+    return useQuery({
+        queryKey: ['mineOcpn', nodeId, fileId],
+        queryFn: () => mineOcpn(fileId!),
+        enabled: Boolean(fileId) && shouldFetch,
         refetchOnWindowFocus: false,
+    });
+};
+export const useGetOcpn = (fileId: string | null, enabled: boolean = true) => {
+    return useQuery({
+        queryKey: ['getOcpn', fileId],
+        queryFn: () => getOcpn(fileId as string),
+        // This ensures it only runs if the fileId actually exists AND the component says it's okay to run
+        enabled: !!fileId && enabled,
     });
 };

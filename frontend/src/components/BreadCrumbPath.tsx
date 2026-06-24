@@ -1,22 +1,21 @@
 import React, { useMemo } from 'react';
-import { AlignEndHorizontalIcon, Compass, Eye, File, House, Layers, Network, Route } from 'lucide-react';
+import { AlignEndHorizontalIcon, Compass, Eye, File, House, Layers, Network, Radar, Route } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { BreadcrumbItem, BreadcrumbPage, BreadcrumbSeparator } from '~/components/ui/breadcrumb';
+
+// Route segments that are always the last meaningful crumb (followed by a nodeId param)
+const VIEWER_ROUTES = new Set(['ocpt', 'ocel', 'abstraction', 'deviations', 'flow', 'hist-viz']);
 
 interface BreadCrumbPathProps {
     pathnames: string[];
 }
 
 const BreadCrumbPath: React.FC<BreadCrumbPathProps> = ({ pathnames }) => {
-    // Removes the part where the path name repeats itself
-    // E.g. given 'ocpt/ocptVisualizationNode_2', removes everything beyond the '/'
     const processedPathnames = useMemo(() => {
         const newPathnames: string[] = [];
         for (let i = 0; i < pathnames.length; i++) {
             newPathnames.push(pathnames[i]);
-            if (i + 1 < pathnames.length && pathnames[i + 1].startsWith(pathnames[i])) {
-                break;
-            }
+            if (VIEWER_ROUTES.has(pathnames[i])) break;
         }
         return newPathnames;
     }, [pathnames]);
@@ -38,6 +37,8 @@ const BreadCrumbPath: React.FC<BreadCrumbPathProps> = ({ pathnames }) => {
                 return <AlignEndHorizontalIcon className={className} />;
             case 'abstraction':
                 return <Layers className={className} />;
+            case 'deviations':
+                return <Radar className={className} />;
         }
     };
 

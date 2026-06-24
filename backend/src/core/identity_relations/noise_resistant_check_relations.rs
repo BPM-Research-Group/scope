@@ -4,7 +4,7 @@ use crate::models::ocpt::IdentityRelationKind;
 
 use super::Relation;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum NoiseResistantRelationFamily {
     StrictSync,
     SubsetSync,
@@ -90,34 +90,13 @@ fn is_subset_of(sub: &[String], sup: &[String]) -> bool {
     i == sub.len()
 }
 
-/// Collects all distinct activities present in the relation rows in sorted order.
-///
-/// Subset synchronization discovery tries different activity partitions. Sorting the
-/// activity universe makes that search deterministic so the same input relations always
-/// produce the same clustering order and therefore the same chosen subset result.
-fn collect_unique_activities(relations: &[Relation]) -> Vec<String> {
-    let mut activities: Vec<String> = relations
-        .iter()
-        .map(|(_eid, activity, _timestamp, _oid, _otype)| activity.clone())
-        .collect::<HashSet<_>>()
-        .into_iter()
-        .collect();
-    activities.sort();
-    activities
-}
-
-/// Keeps only relation rows whose activity belongs to the provided activity set.
-///
-/// This helper is mainly used while exploring candidate strict-activity clusters for
-/// subset synchronization. It preserves the original relation row shape and simply drops
-/// events whose activity is outside the current candidate set.
-fn filter_relations_by_activities(
-    relations: &[Relation],
+fn filter_event_sets_by_activities(
+    event_sets: &[EventSets],
     activities: &HashSet<String>,
-) -> Vec<Relation> {
-    relations
+) -> Vec<EventSets> {
+    event_sets
         .iter()
-        .filter(|(_eid, activity, _timestamp, _oid, _otype)| activities.contains(activity))
+        .filter(|event| activities.contains(&event.activity))
         .cloned()
         .collect()
 }
@@ -134,8 +113,21 @@ fn build_event_sets(
     ot1: &HashSet<String>,
     ot2: &HashSet<String>,
 ) -> Vec<EventSets> {
+    build_event_sets_from_relation_indices(relations, 0..relations.len(), ot1, ot2)
+}
+
+fn build_event_sets_from_relation_indices<I>(
+    relations: &[Relation],
+    relation_indices: I,
+    ot1: &HashSet<String>,
+    ot2: &HashSet<String>,
+) -> Vec<EventSets>
+where
+    I: IntoIterator<Item = usize>,
+{
     let mut grouped: HashMap<String, EventAccumulator> = HashMap::new();
-    for (eid, activity, _timestamp, oid, otype) in relations {
+    for index in relation_indices {
+        let (eid, activity, _timestamp, oid, otype) = &relations[index];
         let entry = grouped.entry(eid.clone()).or_default();
         if entry.activity.is_empty() {
             entry.activity = activity.clone();
@@ -195,6 +187,7 @@ fn build_event_sets(
 /// an event must always map to the same right-side group and vice versa, and individual
 /// objects must not appear in multiple incompatible groups over time. Violations are counted
 /// at the set level, and the final ratio is compared against `violation_threshold`.
+#[allow(dead_code)]
 fn check_strict_sync(
     relations: &[Relation],
     ot1: &HashSet<String>,
@@ -202,8 +195,19 @@ fn check_strict_sync(
     violation_threshold: f64,
 ) -> bool {
     let event_sets = build_event_sets(relations, ot1, ot2);
+    check_strict_sync_event_sets(&event_sets, violation_threshold)
+}
+
+fn check_strict_sync_event_sets(event_sets: &[EventSets], violation_threshold: f64) -> bool {
     if event_sets.is_empty() {
-        return true;
+        return false;
+    }
+
+    if !event_sets
+        .iter()
+        .any(|event| !event.ot1_set.is_empty() && !event.ot2_set.is_empty())
+    {
+        return false;
     }
 
     let mut violating_sets: HashSet<Vec<String>> = HashSet::new();
@@ -212,9 +216,25 @@ fn check_strict_sync(
     let mut ot1_to_ot2: HashMap<Vec<String>, HashSet<Vec<String>>> = HashMap::new();
     let mut ot2_to_ot1: HashMap<Vec<String>, HashSet<Vec<String>>> = HashMap::new();
 
-    for event in &event_sets {
+    for event in event_sets {
         if !event.ot1_set.is_empty() {
             all_sets.insert(event.ot1_set.clone());
+        }
+        if !event.ot2_set.is_empty() {
+            all_sets.insert(event.ot2_set.clone());
+        }
+
+        if event.ot1_set.is_empty() || event.ot2_set.is_empty() {
+            if !event.ot1_set.is_empty() {
+                violating_sets.insert(event.ot1_set.clone());
+            }
+            if !event.ot2_set.is_empty() {
+                violating_sets.insert(event.ot2_set.clone());
+            }
+            continue;
+        }
+
+        if !event.ot1_set.is_empty() {
             ot1_to_ot2
                 .entry(event.ot1_set.clone())
                 .or_default()
@@ -243,7 +263,7 @@ fn check_strict_sync(
     let mut obj_to_ot1_sets: HashMap<String, HashSet<Vec<String>>> = HashMap::new();
     let mut obj_to_ot2_sets: HashMap<String, HashSet<Vec<String>>> = HashMap::new();
 
-    for event in &event_sets {
+    for event in event_sets {
         for oid in &event.ot1_set {
             obj_to_ot1_sets
                 .entry(oid.clone())
@@ -282,6 +302,7 @@ fn check_strict_sync(
 /// reference mapping. Events from `relaxed_activities` are then allowed to map each left-side
 /// set to a subset of that strict target on the right-hand side. Any missing strict anchor or
 /// any relaxed target that exceeds the strict reference mapping is counted as a violation.
+#[allow(dead_code)]
 fn check_subset_sync(
     relations: &[Relation],
     ot1: &HashSet<String>,
@@ -291,8 +312,22 @@ fn check_subset_sync(
     violation_threshold: f64,
 ) -> bool {
     let event_sets = build_event_sets(relations, ot1, ot2);
+    check_subset_sync_event_sets(
+        &event_sets,
+        strict_activities,
+        relaxed_activities,
+        violation_threshold,
+    )
+}
+
+fn check_subset_sync_event_sets(
+    event_sets: &[EventSets],
+    strict_activities: &HashSet<String>,
+    relaxed_activities: &HashSet<String>,
+    violation_threshold: f64,
+) -> bool {
     if event_sets.is_empty() {
-        return true;
+        return false;
     }
 
     let mut violating_sets: HashSet<Vec<String>> = HashSet::new();
@@ -302,63 +337,97 @@ fn check_subset_sync(
         .iter()
         .filter(|event| strict_activities.contains(&event.activity))
         .collect();
-
-    if !strict_events.is_empty() {
-        let mut ot1_to_ot2: HashMap<Vec<String>, HashSet<Vec<String>>> = HashMap::new();
-        let mut ot2_to_ot1: HashMap<Vec<String>, HashSet<Vec<String>>> = HashMap::new();
-
-        for event in strict_events.iter().copied() {
-            all_sets.insert(event.ot1_set.clone());
-            all_sets.insert(event.ot2_set.clone());
-            ot1_to_ot2
-                .entry(event.ot1_set.clone())
-                .or_default()
-                .insert(event.ot2_set.clone());
-            ot2_to_ot1
-                .entry(event.ot2_set.clone())
-                .or_default()
-                .insert(event.ot1_set.clone());
-        }
-
-        for (s1, mapped) in ot1_to_ot2 {
-            if mapped.len() > 1 {
-                violating_sets.insert(s1);
-            }
-        }
-        for (s2, mapped) in ot2_to_ot1 {
-            if mapped.len() > 1 {
-                violating_sets.insert(s2);
-            }
-        }
-    }
-
     let relaxed_events: Vec<&EventSets> = event_sets
         .iter()
         .filter(|event| relaxed_activities.contains(&event.activity))
         .collect();
 
-    if !relaxed_events.is_empty() && !strict_events.is_empty() {
-        // If the same left-side set appears multiple times in the strict part, the last observed mapping is kept.
-        let mut strict_map: HashMap<Vec<String>, Vec<String>> = HashMap::new();
-        for event in strict_events {
-            strict_map.insert(event.ot1_set.clone(), event.ot2_set.clone());
+    if strict_events.is_empty() || relaxed_events.is_empty() {
+        return false;
+    }
+
+    if !strict_events
+        .iter()
+        .any(|event| !event.ot1_set.is_empty() && !event.ot2_set.is_empty())
+        || !relaxed_events
+            .iter()
+            .any(|event| !event.ot1_set.is_empty() && !event.ot2_set.is_empty())
+    {
+        return false;
+    }
+
+    let mut ot1_to_ot2: HashMap<Vec<String>, HashSet<Vec<String>>> = HashMap::new();
+    let mut ot2_to_ot1: HashMap<Vec<String>, HashSet<Vec<String>>> = HashMap::new();
+    let mut strict_map: HashMap<Vec<String>, Vec<String>> = HashMap::new();
+
+    for event in strict_events.iter().copied() {
+        if !event.ot1_set.is_empty() {
+            all_sets.insert(event.ot1_set.clone());
+        }
+        if !event.ot2_set.is_empty() {
+            all_sets.insert(event.ot2_set.clone());
         }
 
-        for event in relaxed_events {
-            all_sets.insert(event.ot1_set.clone());
-            all_sets.insert(event.ot2_set.clone());
-
-            if !strict_map.contains_key(&event.ot1_set) {
+        if event.ot1_set.is_empty() || event.ot2_set.is_empty() {
+            if !event.ot1_set.is_empty() {
                 violating_sets.insert(event.ot1_set.clone());
-                continue;
             }
-
-            let strict_target = strict_map
-                .get(&event.ot1_set)
-                .expect("strict map key exists");
-            if !is_subset_of(&event.ot2_set, strict_target) {
+            if !event.ot2_set.is_empty() {
                 violating_sets.insert(event.ot2_set.clone());
             }
+            continue;
+        }
+
+        strict_map.insert(event.ot1_set.clone(), event.ot2_set.clone());
+        ot1_to_ot2
+            .entry(event.ot1_set.clone())
+            .or_default()
+            .insert(event.ot2_set.clone());
+        ot2_to_ot1
+            .entry(event.ot2_set.clone())
+            .or_default()
+            .insert(event.ot1_set.clone());
+    }
+
+    for (s1, mapped) in ot1_to_ot2 {
+        if mapped.len() > 1 {
+            violating_sets.insert(s1);
+        }
+    }
+    for (s2, mapped) in ot2_to_ot1 {
+        if mapped.len() > 1 {
+            violating_sets.insert(s2);
+        }
+    }
+
+    for event in relaxed_events {
+        if !event.ot1_set.is_empty() {
+            all_sets.insert(event.ot1_set.clone());
+        }
+        if !event.ot2_set.is_empty() {
+            all_sets.insert(event.ot2_set.clone());
+        }
+
+        if event.ot1_set.is_empty() || event.ot2_set.is_empty() {
+            if !event.ot1_set.is_empty() {
+                violating_sets.insert(event.ot1_set.clone());
+            }
+            if !event.ot2_set.is_empty() {
+                violating_sets.insert(event.ot2_set.clone());
+            }
+            continue;
+        }
+
+        if !strict_map.contains_key(&event.ot1_set) {
+            violating_sets.insert(event.ot1_set.clone());
+            continue;
+        }
+
+        let strict_target = strict_map
+            .get(&event.ot1_set)
+            .expect("strict map key exists");
+        if !is_subset_of(&event.ot2_set, strict_target) {
+            violating_sets.insert(event.ot2_set.clone());
         }
     }
 
@@ -374,86 +443,80 @@ fn check_subset_sync(
 /// Once subset synchronization is known to hold, this helper asks whether multiple relaxed
 /// right-side subsets for the same left-side set share objects. Shared objects indicate an
 /// overlap variant; pairwise disjoint subsets indicate a partition variant.
+#[allow(dead_code)]
 fn check_subset_overlap(
     relations: &[Relation],
     ot1: &HashSet<String>,
     ot2: &HashSet<String>,
-    violation_threshold: f64,
+    relaxed_activities: &HashSet<String>,
 ) -> bool {
-    let event_sets: Vec<EventSets> = build_event_sets(relations, ot1, ot2)
-        .into_iter()
+    let event_sets = build_event_sets(relations, ot1, ot2);
+    check_subset_overlap_event_sets(&event_sets, relaxed_activities)
+}
+
+fn check_subset_overlap_event_sets(
+    event_sets: &[EventSets],
+    relaxed_activities: &HashSet<String>,
+) -> bool {
+    let event_sets: Vec<&EventSets> = event_sets
+        .iter()
+        .filter(|event| relaxed_activities.contains(&event.activity))
         .filter(|event| !event.ot1_set.is_empty() && !event.ot2_set.is_empty())
         .collect();
 
     if event_sets.is_empty() {
-        return true;
+        return false;
     }
 
     let mut ot1_to_ot2_sets: HashMap<Vec<String>, Vec<Vec<String>>> = HashMap::new();
-    for event in &event_sets {
+    for event in event_sets {
         ot1_to_ot2_sets
             .entry(event.ot1_set.clone())
             .or_default()
             .push(event.ot2_set.clone());
     }
 
-    let all_ot1_sets: HashSet<Vec<String>> = ot1_to_ot2_sets.keys().cloned().collect();
-    if all_ot1_sets.is_empty() {
-        return true;
-    }
-
-    let mut violating_ot1_sets: HashSet<Vec<String>> = HashSet::new();
-    for (s1, ot2_list) in ot1_to_ot2_sets {
+    for ot2_list in ot1_to_ot2_sets.values() {
         if ot2_list.len() <= 1 {
             continue;
         }
 
-        let mut has_intersection = false;
-        'outer: for i in 0..ot2_list.len() {
+        for i in 0..ot2_list.len() {
             for j in (i + 1)..ot2_list.len() {
-                if intersects(&ot2_list[i], &ot2_list[j]) {
-                    has_intersection = true;
-                    break 'outer;
+                if ot2_list[i] != ot2_list[j] && intersects(&ot2_list[i], &ot2_list[j]) {
+                    return true;
                 }
             }
         }
-
-        if has_intersection {
-            violating_ot1_sets.insert(s1);
-        }
     }
 
-    (violating_ot1_sets.len() as f64) / (all_ot1_sets.len() as f64) <= violation_threshold
+    false
 }
 
-/// Checks whether each left-side oid set implies a unique right-side oid set within the allowed noise level.
-///
-/// Only events containing a non-empty left-hand object set are relevant here. The relation
-/// holds if each observed left-side set determines one right-side set consistently enough
-/// under the configured noise threshold. If a left-side set maps to multiple right-side sets,
-/// both the source and the competing targets are counted as violating sets.
-fn check_implication(
-    relations: &[Relation],
-    ot1: &HashSet<String>,
-    ot2: &HashSet<String>,
-    violation_threshold: f64,
-) -> bool {
-    let event_sets: Vec<EventSets> = build_event_sets(relations, ot1, ot2)
+fn check_implication_event_sets(event_sets: &[EventSets], violation_threshold: f64) -> bool {
+    let event_sets: Vec<&EventSets> = event_sets
+        .iter()
         .into_iter()
         .filter(|event| !event.ot1_set.is_empty())
         .collect();
 
     if event_sets.is_empty() {
-        return true;
+        return false;
+    }
+
+    if !event_sets.iter().any(|event| !event.ot2_set.is_empty()) {
+        return false;
     }
 
     let mut ot1_to_ot2: HashMap<Vec<String>, HashSet<Vec<String>>> = HashMap::new();
     let mut all_sets: HashSet<Vec<String>> = HashSet::new();
     let mut violating_sets: HashSet<Vec<String>> = HashSet::new();
 
-    for event in &event_sets {
+    for event in event_sets {
         all_sets.insert(event.ot1_set.clone());
-        if !event.ot2_set.is_empty() {
+        if event.ot2_set.is_empty() {
+            violating_sets.insert(event.ot1_set.clone());
+        } else {
             all_sets.insert(event.ot2_set.clone());
         }
         ot1_to_ot2
@@ -465,15 +528,32 @@ fn check_implication(
     for (s1, mapped) in ot1_to_ot2 {
         if mapped.len() > 1 {
             violating_sets.insert(s1);
-            violating_sets.extend(mapped.into_iter());
+            violating_sets.extend(mapped.into_iter().filter(|set| !set.is_empty()));
         }
     }
 
     if all_sets.is_empty() {
-        return true;
+        return false;
     }
 
     (violating_sets.len() as f64) / (all_sets.len() as f64) <= violation_threshold
+}
+
+/// Checks whether each left-side oid set implies a unique right-side oid set within the allowed noise level.
+///
+/// Only events containing a non-empty left-hand object set are relevant here. The relation
+/// holds if each observed left-side set determines one right-side set consistently enough
+/// under the configured noise threshold. If a left-side set maps to multiple right-side sets,
+/// both the source and the competing targets are counted as violating sets.
+#[allow(dead_code)]
+fn check_implication(
+    relations: &[Relation],
+    ot1: &HashSet<String>,
+    ot2: &HashSet<String>,
+    violation_threshold: f64,
+) -> bool {
+    let event_sets = build_event_sets(relations, ot1, ot2);
+    check_implication_event_sets(&event_sets, violation_threshold)
 }
 
 /// Estimates the implication arity by measuring how many left-side object lifecycles overlap per right-side object.
@@ -483,25 +563,37 @@ fn check_implication(
 /// and then checking how many such intervals overlap for each right-side object. The computed
 /// maximum overlap, adjusted by the allowed noise, becomes the batch size `k` or signals a
 /// concurrent implication when it exceeds the average left-to-right object ratio.
+#[allow(dead_code)]
 fn check_implication_k(
     relations: &[Relation],
     ot1: &HashSet<String>,
     ot2: &HashSet<String>,
     violation_threshold: f64,
 ) -> ImplicationK {
+    check_implication_k_by_indices(relations, 0..relations.len(), ot1, ot2, violation_threshold)
+}
+
+fn check_implication_k_by_indices<I>(
+    relations: &[Relation],
+    relation_indices: I,
+    ot1: &HashSet<String>,
+    ot2: &HashSet<String>,
+    violation_threshold: f64,
+) -> ImplicationK
+where
+    I: IntoIterator<Item = usize>,
+{
     let mut eid_to_ot1: HashMap<String, HashSet<String>> = HashMap::new();
     let mut eid_to_ot2: HashMap<String, HashSet<String>> = HashMap::new();
     let mut ot1_to_interval: HashMap<String, (String, String)> = HashMap::new();
-    let mut unique_ot1_objects: HashSet<String> = HashSet::new();
-    let mut unique_ot2_objects: HashSet<String> = HashSet::new();
 
-    for (eid, _activity, timestamp, oid, otype) in relations {
+    for index in relation_indices {
+        let (eid, _activity, timestamp, oid, otype) = &relations[index];
         if ot1.contains(otype) {
             eid_to_ot1
                 .entry(eid.clone())
                 .or_default()
                 .insert(oid.clone());
-            unique_ot1_objects.insert(oid.clone());
 
             match ot1_to_interval.get_mut(oid) {
                 Some((min_ts, max_ts)) => {
@@ -523,7 +615,6 @@ fn check_implication_k(
                 .entry(eid.clone())
                 .or_default()
                 .insert(oid.clone());
-            unique_ot2_objects.insert(oid.clone());
         }
     }
 
@@ -532,45 +623,38 @@ fn check_implication_k(
     }
 
     let mut ot2_to_ot1_objects: HashMap<String, HashSet<String>> = HashMap::new();
+    let mut mapped_ot1_objects: HashSet<String> = HashSet::new();
+    let mut mapped_ot2_objects: HashSet<String> = HashSet::new();
     for (eid, ot2_objects) in &eid_to_ot2 {
-        let related_ot1 = eid_to_ot1.get(eid).cloned().unwrap_or_default();
+        let Some(related_ot1) = eid_to_ot1.get(eid) else {
+            continue;
+        };
+        if related_ot1.is_empty() {
+            continue;
+        }
+
+        mapped_ot1_objects.extend(related_ot1.iter().cloned());
         for ot2_obj in ot2_objects {
+            mapped_ot2_objects.insert(ot2_obj.clone());
             ot2_to_ot1_objects
                 .entry(ot2_obj.clone())
                 .or_default()
-                .extend(related_ot1.clone());
+                .extend(related_ot1.iter().cloned());
         }
     }
 
     let mut concurrency_list: Vec<usize> = Vec::new();
     for ot1_objects in ot2_to_ot1_objects.values() {
-        let mut intervals: Vec<(String, String)> = ot1_objects
+        let intervals: Vec<(String, String)> = ot1_objects
             .iter()
             .filter_map(|oid| ot1_to_interval.get(oid).cloned())
             .collect();
 
         if intervals.is_empty() {
-            concurrency_list.push(0);
             continue;
         }
 
-        intervals.sort_by(|a, b| a.0.cmp(&b.0));
-        let mut max_concurrent = 1usize;
-        let mut end_prev = intervals[0].1.clone();
-
-        for (start, end) in intervals.into_iter().skip(1) {
-            if start <= end_prev {
-                max_concurrent += 1;
-            } else {
-                max_concurrent = 1;
-            }
-
-            if end > end_prev {
-                end_prev = end;
-            }
-        }
-
-        concurrency_list.push(max_concurrent);
+        concurrency_list.push(max_overlapping_intervals(&intervals));
     }
 
     if concurrency_list.is_empty() {
@@ -579,23 +663,50 @@ fn check_implication_k(
 
     concurrency_list.sort_by(|a, b| b.cmp(a));
     let n = concurrency_list.len();
-    let allowed_violations = ((n as f64) * violation_threshold).floor() as usize;
-    let k_min = if allowed_violations < n {
-        concurrency_list[allowed_violations]
+    let violation_threshold = if violation_threshold.is_finite() {
+        violation_threshold.clamp(0.0, 1.0)
     } else {
-        0
+        0.0
     };
+    let allowed_violations = ((n as f64) * violation_threshold).floor() as usize;
+    let sample_index = allowed_violations.min(n - 1);
+    let k_min = concurrency_list[sample_index].max(1);
 
-    if unique_ot2_objects.is_empty() {
+    if mapped_ot2_objects.is_empty() {
         return ImplicationK::Finite(k_min);
     }
 
-    let ratio = (unique_ot1_objects.len() as f64) / (unique_ot2_objects.len() as f64);
+    let ratio = (mapped_ot1_objects.len() as f64) / (mapped_ot2_objects.len() as f64);
     if (k_min as f64) > ratio {
         ImplicationK::Infinite
     } else {
         ImplicationK::Finite(k_min)
     }
+}
+
+fn max_overlapping_intervals(intervals: &[(String, String)]) -> usize {
+    let mut endpoints: Vec<(&String, bool)> = Vec::with_capacity(intervals.len() * 2);
+    for (start, end) in intervals {
+        endpoints.push((start, true));
+        endpoints.push((end, false));
+    }
+
+    endpoints.sort_by(|(time_a, start_a), (time_b, start_b)| {
+        time_a.cmp(time_b).then_with(|| start_b.cmp(start_a))
+    });
+
+    let mut current = 0usize;
+    let mut max_seen = 0usize;
+    for (_time, is_start) in endpoints {
+        if is_start {
+            current += 1;
+            max_seen = max_seen.max(current);
+        } else {
+            current = current.saturating_sub(1);
+        }
+    }
+
+    max_seen
 }
 
 /// Searches activity partitions that satisfy subset synchronization and classifies the result as overlap or partition.
@@ -605,13 +716,28 @@ fn check_implication_k(
 /// its own. Each resulting strict cluster is then tested against the complementary relaxed
 /// activity set. The first successful split is returned together with the corresponding
 /// `SubsetSyncOverlap` or `SubsetSyncPartition` classification.
+#[allow(dead_code)]
 fn discover_subset_sync(
     relations: &[Relation],
     ot1: &HashSet<String>,
     ot2: &HashSet<String>,
     violation_threshold: f64,
 ) -> Option<NoiseResistantRelationMatch> {
-    let activities = collect_unique_activities(relations);
+    let event_sets = build_event_sets(relations, ot1, ot2);
+    discover_subset_sync_event_sets(&event_sets, violation_threshold)
+}
+
+fn discover_subset_sync_event_sets(
+    event_sets: &[EventSets],
+    violation_threshold: f64,
+) -> Option<NoiseResistantRelationMatch> {
+    let mut activities: Vec<String> = event_sets
+        .iter()
+        .map(|event| event.activity.clone())
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .collect();
+    activities.sort();
     if activities.is_empty() {
         return None;
     }
@@ -629,8 +755,8 @@ fn discover_subset_sync(
         for cluster in &mut clusters {
             let mut candidate = cluster.clone();
             candidate.insert(activity.clone());
-            let sub_relations = filter_relations_by_activities(relations, &candidate);
-            if check_strict_sync(&sub_relations, ot1, ot2, violation_threshold) {
+            let sub_event_sets = filter_event_sets_by_activities(event_sets, &candidate);
+            if check_strict_sync_event_sets(&sub_event_sets, violation_threshold) {
                 cluster.insert(activity.clone());
                 added = true;
                 break;
@@ -644,23 +770,34 @@ fn discover_subset_sync(
         }
     }
 
+    let mut strict_candidates: Vec<HashSet<String>> = activities
+        .iter()
+        .map(|activity| HashSet::from([activity.clone()]))
+        .collect();
+    strict_candidates.extend(clusters);
+    strict_candidates.sort_by(|a, b| {
+        let mut av: Vec<&String> = a.iter().collect();
+        let mut bv: Vec<&String> = b.iter().collect();
+        av.sort();
+        bv.sort();
+        a.len().cmp(&b.len()).then_with(|| av.cmp(&bv))
+    });
+    strict_candidates.dedup_by(|a, b| a == b);
+
     let all_activities: HashSet<String> = activities.into_iter().collect();
-    for strict_set in clusters {
+    for strict_set in strict_candidates {
         let relaxed_set: HashSet<String> = all_activities
             .iter()
             .filter(|activity| !strict_set.contains(*activity))
             .cloned()
             .collect();
+        if relaxed_set.is_empty() {
+            continue;
+        }
 
-        if check_subset_sync(
-            relations,
-            ot1,
-            ot2,
-            &strict_set,
-            &relaxed_set,
-            violation_threshold,
-        ) {
-            let overlap = check_subset_overlap(relations, ot1, ot2, violation_threshold);
+        if check_subset_sync_event_sets(event_sets, &strict_set, &relaxed_set, violation_threshold)
+        {
+            let overlap = check_subset_overlap_event_sets(event_sets, &relaxed_set);
             return Some(NoiseResistantRelationMatch {
                 kind: if overlap {
                     IdentityRelationKind::SubsetSyncOverlap
@@ -680,6 +817,7 @@ fn discover_subset_sync(
 /// This is the public entry point used by the OCPT extender. It delegates to the family-specific
 /// helper, converts successful implication matches into their concrete backend kind, and carries
 /// relaxed-activity information only for subset synchronization where that extra metadata matters.
+#[allow(dead_code)]
 pub fn check_noise_resistant_relation(
     ot1: &HashSet<String>,
     ot2: &HashSet<String>,
@@ -687,13 +825,41 @@ pub fn check_noise_resistant_relation(
     violation_threshold: f64,
     family: NoiseResistantRelationFamily,
 ) -> Option<NoiseResistantRelationMatch> {
-    if relations.is_empty() {
+    check_noise_resistant_relation_by_indices(
+        ot1,
+        ot2,
+        relations,
+        &(0..relations.len()).collect::<Vec<_>>(),
+        violation_threshold,
+        family,
+    )
+}
+
+pub fn check_noise_resistant_relation_by_indices(
+    ot1: &HashSet<String>,
+    ot2: &HashSet<String>,
+    relations: &[Relation],
+    relation_indices: &[usize],
+    violation_threshold: f64,
+    family: NoiseResistantRelationFamily,
+) -> Option<NoiseResistantRelationMatch> {
+    if relations.is_empty() || relation_indices.is_empty() {
+        return None;
+    }
+
+    let event_sets = build_event_sets_from_relation_indices(
+        relations,
+        relation_indices.iter().copied(),
+        ot1,
+        ot2,
+    );
+    if event_sets.is_empty() {
         return None;
     }
 
     match family {
         NoiseResistantRelationFamily::StrictSync => {
-            if check_strict_sync(relations, ot1, ot2, violation_threshold) {
+            if check_strict_sync_event_sets(&event_sets, violation_threshold) {
                 Some(NoiseResistantRelationMatch {
                     kind: IdentityRelationKind::Sync,
                     relaxed_activities: None,
@@ -703,20 +869,26 @@ pub fn check_noise_resistant_relation(
             }
         }
         NoiseResistantRelationFamily::SubsetSync => {
-            discover_subset_sync(relations, ot1, ot2, violation_threshold)
+            discover_subset_sync_event_sets(&event_sets, violation_threshold)
         }
         NoiseResistantRelationFamily::Implication => {
-            if !check_implication(relations, ot1, ot2, violation_threshold) {
+            if !check_implication_event_sets(&event_sets, violation_threshold) {
                 return None;
             }
 
-            let kind = match check_implication_k(relations, ot1, ot2, violation_threshold) {
+            let kind = match check_implication_k_by_indices(
+                relations,
+                relation_indices.iter().copied(),
+                ot1,
+                ot2,
+                violation_threshold,
+            ) {
+                ImplicationK::Zero | ImplicationK::Finite(0) => return None,
                 ImplicationK::Finite(1) => IdentityRelationKind::ImpOrdered,
                 ImplicationK::Infinite => IdentityRelationKind::ImpConcurrent,
                 ImplicationK::Finite(k) => {
                     IdentityRelationKind::ImpBatch(k.try_into().unwrap_or(u32::MAX))
                 }
-                ImplicationK::Zero => IdentityRelationKind::ImpBatch(0),
             };
 
             Some(NoiseResistantRelationMatch {
@@ -733,15 +905,36 @@ pub fn check_noise_resistant_relation(
 /// a sufficiently large fraction of objects. For those candidates, it orders each object's events
 /// by timestamp and checks whether the target activity is almost always the first or the last
 /// lifecycle event. The result is returned as `(first_types, last_types)`.
+#[allow(dead_code)]
 pub fn object_types_first_or_last(
     relations: &[Relation],
     activity: &str,
     available: &HashSet<String>,
     violation_threshold: f64,
 ) -> (Vec<String>, Vec<String>) {
-    let target_rows: Vec<&Relation> = relations
+    object_types_first_or_last_by_indices(
+        relations,
+        &(0..relations.len()).collect::<Vec<_>>(),
+        activity,
+        available,
+        violation_threshold,
+    )
+}
+
+pub fn object_types_first_or_last_by_indices(
+    relations: &[Relation],
+    relation_indices: &[usize],
+    activity: &str,
+    available: &HashSet<String>,
+    violation_threshold: f64,
+) -> (Vec<String>, Vec<String>) {
+    let target_rows: Vec<usize> = relation_indices
         .iter()
-        .filter(|(_eid, row_activity, _timestamp, _oid, _otype)| row_activity == activity)
+        .copied()
+        .filter(|index| {
+            let (_eid, row_activity, _timestamp, _oid, _otype) = &relations[*index];
+            row_activity == activity
+        })
         .collect();
 
     if target_rows.is_empty() {
@@ -749,10 +942,9 @@ pub fn object_types_first_or_last(
     }
 
     let mut counts: HashMap<(String, String), usize> = HashMap::new();
-    for (_eid, _activity, _timestamp, oid, otype) in &target_rows {
-        *counts
-            .entry(((*otype).clone(), (*oid).clone()))
-            .or_default() += 1;
+    for index in &target_rows {
+        let (_eid, _activity, _timestamp, oid, otype) = &relations[*index];
+        *counts.entry((otype.clone(), oid.clone())).or_default() += 1;
     }
 
     let mut single_and_total_by_type: HashMap<String, (usize, usize)> = HashMap::new();
@@ -779,9 +971,13 @@ pub fn object_types_first_or_last(
         return (Vec::new(), Vec::new());
     }
 
-    let filtered_rows: Vec<&Relation> = relations
+    let filtered_rows: Vec<usize> = relation_indices
         .iter()
-        .filter(|(_eid, _activity, _timestamp, _oid, otype)| candidate_types.contains(otype))
+        .copied()
+        .filter(|index| {
+            let (_eid, _activity, _timestamp, _oid, otype) = &relations[*index];
+            candidate_types.contains(otype)
+        })
         .collect();
 
     let mut first_types: Vec<String> = Vec::new();
@@ -789,14 +985,15 @@ pub fn object_types_first_or_last(
 
     for obj_type in &candidate_types {
         let mut by_oid: HashMap<String, Vec<(String, String)>> = HashMap::new();
-        for (_eid, row_activity, timestamp, oid, otype) in &filtered_rows {
+        for index in &filtered_rows {
+            let (_eid, row_activity, timestamp, oid, otype) = &relations[*index];
             if otype != obj_type {
                 continue;
             }
             by_oid
-                .entry((*oid).clone())
+                .entry(oid.clone())
                 .or_default()
-                .push(((*timestamp).clone(), (*row_activity).clone()));
+                .push((timestamp.clone(), row_activity.clone()));
         }
 
         if by_oid.is_empty() {
@@ -853,14 +1050,36 @@ pub fn object_types_first_or_last(
 /// when the same activity has at least one object type that behaves like a lifecycle start and at
 /// least one object type that behaves like a lifecycle end. If either side is empty, no merge/split
 /// wrapper should be added to the tree.
+#[allow(dead_code)]
 pub fn detect_object_merge_split(
     relations: &[Relation],
     activity: &str,
     available: &HashSet<String>,
     violation_threshold: f64,
 ) -> Option<(Vec<String>, Vec<String>)> {
-    let (first_types, last_types) =
-        object_types_first_or_last(relations, activity, available, violation_threshold);
+    detect_object_merge_split_by_indices(
+        relations,
+        &(0..relations.len()).collect::<Vec<_>>(),
+        activity,
+        available,
+        violation_threshold,
+    )
+}
+
+pub fn detect_object_merge_split_by_indices(
+    relations: &[Relation],
+    relation_indices: &[usize],
+    activity: &str,
+    available: &HashSet<String>,
+    violation_threshold: f64,
+) -> Option<(Vec<String>, Vec<String>)> {
+    let (first_types, last_types) = object_types_first_or_last_by_indices(
+        relations,
+        relation_indices,
+        activity,
+        available,
+        violation_threshold,
+    );
     if first_types.is_empty() || last_types.is_empty() {
         None
     } else {
@@ -881,6 +1100,16 @@ mod tests {
         let mut set = HashSet::new();
         set.insert(value.to_string());
         set
+    }
+
+    fn row(event: &str, activity: &str, object: &str, object_type: &str) -> Relation {
+        (
+            event.to_string(),
+            activity.to_string(),
+            format!("2024-01-01T00:00:{event}Z"),
+            object.to_string(),
+            object_type.to_string(),
+        )
     }
 
     #[test]
@@ -977,5 +1206,136 @@ mod tests {
         )
         .expect("implication should be detected");
         assert_eq!(found.kind, IdentityRelationKind::ImpOrdered);
+    }
+
+    #[test]
+    fn permissive_implication_does_not_emit_zero_batch_size() {
+        let ot1 = singleton("order");
+        let ot2 = singleton("package");
+        let relations: Vec<Relation> = vec![
+            row("01", "pack", "o1", "order"),
+            row("01", "pack", "p1", "package"),
+            row("02", "pack", "p2", "package"),
+        ];
+
+        let found = check_noise_resistant_relation(
+            &ot1,
+            &ot2,
+            &relations,
+            1.0,
+            NoiseResistantRelationFamily::Implication,
+        )
+        .expect("implication should be detected");
+
+        assert_eq!(found.kind, IdentityRelationKind::ImpOrdered);
+    }
+
+    #[test]
+    fn implication_batch_size_uses_actual_max_overlap() {
+        let ot1 = singleton("order");
+        let ot2 = singleton("package");
+        let relations: Vec<Relation> = vec![
+            row("01", "pack", "o1", "order"),
+            row("01", "pack", "p1", "package"),
+            row("10", "pack", "o1", "order"),
+            row("10", "pack", "p1", "package"),
+            row("02", "pack", "o2", "order"),
+            row("02", "pack", "p1", "package"),
+            row("03", "pack", "o2", "order"),
+            row("03", "pack", "p1", "package"),
+            row("04", "pack", "o3", "order"),
+            row("04", "pack", "p1", "package"),
+            row("05", "pack", "o3", "order"),
+            row("05", "pack", "p1", "package"),
+        ];
+
+        let found = check_noise_resistant_relation(
+            &ot1,
+            &ot2,
+            &relations,
+            0.0,
+            NoiseResistantRelationFamily::Implication,
+        )
+        .expect("implication should be detected");
+
+        assert_eq!(found.kind, IdentityRelationKind::ImpBatch(2));
+    }
+
+    #[test]
+    fn labels_subset_sync_with_intersecting_relaxed_subsets_as_overlap() {
+        let ot1 = singleton("order");
+        let ot2 = singleton("item");
+        let relations: Vec<Relation> = vec![
+            row("01", "place", "o1", "order"),
+            row("01", "place", "i1", "item"),
+            row("01", "place", "i2", "item"),
+            row("02", "pack", "o1", "order"),
+            row("02", "pack", "i1", "item"),
+            row("03", "ship", "o1", "order"),
+            row("03", "ship", "i1", "item"),
+            row("03", "ship", "i2", "item"),
+        ];
+
+        let found = check_noise_resistant_relation(
+            &ot1,
+            &ot2,
+            &relations,
+            0.0,
+            NoiseResistantRelationFamily::SubsetSync,
+        )
+        .expect("subset synchronization should be detected");
+
+        assert_eq!(found.kind, IdentityRelationKind::SubsetSyncOverlap);
+    }
+
+    #[test]
+    fn labels_subset_sync_with_disjoint_relaxed_subsets_as_partition() {
+        let ot1 = singleton("order");
+        let ot2 = singleton("item");
+        let relations: Vec<Relation> = vec![
+            row("01", "place", "o1", "order"),
+            row("01", "place", "i1", "item"),
+            row("01", "place", "i2", "item"),
+            row("02", "pack", "o1", "order"),
+            row("02", "pack", "i1", "item"),
+            row("03", "ship", "o1", "order"),
+            row("03", "ship", "i2", "item"),
+        ];
+
+        let found = check_noise_resistant_relation(
+            &ot1,
+            &ot2,
+            &relations,
+            0.0,
+            NoiseResistantRelationFamily::SubsetSync,
+        )
+        .expect("subset synchronization should be detected");
+
+        assert_eq!(found.kind, IdentityRelationKind::SubsetSyncPartition);
+    }
+
+    #[test]
+    fn rejects_subset_sync_when_relaxed_side_exceeds_strict_target() {
+        let ot1 = singleton("order");
+        let ot2 = singleton("item");
+        let relations: Vec<Relation> = vec![
+            row("01", "place", "o1", "order"),
+            row("01", "place", "i1", "item"),
+            row("02", "pack", "o1", "order"),
+            row("02", "pack", "i1", "item"),
+            row("02", "pack", "i2", "item"),
+            row("03", "pack", "o1", "order"),
+            row("03", "pack", "i2", "item"),
+        ];
+
+        let found = check_noise_resistant_relation(
+            &ot1,
+            &ot2,
+            &relations,
+            0.0,
+            NoiseResistantRelationFamily::SubsetSync,
+        );
+
+        assert!(found.is_none());
     }
 }

@@ -21,10 +21,11 @@ interface FileNodeProps extends NodeProps<FileNode> {
     dropdownOptions: BaseExploreNodeDropdownOption[];
     customActions?: ReactNode;
     children?: ReactNode;
+    onDropdownAction?: (action: BaseExploreNodeDropdownActionType) => void;
 }
 
 const BaseFileNode = memo<FileNodeProps>((props) => {
-    const { id, data, selected, title, iconName, handleOptions, dropdownOptions, customActions, children } = props;
+    const { id, data, selected, title, iconName, handleOptions, dropdownOptions, customActions, children, onDropdownAction } = props;
     const { assets, isDownstream, isStale } = data;
     const { openDialog } = useFileDialogStore();
     const navigate = useNavigate();
@@ -67,6 +68,8 @@ const BaseFileNode = memo<FileNodeProps>((props) => {
                 // 4. Trigger the Dialog Open State
                 setIsColorDialogOpen(true);
                 break;
+            default:
+                onDropdownAction?.(action);
         }
     };
 

@@ -28,9 +28,10 @@ interface OcptNodeProps {
     setHoveredNode: React.Dispatch<React.SetStateAction<HierarchyPointNode<Node> | null>>;
     colorScale: ScaleOrdinal<string, string, never>;
     showDetails?: boolean;
+    onOperatorClick?: (node: HierarchyPointNode<Node>) => void;
 }
 
-const OcptNode: React.FC<OcptNodeProps> = ({ node, key, setHoveredNode, colorScale, showDetails }) => {
+const OcptNode: React.FC<OcptNodeProps> = ({ node, key, setHoveredNode, colorScale, showDetails, onOperatorClick }) => {
     const width = 50;
     const height = 50;
     const value = node.data.value;
@@ -95,6 +96,7 @@ const OcptNode: React.FC<OcptNodeProps> = ({ node, key, setHoveredNode, colorSca
                 onMouseEnter={() => setHoveredNode(node)}
                 onMouseMove={() => setHoveredNode(node)}
                 onMouseLeave={() => setHoveredNode(null)}
+                onClick={onOperatorClick ? () => onOperatorClick(node) : undefined}
             />
         );
     }

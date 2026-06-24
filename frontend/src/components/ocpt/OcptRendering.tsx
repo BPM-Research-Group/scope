@@ -18,6 +18,7 @@ interface RenderTreeProps {
     sizeWidth: number;
     sizeHeight: number;
     showDetails?: boolean;
+    onOperatorClick?: (node: HierarchyPointNode<Node>) => void;
 }
 
 export const RenderTree: React.FC<RenderTreeProps> = ({
@@ -28,6 +29,7 @@ export const RenderTree: React.FC<RenderTreeProps> = ({
     sizeWidth,
     sizeHeight,
     showDetails,
+    onOperatorClick,
 }) => {
     const [links, setLinks] = useState<HierarchyPointLink<Node>[]>([]);
 
@@ -113,6 +115,7 @@ export const RenderTree: React.FC<RenderTreeProps> = ({
                                         setHoveredNode={setHoveredNode}
                                         colorScale={colorScale}
                                         showDetails={showDetails}
+                                        onOperatorClick={onOperatorClick}
                                     />
                                 );
                             })}

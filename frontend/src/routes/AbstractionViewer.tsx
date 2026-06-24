@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 import Abstraction from '~/components/abstraction/Abstraction';
 import AbstractionSidebar from '~/components/abstraction/AbstractionSidebar';
+import IdentityRelationViewer from '~/components/identity_relations/IdentityRelationViewer';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { getDeterministicColor } from '~/lib/colors';
 import { getObjectTypes } from '~/lib/abstraction/abstractionToFlow';
@@ -36,6 +37,18 @@ const AbstractionViewer: React.FC = () => {
 
     // Sidebar
     const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [identityOpen, setIdentityOpen] = useState(false);
+
+    const identityRelations = data?.abstraction.identity_relations ?? [];
+
+    const identityObjectTypes = useMemo(() => {
+        const s = new Set<string>();
+        identityRelations.forEach((r) => {
+            r.left.forEach((ot) => s.add(ot));
+            r.right.forEach((ot) => s.add(ot));
+        });
+        return Array.from(s);
+    }, [identityRelations]);
 
     // Overview state
     const [filteredObjectTypes, setFilteredObjectTypes] = useState<string[]>([]);
@@ -153,6 +166,15 @@ const AbstractionViewer: React.FC = () => {
                     compareB={compareB}
                     onCompareAChange={setCompareA}
                     onCompareBChange={setCompareB}
+                    identityRelationCount={identityRelations.length}
+                    onOpenIdentityRelations={() => setIdentityOpen(true)}
+                />
+                <IdentityRelationViewer
+                    open={identityOpen}
+                    onOpenChange={setIdentityOpen}
+                    objectTypes={identityObjectTypes}
+                    relations={identityRelations}
+                    getObjectColor={getObjectColor}
                 />
             </div>
         </div>

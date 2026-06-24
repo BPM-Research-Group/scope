@@ -48,6 +48,11 @@ export const nodeRegistry = {
         allowedAssetTypes: ['ocelFile'],
         sidebar: { label: 'OCEL File', icon: 'fileSpreadsheet', group: 'files' },
     },
+    ocpnFileNode: {
+        category: 'file',
+        allowedAssetTypes: ['ocpnFile'],
+        sidebar: { label: 'OCPN File', icon: 'fileTree', group: 'files' },
+    },
     ocelCollectionNode: {
         category: 'file',
         allowedAssetTypes: ['ocelCollectionFile'],
@@ -87,7 +92,7 @@ export const nodeRegistry = {
             { label: 'Primary', types: ['ocptAsset', 'ocptFile'] },
             { label: 'Secondary', types: ['ocelAsset', 'ocelFile'] },
         ],
-        sidebar: { label: 'Extend Identity', icon: 'fingerprint', group: 'miners' },
+        sidebar: { label: 'Extend Identity', icon: 'scanEye', group: 'miners' },
     },
     flowVisualizationNode: {
         category: 'miner',
@@ -103,6 +108,16 @@ export const nodeRegistry = {
         allowedAssetTypes: ['ocelFile', 'ocelAsset', 'ocptFile', 'ocptAsset', 'identityOcptAsset'],
         sidebar: { label: 'Abstraction', icon: 'layers', group: 'miners' },
     },
+    ocpnMinerNode: {
+        category: 'miner',
+        allowedAssetTypes: ['ocptFile', 'ocptAsset'],
+        sidebar: { label: 'OCPN Miner', icon: 'waypoints', group: 'miners' },
+    },    
+    resourceMinerNode: {
+        category: 'miner',
+        allowedAssetTypes: ['ocelFile'],
+        sidebar: { label: 'Resource Miner', icon: 'waves', group: 'miners' },
+        },
     conformanceMinerNode: {
         category: 'miner',
         allowedAssetTypes: ['ocptAsset', 'ocptFile', 'identityOcptAsset', 'ocelFile', 'ocelAsset', 'abstractionAsset'],

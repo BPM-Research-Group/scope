@@ -17,7 +17,7 @@ import { useExploreFlowStore } from '~/stores/exploreStore';
 import { useSetFilteredHistogramMutation } from '~/services/mutation';
 import { useGetHistogramEventPersp, useGetHistogramObjectPersp } from '~/services/queries';
 import { getDeterministicColor } from '~/lib/colors';
-import { handleMinerOutput } from '~/lib/explore/flowActions';
+import { useMinerOutput } from '~/hooks/explore/useMinerAssets';
 import { FileExploreNodeData } from '~/types/explore/nodeData/fileNodeData';
 import '~/styles/hist-viz.css';
 import type { HistogramEntry } from '~/types/histogram.types';
@@ -41,6 +41,15 @@ export default function HistViz() {
     const [objectSearch, setObjectSearch] = useState('');
     const [allSelections, setAllSelections] = useState<Record<string, number[]>>({});
     const [isEditing, setIsEditing] = useState(true);
+    const [pendingOutput, setPendingOutput] = useState<{ id: string; name: string } | null>(null);
+
+    useMinerOutput(nodeId ?? '', pendingOutput?.id ?? null, pendingOutput?.name ?? '', 'ocelFile', 'ocelFileNode');
+
+    useEffect(() => {
+        if (!pendingOutput) return;
+        const timer = setTimeout(() => navigate('/data/pipeline/explore'), 50);
+        return () => clearTimeout(timer);
+    }, [pendingOutput, navigate]);
     const { getNode, setHistogramState, initializeDataState, updateNodeData } = useExploreFlowStore();
     // New Color Logic
     const colorMap = useExploreFlowStore((s) => {
@@ -258,18 +267,7 @@ export default function HistViz() {
                 onSuccess: (data) => {
                     console.log('Filtered histogram created:', data);
                     const outputId = data[0];
-                    // Use handleMinerOutput - name uses the output OCEL ID
-                    handleMinerOutput({
-                        nodeId: nodeId!,
-                        outputAssetId: outputId,
-                        outputAssetType: 'ocelFile',
-                        outputNodeType: 'ocelFileNode',
-                        inputFileName: `filtered_ocel_${outputId}`,
-                    });
-                    // Delay navigation so Zustand state (node + edge creation) settles
-                    setTimeout(() => {
-                        navigate('/data/pipeline/explore');
-                    }, 50);
+                    setPendingOutput({ id: outputId, name: `filtered_ocel_${outputId}` });
                 },
                 onError: (error) => {
                     console.error('Failed to submit filtered histogram data:', error);
