@@ -1,4 +1,5 @@
 pub mod case_notion;
+pub mod kpi;
 pub mod clustering;
 pub mod df2_miner;
 pub mod event_object_frequencies;
