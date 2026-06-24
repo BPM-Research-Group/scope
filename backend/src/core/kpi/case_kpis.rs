@@ -28,8 +28,8 @@ fn reduce_values(values: &[f64], intra_case_agg: &str) -> Option<f64> {
 fn collect_case_attribute_values(
     event_ids: &[String],
     object_ids: &[String],
-    event_lookup: &FxHashMap<String, OCELEvent>,
-    object_lookup: &FxHashMap<String, OCELObject>,
+    event_lookup: &FxHashMap<String, &OCELEvent>,
+    object_lookup: &FxHashMap<String, &OCELObject>,
     attribute: &str,
     filter_object_type: Option<&str>,
     filter_event_type: Option<&str>,
@@ -74,8 +74,8 @@ fn collect_case_attribute_values(
 /// One KPI value per case (requires `intra_case_agg`).
 pub fn collect_case_attribute_kpi_values(
     cases: &[CaseEntry],
-    event_lookup: &FxHashMap<String, OCELEvent>,
-    object_lookup: &FxHashMap<String, OCELObject>,
+    event_lookup: &FxHashMap<String, &OCELEvent>,
+    object_lookup: &FxHashMap<String, &OCELObject>,
     attribute: &str,
     filter_object_type: Option<&str>,
     filter_event_type: Option<&str>,
@@ -110,8 +110,8 @@ pub fn collect_case_attribute_kpi_values(
 /// All raw attribute values pooled across all cases (no intra-case aggregation).
 pub fn collect_pooled_attribute_values(
     cases: &[CaseEntry],
-    event_lookup: &FxHashMap<String, OCELEvent>,
-    object_lookup: &FxHashMap<String, OCELObject>,
+    event_lookup: &FxHashMap<String, &OCELEvent>,
+    object_lookup: &FxHashMap<String, &OCELObject>,
     attribute: &str,
     filter_object_type: Option<&str>,
     filter_event_type: Option<&str>,
@@ -134,8 +134,8 @@ pub fn collect_pooled_attribute_values(
 /// One combined KPI value per case.
 pub fn collect_case_attribute_combination_values(
     cases: &[CaseEntry],
-    event_lookup: &FxHashMap<String, OCELEvent>,
-    object_lookup: &FxHashMap<String, OCELObject>,
+    event_lookup: &FxHashMap<String, &OCELEvent>,
+    object_lookup: &FxHashMap<String, &OCELObject>,
     left_attribute: &str,
     left_object_type: Option<&str>,
     left_event_type: Option<&str>,
@@ -200,8 +200,8 @@ pub fn collect_case_attribute_combination_values(
 /// Elapsed seconds for each `from → to` transition across all object timelines.
 pub fn collect_case_time_values(
     cases: &[CaseEntry],
-    event_lookup: &FxHashMap<String, OCELEvent>,
-    object_lookup: &FxHashMap<String, OCELObject>,
+    event_lookup: &FxHashMap<String, &OCELEvent>,
+    object_lookup: &FxHashMap<String, &OCELObject>,
     object_type: &str,
     from_activity: &str,
     to_activity: &str,
@@ -270,7 +270,7 @@ pub fn collect_case_time_values(
 /// Returns, for each activity, the set of activities that follow it in any object's timeline.
 pub fn compute_activity_successors(
     cases: &[CaseEntry],
-    event_lookup: &FxHashMap<String, OCELEvent>,
+    event_lookup: &FxHashMap<String, &OCELEvent>,
 ) -> FxHashMap<String, Vec<String>> {
     let mut raw: FxHashMap<String, FxHashSet<String>> = FxHashMap::default();
 
@@ -318,7 +318,7 @@ pub fn compute_activity_successors(
 /// One duration (seconds) per case with at least two events.
 pub fn collect_case_duration_values(
     cases: &[CaseEntry],
-    event_lookup: &FxHashMap<String, OCELEvent>,
+    event_lookup: &FxHashMap<String, &OCELEvent>,
 ) -> CaseKpiValues {
     let mut values: Vec<f64> = Vec::new();
     let mut cases_skipped = 0;

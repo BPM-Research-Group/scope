@@ -151,11 +151,11 @@ fn resolve_intra_case_agg(value: Option<String>, field: &str) -> Result<String, 
 fn ocel_lookups(
     ocel: &OCEL,
 ) -> (
-    FxHashMap<String, OCELEvent>,
-    FxHashMap<String, OCELObject>,
+    FxHashMap<String, &OCELEvent>,
+    FxHashMap<String, &OCELObject>,
 ) {
-    let event_lookup = ocel.events.iter().map(|e| (e.id.clone(), e.clone())).collect();
-    let object_lookup = ocel.objects.iter().map(|o| (o.id.clone(), o.clone())).collect();
+    let event_lookup = ocel.events.iter().map(|e| (e.id.clone(), e)).collect();
+    let object_lookup = ocel.objects.iter().map(|o| (o.id.clone(), o)).collect();
     (event_lookup, object_lookup)
 }
 
@@ -376,8 +376,8 @@ pub async fn get_activity_successors(
         Err((status, message)) => return (status, message).into_response(),
     };
 
-    let event_lookup: FxHashMap<String, OCELEvent> =
-        ocel.events.iter().map(|e| (e.id.clone(), e.clone())).collect();
+    let event_lookup: FxHashMap<String, &OCELEvent> =
+        ocel.events.iter().map(|e| (e.id.clone(), e)).collect();
 
     let successors = compute_activity_successors(&persisted.case_notion, &event_lookup)
         .into_iter()
@@ -409,8 +409,8 @@ pub async fn get_case_duration(
         Err((status, message)) => return (status, message).into_response(),
     };
 
-    let event_lookup: FxHashMap<String, OCELEvent> =
-        ocel.events.iter().map(|e| (e.id.clone(), e.clone())).collect();
+    let event_lookup: FxHashMap<String, &OCELEvent> =
+        ocel.events.iter().map(|e| (e.id.clone(), e)).collect();
 
     let result = collect_case_duration_values(&persisted.case_notion, &event_lookup);
     let stats = compute_numeric_stats(&result.values);
