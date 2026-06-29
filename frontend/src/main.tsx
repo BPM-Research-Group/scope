@@ -17,12 +17,8 @@ import ResourceViewer from '~/routes/ResourceViewer';
 import OcptViewer from '~/routes/OcptViewer';
 import Pipeline from '~/routes/Pipeline';
 import Upload from '~/routes/Upload';
-<<<<<<< HEAD
 import OcpnViewer from './routes/OcpnViewer';
-=======
 import CaseClustering from './routes/CaseClustering';
->>>>>>> 76c20d5 (clustering page added - Backend)
-
 
 // Create a client
 const queryClient = new QueryClient();
