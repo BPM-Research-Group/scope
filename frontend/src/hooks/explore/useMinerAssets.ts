@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { handleMinerOutput } from '~/lib/flow/flowActions';
+import { handleMinerOutput } from '~/lib/explore/flowActions';
 import type { BaseExploreNodeAsset } from '~/types/explore/nodeData/baseNodeData';
 import type { ExploreNodeType } from '~/types/explore/nodeTypesCategories';
 import type { AssetType } from '~/types/files.types';

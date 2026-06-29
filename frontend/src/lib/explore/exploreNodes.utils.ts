@@ -10,8 +10,6 @@ import {
     minerNodeTypes,
 } from '~/types/explore/nodeTypesCategories';
 import { AssetType } from '~/types/files.types';
-import type { VisualizationExploreNode } from '~/model/explore/visualization-node.model';
-import { Edge } from '@xyflow/react';
 
 export const getNodeCategoryByType = (type: ExploreNodeType): ExploreNodeCategory => {
     return getNodeCategory[type];
@@ -53,29 +51,3 @@ export const assetTypeToNodeType = (assetType: AssetType): ExploreFileNodeType |
     return null;
 };
 
-/**
- * Recursively searches upstream to find live streaming data. First checks itself.
- */
-export const getUpstreamStreamingData = (
-    nodeId: string,
-    nodes: ExploreNode[],
-    edges: Edge[]
-): any | null => {
-    const selfNode = nodes.find((n) => n.id === nodeId);
-    if (selfNode?.data?.processedData) {
-        return selfNode.data.processedData;
-    }
-
-    const incomingEdge = edges.find((e) => e.target === nodeId);
-    if (!incomingEdge) return null;
-
-    const sourceNode = nodes.find((n) => n.id === incomingEdge.source);
-    if (!sourceNode) return null;
-
-    if (sourceNode.data.processedData) {
-        return sourceNode.data.processedData;
-    }
-
-    // Recurse
-    return getUpstreamStreamingData(sourceNode.id, nodes, edges);
-};

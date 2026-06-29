@@ -5,7 +5,6 @@ import { TreePine, Maximize2, Save, Pickaxe, Loader2, CheckCircle2 } from 'lucid
 import BaseMinerNode from '~/components/explore/miner/BaseMinerNode';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { MinerNode } from '~/types/explore/nodes';
-import { getUpstreamStreamingData } from '~/lib/explore/exploreNodes.utils';
 import { Button } from '~/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '~/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
@@ -13,7 +12,7 @@ import OCPT from '~/components/ocpt/OCPT';
 import { scaleOrdinal } from '@visx/scale';
 import { addIdsToTree } from '~/lib/ocpt/ocptAddIds';
 import { saveOcpt } from '~/services/api';
-import { handleMinerOutput } from '~/lib/flow/flowActions';
+import { handleMinerOutput, getUpstreamStreamingData } from '~/lib/explore/flowActions';
 import { toast } from 'sonner';
 
 const OcptStreamMinerNode = memo<NodeProps<MinerNode>>((props) => {

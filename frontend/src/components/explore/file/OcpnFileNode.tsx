@@ -9,7 +9,7 @@ import BaseFileNode from '~/components/explore/file/BaseFileNode';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { useGetOcpn } from '~/services/queries';
 import { generateColorMap } from '~/lib/colors';
-import { propagateMapDownstream, syncMatchingColorsGlobally } from '~/lib/flow/flowActions';
+import { propagateMapDownstream, syncMatchingColorsGlobally } from '~/lib/explore/flowActions';
 import { FileNode } from '~/types/explore/nodes';
 
 const OcpnFileNode = memo<NodeProps<FileNode>>((props) => {

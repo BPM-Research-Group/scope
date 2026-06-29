@@ -2,7 +2,7 @@ import { type MouseEvent as ReactMouseEvent, useCallback } from 'react';
 import { type Connection, type Edge, type IsValidConnection } from '@xyflow/react';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { validateConnection } from '~/lib/explore/connectionGuards';
-import { handleConnect as handleConnectAction } from '~/lib/flow/flowActions';
+import { handleConnect as handleConnectAction } from '~/lib/explore/flowActions';
 
 export const useConnections = () => {
     const { nodes, removeEdge } = useExploreFlowStore();

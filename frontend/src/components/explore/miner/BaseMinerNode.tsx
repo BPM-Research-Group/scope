@@ -5,7 +5,7 @@ import { Button } from '~/components/ui/button';
 import AssetTypeList from '~/components/explore/AssetTypeList';
 import BaseExploreNode from '~/components/explore/BaseExploreNode';
 import { useExploreFlowStore } from '~/stores/exploreStore';
-import { pullUpstreamData } from '~/lib/flow/flowActions';
+import { pullUpstreamData } from '~/lib/explore/flowActions';
 import { nodeRegistry, type NodeInputGroup } from '~/lib/explore/nodeRegistry';
 import { ASSET_TYPE_VISUALS } from '~/lib/iconMap';
 import {

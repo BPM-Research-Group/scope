@@ -4,7 +4,7 @@ import FileShowcase from '~/components/explore/file/ui/FileShowcase';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { useFileDialogStore, useStoredFiles } from '~/stores/store';
 import { generateColorMap } from '~/lib/colors';
-import { propagateMapDownstream } from '~/lib/flow/flowActions';
+import { propagateMapDownstream } from '~/lib/explore/flowActions';
 import { refocusPipeline } from '~/lib/explore/refocusPipeline';
 import { BaseExploreNodeAsset } from '~/types/explore/nodeData/baseNodeData';
 import { ExtendedFile } from '~/types/files.types';
