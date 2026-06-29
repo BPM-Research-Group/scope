@@ -3,16 +3,18 @@ import { flexRender, getCoreRowModel, getSortedRowModel, SortingState, useReactT
 import { ParentSize } from '@visx/responsive';
 import { ReactFlowProvider } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { isError } from 'lodash-es';
+import { isError, template } from 'lodash-es';
 import { useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '~/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
 import { SidebarInset, SidebarProvider } from '~/components/ui/sidebar';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '~/components/ui/table';
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 import ClusterVis from '~/components/ClusteringVis';
+import { useMinerOutput } from '~/hooks/explore/useMinerAssets';
 import { useExploreFlowStore } from '~/stores/exploreStore';
-import { useAgglomerativeClustering, useCaseClustering } from '~/services/queries';
+import { useAgglomerativeClustering, useCaseClustering, useMaterialiseClustering} from '~/services/queries';
 
 const CaseClustering: React.FC = () => {
     const [params, setParams] = useState({
@@ -21,6 +23,8 @@ const CaseClustering: React.FC = () => {
         distanceMeasure: 'dfg-typ', //'dfg-obj'
         algorithm: 'k-medoids', //'agglomerative'
     });
+
+    const navigate = useNavigate();
 
     const { nodeId } = useParams<{ nodeId: string }>();
     const { getNode } = useExploreFlowStore();
@@ -34,15 +38,28 @@ const CaseClustering: React.FC = () => {
     const [loadResult, setloadResult] = useState(false);
     const [submitted, setSubmitted] = useState(false);
     const node = nodeId ? getNode(nodeId) : undefined;
-    const [aggTypFileId, setaggTypFileId] = useState<string | undefined>(undefined);
-    const [aggObjFileId, setaggObjFileId] = useState<string | undefined>(undefined);
-    const [inputFileId, setInputFileId] = useState<string | undefined>(undefined);
-    const [useAggFile, setUseAggFile] = useState(false);
-    const [slider, setSlider] = useState(false);
 
-    const query = useCaseClustering(node?.id ?? '', fileId ?? '', params.distanceMeasure, params.algorithm, params.k, false);
-    const aggQuery = useAgglomerativeClustering(node?.id ?? '', inputFileId ?? '', params.k, false);
+    const [aggTypFileId, setaggTypFileId] = useState<string | undefined>(undefined); //Id of the calc aggTyp custering
+    const [aggObjFileId, setaggObjFileId] = useState<string | undefined>(undefined); //Id of the calc aggTyp custering
+    const [inputFileId, setInputFileId] = useState<string | undefined>(undefined);   //Input für die Query
+    const [subOutputFileId, setSubOutputFileId] = useState<string | undefined>(undefined); //Final settings
+
+    const [slider, setSlider] = useState(false);
+    const [selected, setSelected] = useState<number[]>([]);
+
+    const query = useCaseClustering(
+        node?.id ?? '',
+        fileId ?? '',
+        params.distanceMeasure,
+        params.algorithm,
+        params.k,
+        false
+    );
+    const aggQuery = useAgglomerativeClustering(node?.id ?? '', inputFileId ?? '', params.k, slider);
     const data = slider ? aggQuery.data : query.data;
+    const outputFileId = data?.file_id ?? null;             //fileID of the last query return
+
+    const matClustQuery = useMaterialiseClustering(outputFileId, 1, false);
 
     //Get Assets
     useMemo(() => {
@@ -74,7 +91,6 @@ const CaseClustering: React.FC = () => {
         if (!loadResult) {
             return;
         }
-        setUseAggFile(false);
         const loadData = async () => {
             const result = await query.refetch(); // waits to update the table until the results are in
             if (!query.isError && !result.isError) {
@@ -93,16 +109,10 @@ const CaseClustering: React.FC = () => {
     }, [loadResult]);
 
     useEffect(() => {
-        if(!slider){
+        if (!slider) {
             return;
         }
-        const loadAggData = async () => {
-            const aggResult = await aggQuery.refetch();
-            if (!aggQuery.isError && !aggResult.isError) {
-                display(params.visMethod);
-            }
-        };
-        loadAggData();
+        display(params.visMethod);
     }, [params.k]);
 
     const tableData = useMemo(() => {
@@ -201,10 +211,35 @@ const CaseClustering: React.FC = () => {
 
     const handleSubmit = () => {
         setSubmitted(true);
-        setTimeout(() => {
-            setSubmitted(false);
-        }, 3000); // 3 Sekunden
+        //TODO another fetch
+        //setSubOutputFileId()
         return;
+    };
+
+    useEffect(() => {
+        console.log('nodeId, aggTypFileId: ', nodeId, aggTypFileId);
+    }, [nodeId, outputFileId]);
+
+    //useMinerOutput(nodeId ?? ' ', subOutputFileId ?? null, 'AllCluster', 'ocelCollectionFile', 'ocelCollectionNode');
+    //useMinerOutput(nodeId ?? ' ', aggTypFileId ?? null, 'AllCluster2', 'ocelCollectionFile', 'ocelCollectionNode');
+
+    const exportAsNode = () => {
+        console.log("minOut1: ", nodeId ?? ' ', subOutputFileId ?? null, 'AllCluster', 'ocelCollectionFile', 'ocelCollectionNode');
+        console.log("minOut2: ", nodeId ?? ' ', aggTypFileId ?? null, 'AllCluster2', 'ocelCollectionFile', 'ocelCollectionNode');
+        console.log("aggTypFileId: ", aggTypFileId);
+        setSubOutputFileId(outputFileId);
+        const fetching = async () => {
+            const result = await matClustQuery.refetch();
+            console.log("matClustQuery: ", outputFileId, 1, false);
+            console.log("result: ", result);
+        }
+        fetching();
+        //navigate(`/data/pipeline/explore`);
+        return;
+    };
+
+    const toggle = (i: any) => {
+        setSelected((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]));
     };
 
     return (
@@ -215,7 +250,42 @@ const CaseClustering: React.FC = () => {
                     <div className="flex h-full w-full gap-4 p-4 min-h-0">
                         <aside className="w-80 min-w-[18rem] rounded-md border p-4 bg-background min-h-0">
                             <h2 className="mb-3 text-lg font-semibold">Case Clustering — Settings</h2>
-                            <div className="flex flex-col gap-y-0.5">
+                            {submitted ? (
+                                    <div className="flex flex-col gap-y-0.5">
+                                        <p className="text-sm text-green-600">Data Submitted.</p>
+                                        <hr />
+                                        <label className="block mb-2 text-s mt-3"> Select Cluster</label>
+                                        {Array.from({ length: params.k + 1 }, (_, i) => (
+                                            <label key={i}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selected.includes(i)}
+                                                    onChange={() => toggle(i)}
+                                                />
+                                                Element {i}
+                                            </label>
+                                        ))}
+                                        <Button
+                                            onClick={() => {
+                                                exportAsNode();
+                                            }}
+                                            className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md mt-3"
+                                            aria-label="Load and display the result"
+                                        >
+                                            <span className="text-xs text-blue-600">Export as Node</span>
+                                        </Button>
+                                        <Button
+                                            onClick={() => {
+                                                setSubmitted(false);
+                                            }}
+                                            className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md mt-3"
+                                            aria-label="Load and display the result"
+                                        >
+                                            <span className="text-xs text-blue-600">Edit</span>
+                                        </Button>
+                                    </div>
+                                ) : 
+                            (<div className="flex flex-col gap-y-0.5">
                                 <div className="mb-2 text-xs">
                                     Input-File:{' '}
                                     <strong>{node?.data.assets.find((asset) => asset.io === 'input')?.name}</strong>
@@ -278,8 +348,12 @@ const CaseClustering: React.FC = () => {
                                     onClick={() => {
                                         setloadResult(true);
                                         setSlider(false);
-                                        if(params.distanceMeasure === 'dfg-typ'){ setInputFileId(aggTypFileId);}
-                                        if(params.distanceMeasure === 'dfg-obj'){ setInputFileId(aggObjFileId);}
+                                        if (params.distanceMeasure === 'dfg-typ') {
+                                            setInputFileId(aggTypFileId);
+                                        }
+                                        if (params.distanceMeasure === 'dfg-obj') {
+                                            setInputFileId(aggObjFileId);
+                                        }
                                     }}
                                     className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md mt-3"
                                     aria-label="Load and display the result"
@@ -301,7 +375,6 @@ const CaseClustering: React.FC = () => {
                                             value={params.k}
                                             onChange={(e) => {
                                                 setParams((s) => ({ ...s, k: Number(e.target.value) }));
-                                                setUseAggFile(true);
                                                 setSlider(true);
                                             }}
                                             className="w-full"
@@ -309,7 +382,7 @@ const CaseClustering: React.FC = () => {
                                         />
                                     </div>
                                 ) : null}
-                                
+
                                 {query.isError ? (
                                     <p className="text-sm text-green-600">Error occured during loading</p>
                                 ) : query.isFetching ? (
@@ -349,15 +422,13 @@ const CaseClustering: React.FC = () => {
                                 >
                                     <span className="text-xs text-blue-600">Submit</span>
                                 </Button>
-                                {submitted ? <p className="text-sm text-green-600">Data Submitted.</p> : null}
-                            </div>
+                            </div>)}
                         </aside>
 
                         {!generateTable ? null : (
                             <main className="flex-1 rounded-md border bg-background p-2 overflow-hidden">
                                 <Table>
                                     <TableCaption>Clustering output (tabular view)</TableCaption>
-
                                     <TableHeader>
                                         {table.getHeaderGroups().map((headerGroup: any) => (
                                             <TableRow key={headerGroup.id}>

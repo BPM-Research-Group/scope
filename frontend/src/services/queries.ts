@@ -30,7 +30,8 @@ import {
     getActivityResource,
     postSpecialActivities,
     caseClustering,
-    agglomerativeClustering
+    agglomerativeClustering,
+    materialiseClustering
 } from '~/services/api';
 import { getOcel } from '~/services/api';
 import { CaseNotionApiResponse } from '~/types/case_notion.types';
@@ -290,7 +291,6 @@ export const useMineOcpn = (nodeId: string, fileId: string | null, shouldFetch: 
         refetchOnWindowFocus: false,
     });
 };
-<<<<<<< HEAD
 export const useGetOcpn = (fileId: string | null, enabled: boolean = true) => {
     return useQuery({
         queryKey: ['getOcpn', fileId],
@@ -299,7 +299,6 @@ export const useGetOcpn = (fileId: string | null, enabled: boolean = true) => {
         enabled: !!fileId && enabled,
     });
 };
-=======
 
 export const useCaseClustering = (nodeId: string, fileId: string | null, metric:string, algorithm: string, numberOfClusters: number, shouldFetch: boolean) => {
     return useQuery({
@@ -309,9 +308,6 @@ export const useCaseClustering = (nodeId: string, fileId: string | null, metric:
         refetchOnWindowFocus: false,
     });
 };
-<<<<<<< HEAD
->>>>>>> 8a5cf04 (api and querie added and integrated)
-=======
 
 export const useAgglomerativeClustering = (nodeId: string, fileId: string | null, numberOfClusters: number, shouldFetch: boolean) => {
     return useQuery({
@@ -321,4 +317,12 @@ export const useAgglomerativeClustering = (nodeId: string, fileId: string | null
         refetchOnWindowFocus: false,
     });
 };
->>>>>>> f03d58f (slider works but is still quite slow)
+
+export const useMaterialiseClustering = (case_ocels_file_id: string, cluster_ids: number, shouldFetch: boolean) => {
+    return useQuery({
+        queryKey: ['materialiseClustering', case_ocels_file_id, cluster_ids],
+        queryFn: () => materialiseClustering(case_ocels_file_id, cluster_ids),
+        enabled: Boolean(case_ocels_file_id) && shouldFetch,
+        refetchOnWindowFocus: false,
+    })
+}
