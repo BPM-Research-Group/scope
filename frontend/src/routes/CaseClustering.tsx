@@ -59,7 +59,7 @@ const CaseClustering: React.FC = () => {
     const data = slider ? aggQuery.data : query.data;
     const outputFileId = data?.file_id ?? null;             //fileID of the last query return
 
-    const matClustQuery = useMaterialiseClustering(outputFileId, 1, false);
+    const matClustQuery = useMaterialiseClustering(fileId?? ' ', data?.case_assignments?? [], [1], false);
 
     //Get Assets
     useMemo(() => {
@@ -220,18 +220,21 @@ const CaseClustering: React.FC = () => {
         console.log('nodeId, aggTypFileId: ', nodeId, aggTypFileId);
     }, [nodeId, outputFileId]);
 
-    //useMinerOutput(nodeId ?? ' ', subOutputFileId ?? null, 'AllCluster', 'ocelCollectionFile', 'ocelCollectionNode');
+    useMinerOutput(nodeId ?? ' ', subOutputFileId ?? null,  'AllCluster', 'ocelCollectionFile', 'ocelCollectionNode');
     //useMinerOutput(nodeId ?? ' ', aggTypFileId ?? null, 'AllCluster2', 'ocelCollectionFile', 'ocelCollectionNode');
 
     const exportAsNode = () => {
+        console.log("fileId: ", fileId);
         console.log("minOut1: ", nodeId ?? ' ', subOutputFileId ?? null, 'AllCluster', 'ocelCollectionFile', 'ocelCollectionNode');
         console.log("minOut2: ", nodeId ?? ' ', aggTypFileId ?? null, 'AllCluster2', 'ocelCollectionFile', 'ocelCollectionNode');
         console.log("aggTypFileId: ", aggTypFileId);
         setSubOutputFileId(outputFileId);
         const fetching = async () => {
+            console.log("matClustQuery: ", outputFileId, data?.case_assignments?? [], 1, false);
             const result = await matClustQuery.refetch();
-            console.log("matClustQuery: ", outputFileId, 1, false);
-            console.log("result: ", result);
+            console.log("result final: ", result);
+            console.log('result post, filename: ', result.data.data.materialized_clusters[0].case_ocels_file_id);
+            setSubOutputFileId(result.data.data.materialized_clusters[0].case_ocels_file_id);
         }
         fetching();
         //navigate(`/data/pipeline/explore`);

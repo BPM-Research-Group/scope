@@ -318,10 +318,10 @@ export const useAgglomerativeClustering = (nodeId: string, fileId: string | null
     });
 };
 
-export const useMaterialiseClustering = (case_ocels_file_id: string, cluster_ids: number, shouldFetch: boolean) => {
+export const useMaterialiseClustering = (case_ocels_file_id: string, case_assignments:any, cluster_ids: [number], shouldFetch: boolean) => {
     return useQuery({
-        queryKey: ['materialiseClustering', case_ocels_file_id, cluster_ids],
-        queryFn: () => materialiseClustering(case_ocels_file_id, cluster_ids),
+        queryKey: ['materialiseClustering', case_ocels_file_id,case_assignments, cluster_ids],
+        queryFn: () => materialiseClustering(case_ocels_file_id, case_assignments, cluster_ids),
         enabled: Boolean(case_ocels_file_id) && shouldFetch,
         refetchOnWindowFocus: false,
     })
