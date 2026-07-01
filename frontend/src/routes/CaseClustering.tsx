@@ -43,6 +43,7 @@ const CaseClustering: React.FC = () => {
     const [aggObjFileId, setaggObjFileId] = useState<string | undefined>(undefined); //Id of the calc aggTyp custering
     const [inputFileId, setInputFileId] = useState<string | undefined>(undefined);   //Input für die Query
     const [subOutputFileId, setSubOutputFileId] = useState<string | undefined>(undefined); //Final settings
+    const [outputname, setOutputname] = useState<string | undefined>(undefined);
 
     const [slider, setSlider] = useState(false);
     const [selected, setSelected] = useState<number[]>([]);
@@ -59,7 +60,7 @@ const CaseClustering: React.FC = () => {
     const data = slider ? aggQuery.data : query.data;
     const outputFileId = data?.file_id ?? null;             //fileID of the last query return
 
-    const matClustQuery = useMaterialiseClustering(fileId?? ' ', data?.case_assignments?? [], [1], false);
+    const matClustQuery = useMaterialiseClustering(fileId?? ' ', data?.case_assignments?? [], selected, false);
 
     //Get Assets
     useMemo(() => {
@@ -220,8 +221,7 @@ const CaseClustering: React.FC = () => {
         console.log('nodeId, aggTypFileId: ', nodeId, aggTypFileId);
     }, [nodeId, outputFileId]);
 
-    useMinerOutput(nodeId ?? ' ', subOutputFileId ?? null,  'AllCluster', 'ocelCollectionFile', 'ocelCollectionNode');
-    //useMinerOutput(nodeId ?? ' ', aggTypFileId ?? null, 'AllCluster2', 'ocelCollectionFile', 'ocelCollectionNode');
+    useMinerOutput(nodeId ?? ' ', subOutputFileId ?? null,  outputname?? ' ', 'ocelCollectionFile', 'ocelCollectionNode');
 
     const exportAsNode = () => {
         console.log("fileId: ", fileId);
@@ -229,19 +229,23 @@ const CaseClustering: React.FC = () => {
         console.log("minOut2: ", nodeId ?? ' ', aggTypFileId ?? null, 'AllCluster2', 'ocelCollectionFile', 'ocelCollectionNode');
         console.log("aggTypFileId: ", aggTypFileId);
         setSubOutputFileId(outputFileId);
+        console.log("selected: ", selected);
         const fetching = async () => {
             console.log("matClustQuery: ", outputFileId, data?.case_assignments?? [], 1, false);
             const result = await matClustQuery.refetch();
-            console.log("result final: ", result);
-            console.log('result post, filename: ', result.data.data.materialized_clusters[0].case_ocels_file_id);
+            const name = (node?.data.assets.find((asset) => asset.io === 'input')?.name +"_cluster_"+ result.data.data.materialized_clusters[0].cluster_id);
+            setOutputname(name);
             setSubOutputFileId(result.data.data.materialized_clusters[0].case_ocels_file_id);
+            console.log("SuboutputfileId: ", subOutputFileId);
+            console.log("name: ", name);
         }
         fetching();
-        //navigate(`/data/pipeline/explore`);
+        navigate(`/data/pipeline/explore`);
         return;
     };
 
     const toggle = (i: any) => {
+        console.log("i: ", i);
         setSelected((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]));
     };
 
@@ -258,7 +262,7 @@ const CaseClustering: React.FC = () => {
                                         <p className="text-sm text-green-600">Data Submitted.</p>
                                         <hr />
                                         <label className="block mb-2 text-s mt-3"> Select Cluster</label>
-                                        {Array.from({ length: params.k + 1 }, (_, i) => (
+                                        {Array.from({ length: params.k }, (_, i) => (
                                             <label key={i}>
                                                 <input
                                                     type="checkbox"
