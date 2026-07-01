@@ -1,4 +1,4 @@
-use crate::core::df2_miner::ocpt_generator::generate_ocpt_from_fileid;
+use crate::core::df2_miner::ocpt_generator::{Df2GeneratorError, generate_ocpt_from_fileid};
 use crate::core::struct_converters::ocpt_frontend_backend::{
     backend_to_frontend, frontend_to_backend,
 };
@@ -30,7 +30,8 @@ pub async fn apply_df2(
                     StatusCode::INTERNAL_SERVER_ERROR,
                     format!("DF2 miner panicked: {e}"),
                 )
-            })?;
+            })?
+            .map_err(map_df2_generator_error)?;
 
     let ocpt_path = format!("./temp/ocpt_{}.json", generated_id);
 
@@ -81,4 +82,12 @@ pub async fn apply_df2(
     });
 
     Ok(Json(payload))
+}
+
+fn map_df2_generator_error(error: Df2GeneratorError) -> (StatusCode, String) {
+    match error {
+        Df2GeneratorError::NotFound(message) => (StatusCode::NOT_FOUND, message),
+        Df2GeneratorError::BadRequest(message) => (StatusCode::BAD_REQUEST, message),
+        Df2GeneratorError::Internal(message) => (StatusCode::INTERNAL_SERVER_ERROR, message),
+    }
 }
