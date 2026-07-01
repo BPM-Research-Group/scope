@@ -1,4 +1,5 @@
 pub mod abstraction;
+pub mod kpi;
 pub mod case_notion;
 pub mod clustering;
 pub mod dfg;

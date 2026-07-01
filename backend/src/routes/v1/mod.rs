@@ -1,5 +1,6 @@
 pub mod abstractions;
 pub mod case_notion;
+pub mod kpi;
 pub mod clustering;
 pub mod conformance;
 pub mod df2;
@@ -33,4 +34,5 @@ pub fn router() -> Router {
         .nest("/ocpt", ocim::router())
         .nest("/ocpt", extended_ocpt::router())
         .nest("/resource_miner", resource_miner::router())
+        .nest("/kpi", kpi::router())
 }

@@ -1,7 +1,10 @@
-use crate::core::df2_miner::ocpt_generator::{Df2GeneratorError, generate_ocpt_from_fileid};
+use crate::core::df2_miner::ocpt_generator::generate_ocpt_from_ocels;
 use crate::core::struct_converters::ocpt_frontend_backend::{
     backend_to_frontend, frontend_to_backend,
 };
+use crate::models::ocel::OCEL;
+use crate::models::ocel_collection::OCELCollection;
+use crate::models::ocel_sid_df2_miner::OcelJson;
 use crate::models::ocpt::{OCPT, OcptFE};
 use crate::traits::import_export::ImportableFromPath;
 use axum::{Json, extract::Path, http::StatusCode, response::IntoResponse};
@@ -20,18 +23,30 @@ pub async fn apply_df2(
         ));
     }
 
+    let ocels = load_df2_ocels(&file_id).await?;
+    if ocels.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "DF2 requires at least one OCEL".to_string(),
+        ));
+    }
+    if ocels.iter().all(|ocel| ocel.events.is_empty()) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "DF2 requires at least one event across the input OCELs".to_string(),
+        ));
+    }
+
     // Run the synchronous miner on a blocking thread; it writes ./temp/ocpt_{id}.json (frontend shape).
-    let file_id_for_miner = file_id.clone();
-    let generated_id =
-        tokio::task::spawn_blocking(move || generate_ocpt_from_fileid(&file_id_for_miner))
-            .await
-            .map_err(|e| {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("DF2 miner panicked: {e}"),
-                )
-            })?
-            .map_err(map_df2_generator_error)?;
+    let generated_id = tokio::task::spawn_blocking(move || generate_ocpt_from_ocels(ocels))
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("DF2 miner panicked: {e}"),
+            )
+        })?
+        .map_err(map_df2_mining_error)?;
 
     let ocpt_path = format!("./temp/ocpt_{}.json", generated_id);
 
@@ -84,10 +99,43 @@ pub async fn apply_df2(
     Ok(Json(payload))
 }
 
-fn map_df2_generator_error(error: Df2GeneratorError) -> (StatusCode, String) {
-    match error {
-        Df2GeneratorError::NotFound(message) => (StatusCode::NOT_FOUND, message),
-        Df2GeneratorError::BadRequest(message) => (StatusCode::BAD_REQUEST, message),
-        Df2GeneratorError::Internal(message) => (StatusCode::INTERNAL_SERVER_ERROR, message),
+async fn load_df2_ocels(file_id: &str) -> Result<Vec<OcelJson>, (StatusCode, String)> {
+    match OCEL::import_from_path(file_id).await {
+        Ok(ocel) => Ok(vec![ocel_to_df2_json(ocel)?]),
+        Err((StatusCode::NOT_FOUND, _)) => match OCELCollection::import_from_path(file_id).await {
+            Ok(collection) => collection
+                .ocels
+                .into_iter()
+                .map(ocel_to_df2_json)
+                .collect::<Result<Vec<_>, _>>(),
+            Err(e) => Err(e),
+        },
+        Err(e) => Err(e),
+    }
+}
+
+fn ocel_to_df2_json(ocel: OCEL) -> Result<OcelJson, (StatusCode, String)> {
+    let value = serde_json::to_value(ocel).map_err(|err| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Serialize OCEL for DF2 failed: {err}"),
+        )
+    })?;
+    serde_json::from_value(value).map_err(|err| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Convert OCEL for DF2 failed: {err}"),
+        )
+    })
+}
+
+fn map_df2_mining_error(error: String) -> (StatusCode, String) {
+    if error.starts_with("DF2 requires ") {
+        (StatusCode::BAD_REQUEST, error)
+    } else {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("DF2 miner failed: {error}"),
+        )
     }
 }

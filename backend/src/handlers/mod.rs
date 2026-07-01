@@ -1,4 +1,5 @@
 pub mod abstractions;
+pub mod kpi;
 pub mod case_notion;
 pub mod clustering;
 pub mod collection_ocels;
