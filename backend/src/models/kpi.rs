@@ -111,10 +111,43 @@ pub struct CaseAttributeCombinationStatsResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct KpiHistogramBin {
-    /// Bin midpoint → x axis.
     pub count: f64,
-    /// Number of cases in this bin → bar height.
     pub frequency: usize,
+    /// Inclusive lower edge of the bin (for filtering).
+    pub bin_start: f64,
+    /// Inclusive upper edge of the bin (for filtering).
+    pub bin_end: f64,
+}
+
+/// `POST /v1/kpi/histogram_filter/{case_notion_file_id}`
+#[derive(Deserialize, Debug)]
+pub struct KpiHistogramFilterPayload {
+    pub kpi_filter: KpiFilterSpec,
+    /// Inclusive `[min, max]` value ranges derived from selected histogram bins.
+    pub value_ranges: Vec<[f64; 2]>,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum KpiFilterSpec {
+    CaseDuration,
+    CaseAttribute {
+        attribute: String,
+        object_type: Option<String>,
+        event_type: Option<String>,
+        intra_case_agg: String,
+    },
+    AttributeCombination {
+        left_attribute: String,
+        left_object_type: Option<String>,
+        left_event_type: Option<String>,
+        left_intra_case_agg: Option<String>,
+        right_attribute: String,
+        right_object_type: Option<String>,
+        right_event_type: Option<String>,
+        right_intra_case_agg: Option<String>,
+        operation: CombinationOperator,
+    },
 }
 
 /// `GET /v1/kpi/case_time_stats/{case_notion_file_id}`

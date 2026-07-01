@@ -11,6 +11,15 @@ pub struct CaseKpiValues {
     pub cases_skipped: usize,
 }
 
+fn case_kpi_values_from_per_case(per_case: Vec<Option<f64>>) -> CaseKpiValues {
+    let cases_skipped = per_case.iter().filter(|value| value.is_none()).count();
+    let values = per_case.into_iter().flatten().collect();
+    CaseKpiValues {
+        values,
+        cases_skipped,
+    }
+}
+
 fn reduce_values(values: &[f64], intra_case_agg: &str) -> Option<f64> {
     if values.is_empty() {
         return None;
@@ -81,30 +90,42 @@ pub fn collect_case_attribute_kpi_values(
     filter_event_type: Option<&str>,
     intra_case_agg: &str,
 ) -> CaseKpiValues {
-    let mut values: Vec<f64> = Vec::new();
-    let mut cases_skipped = 0;
+    case_kpi_values_from_per_case(collect_per_case_attribute_kpi_values(
+        cases,
+        event_lookup,
+        object_lookup,
+        attribute,
+        filter_object_type,
+        filter_event_type,
+        intra_case_agg,
+    ))
+}
 
-    for (event_ids, object_ids, _) in cases {
-        let case_values = collect_case_attribute_values(
-            event_ids,
-            object_ids,
-            event_lookup,
-            object_lookup,
-            attribute,
-            filter_object_type,
-            filter_event_type,
-        );
-
-        match reduce_values(&case_values, intra_case_agg) {
-            Some(v) => values.push(v),
-            None => cases_skipped += 1,
-        }
-    }
-
-    CaseKpiValues {
-        values,
-        cases_skipped,
-    }
+/// One optional KPI value per case index (None when the case has no computable value).
+pub fn collect_per_case_attribute_kpi_values(
+    cases: &[CaseEntry],
+    event_lookup: &FxHashMap<String, &OCELEvent>,
+    object_lookup: &FxHashMap<String, &OCELObject>,
+    attribute: &str,
+    filter_object_type: Option<&str>,
+    filter_event_type: Option<&str>,
+    intra_case_agg: &str,
+) -> Vec<Option<f64>> {
+    cases
+        .iter()
+        .map(|(event_ids, object_ids, _)| {
+            let case_values = collect_case_attribute_values(
+                event_ids,
+                object_ids,
+                event_lookup,
+                object_lookup,
+                attribute,
+                filter_object_type,
+                filter_event_type,
+            );
+            reduce_values(&case_values, intra_case_agg)
+        })
+        .collect()
 }
 
 /// All raw attribute values pooled across all cases (no intra-case aggregation).
@@ -146,55 +167,75 @@ pub fn collect_case_attribute_combination_values(
     right_intra_case_agg: &str,
     operation: CombinationOperator,
 ) -> CaseKpiValues {
-    let mut values: Vec<f64> = Vec::new();
-    let mut cases_skipped = 0;
+    case_kpi_values_from_per_case(collect_per_case_attribute_combination_values(
+        cases,
+        event_lookup,
+        object_lookup,
+        left_attribute,
+        left_object_type,
+        left_event_type,
+        left_intra_case_agg,
+        right_attribute,
+        right_object_type,
+        right_event_type,
+        right_intra_case_agg,
+        operation,
+    ))
+}
 
-    for (event_ids, object_ids, _) in cases {
-        let left_raw = collect_case_attribute_values(
-            event_ids,
-            object_ids,
-            event_lookup,
-            object_lookup,
-            left_attribute,
-            left_object_type,
-            left_event_type,
-        );
-        let right_raw = collect_case_attribute_values(
-            event_ids,
-            object_ids,
-            event_lookup,
-            object_lookup,
-            right_attribute,
-            right_object_type,
-            right_event_type,
-        );
+/// One optional combined KPI value per case index.
+pub fn collect_per_case_attribute_combination_values(
+    cases: &[CaseEntry],
+    event_lookup: &FxHashMap<String, &OCELEvent>,
+    object_lookup: &FxHashMap<String, &OCELObject>,
+    left_attribute: &str,
+    left_object_type: Option<&str>,
+    left_event_type: Option<&str>,
+    left_intra_case_agg: &str,
+    right_attribute: &str,
+    right_object_type: Option<&str>,
+    right_event_type: Option<&str>,
+    right_intra_case_agg: &str,
+    operation: CombinationOperator,
+) -> Vec<Option<f64>> {
+    cases
+        .iter()
+        .map(|(event_ids, object_ids, _)| {
+            let left_raw = collect_case_attribute_values(
+                event_ids,
+                object_ids,
+                event_lookup,
+                object_lookup,
+                left_attribute,
+                left_object_type,
+                left_event_type,
+            );
+            let right_raw = collect_case_attribute_values(
+                event_ids,
+                object_ids,
+                event_lookup,
+                object_lookup,
+                right_attribute,
+                right_object_type,
+                right_event_type,
+            );
 
-        let (Some(left_value), Some(right_value)) = (
-            reduce_values(&left_raw, left_intra_case_agg),
-            reduce_values(&right_raw, right_intra_case_agg),
-        ) else {
-            cases_skipped += 1;
-            continue;
-        };
+            let (Some(left_value), Some(right_value)) = (
+                reduce_values(&left_raw, left_intra_case_agg),
+                reduce_values(&right_raw, right_intra_case_agg),
+            ) else {
+                return None;
+            };
 
-        let combined = match operation {
-            CombinationOperator::Add => left_value + right_value,
-            CombinationOperator::Subtract => left_value - right_value,
-            CombinationOperator::Multiply => left_value * right_value,
-            CombinationOperator::Divide if right_value == 0.0 => {
-                cases_skipped += 1;
-                continue;
+            match operation {
+                CombinationOperator::Add => Some(left_value + right_value),
+                CombinationOperator::Subtract => Some(left_value - right_value),
+                CombinationOperator::Multiply => Some(left_value * right_value),
+                CombinationOperator::Divide if right_value == 0.0 => None,
+                CombinationOperator::Divide => Some(left_value / right_value),
             }
-            CombinationOperator::Divide => left_value / right_value,
-        };
-
-        values.push(combined);
-    }
-
-    CaseKpiValues {
-        values,
-        cases_skipped,
-    }
+        })
+        .collect()
 }
 
 /// Elapsed seconds for each `from → to` transition across all object timelines.
@@ -327,28 +368,31 @@ pub fn collect_case_duration_values(
     cases: &[CaseEntry],
     event_lookup: &FxHashMap<String, &OCELEvent>,
 ) -> CaseKpiValues {
-    let mut values: Vec<f64> = Vec::new();
-    let mut cases_skipped = 0;
+    case_kpi_values_from_per_case(collect_per_case_duration_values(cases, event_lookup))
+}
 
-    for (event_ids, _, _) in cases {
-        let mut times: Vec<_> = event_ids
-            .iter()
-            .filter_map(|id| event_lookup.get(id).map(|e| e.time))
-            .collect();
-        times.sort();
+/// One optional duration (seconds) per case index.
+pub fn collect_per_case_duration_values(
+    cases: &[CaseEntry],
+    event_lookup: &FxHashMap<String, &OCELEvent>,
+) -> Vec<Option<f64>> {
+    cases
+        .iter()
+        .map(|(event_ids, _, _)| {
+            let mut times: Vec<_> = event_ids
+                .iter()
+                .filter_map(|id| event_lookup.get(id).map(|e| e.time))
+                .collect();
+            times.sort();
 
-        if times.len() >= 2 {
-            let secs = (*times.last().unwrap() - *times.first().unwrap())
-                .num_milliseconds() as f64
-                / 1000.0;
-            values.push(secs);
-        } else {
-            cases_skipped += 1;
-        }
-    }
-
-    CaseKpiValues {
-        values,
-        cases_skipped,
-    }
+            if times.len() >= 2 {
+                Some(
+                    (*times.last().unwrap() - *times.first().unwrap()).num_milliseconds() as f64
+                        / 1000.0,
+                )
+            } else {
+                None
+            }
+        })
+        .collect()
 }

@@ -1,5 +1,7 @@
+use crate::core::kpi::histogram_filtering::filter_case_notion_by_kpi_histogram;
 use crate::core::kpi::attribute_stats::compute_numeric_stats;
 use crate::core::kpi::histogram::{build_range_histogram, default_bin_count};
+use crate::core::kpi::validation::{resolve_intra_case_agg, validate_attribute_source};
 use crate::core::kpi::case_kpis::{
     collect_case_attribute_combination_values, collect_case_attribute_kpi_values,
     collect_case_duration_values, collect_case_time_values, collect_pooled_attribute_values,
@@ -10,7 +12,7 @@ use crate::models::kpi::{
     CaseAttributeCombinationRequest, CaseAttributeCombinationStatsResponse, CaseAttributeQuery,
     CaseAttributeStatsResponse, CaseDurationQuery, CaseDurationResponse,
     CaseTimeQuery, CaseTimeStatsResponse, EventTypeMetadata,
-    KpiHistogramBin, ObjectTypeMetadata, OcelMetadataResponse,
+    KpiHistogramBin, KpiHistogramFilterPayload, ObjectTypeMetadata, OcelMetadataResponse,
 };
 use crate::models::ocel::{OCELEvent, OCELObject, OCELType, OCEL};
 use crate::traits::import_export::ImportableFromPath;
@@ -22,11 +24,13 @@ use axum::{
     response::IntoResponse,
 };
 use rustc_hash::FxHashMap;
-use serde::Deserialize;
+use tokio::fs as tokio_fs;
+use uuid::Uuid;
+use serde::{Deserialize, Serialize};
 
 type RawCaseNotionEntry = (Vec<String>, Vec<String>, Vec<(String, String)>);
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 struct PersistedCaseNotion {
     case_notion: Vec<RawCaseNotionEntry>,
     origin_file_id_ocel: String,
@@ -113,39 +117,6 @@ pub async fn get_ocel_metadata(Path(file_id): Path<String>) -> impl IntoResponse
     };
 
     (StatusCode::OK, Json(response)).into_response()
-}
-
-const VALID_INTRA_CASE_AGG: &[&str] = &["sum", "mean", "min", "max", "count"];
-
-fn validate_attribute_source(
-    object_type: &Option<String>,
-    event_type: &Option<String>,
-    side: &str,
-) -> Result<(), String> {
-    match (object_type, event_type) {
-        (None, None) => Err(format!(
-            "For {}, either object_type or event_type must be provided",
-            side
-        )),
-        (Some(_), Some(_)) => Err(format!(
-            "For {}, object_type and event_type are mutually exclusive",
-            side
-        )),
-        _ => Ok(()),
-    }
-}
-
-fn resolve_intra_case_agg(value: Option<String>, field: &str) -> Result<String, String> {
-    let agg = value.unwrap_or_else(|| "sum".to_string());
-    if !VALID_INTRA_CASE_AGG.contains(&agg.as_str()) {
-        return Err(format!(
-            "Invalid {} '{}'. Must be one of: {}",
-            field,
-            agg,
-            VALID_INTRA_CASE_AGG.join(", ")
-        ));
-    }
-    Ok(agg)
 }
 
 fn ocel_lookups(
@@ -432,4 +403,72 @@ pub async fn get_case_duration(
         histogram,
     }))
     .into_response()
+}
+
+async fn persist_filtered_case_notion(
+    cases: &[RawCaseNotionEntry],
+    persisted: &PersistedCaseNotion,
+) -> Result<String, (StatusCode, String)> {
+    let case_notion_file_id = Uuid::new_v4().to_string();
+    let payload = PersistedCaseNotion {
+        case_notion: cases.to_vec(),
+        origin_file_id_ocel: persisted.origin_file_id_ocel.clone(),
+        case_notion_type: persisted.case_notion_type.clone(),
+        object_type: persisted.object_type.clone(),
+        case_notion_file_id: case_notion_file_id.clone(),
+    };
+
+    let data = serde_json::to_vec(&payload).map_err(|err| {
+        eprintln!("serialize filtered case notion failed: {err}");
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to serialize filtered case notion".to_string(),
+        )
+    })?;
+
+    let path = format!("./temp/case_notion_{}.json", case_notion_file_id);
+    tokio_fs::write(&path, data).await.map_err(|err| {
+        eprintln!("write filtered case notion failed: {err}");
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to persist filtered case notion".to_string(),
+        )
+    })?;
+
+    Ok(case_notion_file_id)
+}
+
+/// POST /v1/kpi/histogram_filter/{case_notion_file_id}
+/// Body: KPI histogram filter with value ranges from selected bins.
+/// Returns: new case notion file id.
+pub async fn post_kpi_histogram_filter(
+    Path(case_notion_file_id): Path<String>,
+    Json(payload): Json<KpiHistogramFilterPayload>,
+) -> impl IntoResponse {
+    let persisted = match load_case_notion(&case_notion_file_id).await {
+        Ok(data) => data,
+        Err(response) => return response,
+    };
+
+    let ocel = match OCEL::import_from_path(&persisted.origin_file_id_ocel).await {
+        Ok(ocel) => ocel,
+        Err((status, message)) => return (status, message).into_response(),
+    };
+
+    let (event_lookup, object_lookup) = ocel_lookups(&ocel);
+
+    let filtered_cases = match filter_case_notion_by_kpi_histogram(
+        &persisted.case_notion,
+        &event_lookup,
+        &object_lookup,
+        &payload,
+    ) {
+        Ok(cases) => cases,
+        Err(message) => return (StatusCode::BAD_REQUEST, message).into_response(),
+    };
+
+    match persist_filtered_case_notion(&filtered_cases, &persisted).await {
+        Ok(id) => (StatusCode::OK, Json(id)).into_response(),
+        Err((status, message)) => (status, message).into_response(),
+    }
 }
