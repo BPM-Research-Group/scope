@@ -14,7 +14,7 @@ import BreadcrumbNav from '~/components/BreadcrumbNav';
 import ClusterVis from '~/components/ClusteringVis';
 import { useMinerOutput } from '~/hooks/explore/useMinerAssets';
 import { useExploreFlowStore } from '~/stores/exploreStore';
-import { useAgglomerativeClustering, useCaseClustering, useMaterialiseClustering} from '~/services/queries';
+import { useAgglomerativeClustering, useCaseClustering, useMaterialiseClustering } from '~/services/queries';
 
 const CaseClustering: React.FC = () => {
     const [params, setParams] = useState({
@@ -41,7 +41,7 @@ const CaseClustering: React.FC = () => {
 
     const [aggTypFileId, setaggTypFileId] = useState<string | undefined>(undefined); //Id of the calc aggTyp custering
     const [aggObjFileId, setaggObjFileId] = useState<string | undefined>(undefined); //Id of the calc aggTyp custering
-    const [inputFileId, setInputFileId] = useState<string | undefined>(undefined);   //Input für die Query
+    const [inputFileId, setInputFileId] = useState<string | undefined>(undefined); //Input für die Query
     const [subOutputFileId, setSubOutputFileId] = useState<string | undefined>(undefined); //Final settings
     const [outputname, setOutputname] = useState<string | undefined>(undefined);
 
@@ -58,9 +58,9 @@ const CaseClustering: React.FC = () => {
     );
     const aggQuery = useAgglomerativeClustering(node?.id ?? '', inputFileId ?? '', params.k, slider);
     const data = slider ? aggQuery.data : query.data;
-    const outputFileId = data?.file_id ?? null;             //fileID of the last query return
+    const outputFileId = data?.file_id ?? null; //fileID of the last query return
 
-    const matClustQuery = useMaterialiseClustering(fileId?? ' ', data?.case_assignments?? [], selected, false);
+    const matClustQuery = useMaterialiseClustering(fileId ?? ' ', data?.case_assignments ?? [1], selected, false);
 
     //Get Assets
     useMemo(() => {
@@ -221,31 +221,33 @@ const CaseClustering: React.FC = () => {
         console.log('nodeId, aggTypFileId: ', nodeId, aggTypFileId);
     }, [nodeId, outputFileId]);
 
-    useMinerOutput(nodeId ?? ' ', subOutputFileId ?? null,  outputname?? ' ', 'ocelCollectionFile', 'ocelCollectionNode');
+    useMinerOutput( nodeId ?? ' ', subOutputFileId ?? null, outputname ?? ' ', 'ocelCollectionFile', 'ocelCollectionNode'  );
+    //useMinerOutput( (nodeId + '1'), subOutputFileId ?? null, (outputname+ "1") ?? ' ', 'ocelCollectionFile', 'ocelCollectionNode'  );
 
     const exportAsNode = () => {
-        console.log("fileId: ", fileId);
-        console.log("minOut1: ", nodeId ?? ' ', subOutputFileId ?? null, 'AllCluster', 'ocelCollectionFile', 'ocelCollectionNode');
-        console.log("minOut2: ", nodeId ?? ' ', aggTypFileId ?? null, 'AllCluster2', 'ocelCollectionFile', 'ocelCollectionNode');
-        console.log("aggTypFileId: ", aggTypFileId);
-        setSubOutputFileId(outputFileId);
-        console.log("selected: ", selected);
+        //setSubOutputFileId(outputFileId);
         const fetching = async () => {
-            console.log("matClustQuery: ", outputFileId, data?.case_assignments?? [], 1, false);
             const result = await matClustQuery.refetch();
-            const name = (node?.data.assets.find((asset) => asset.io === 'input')?.name +"_cluster_"+ result.data.data.materialized_clusters[0].cluster_id);
+            console.log("result:", result);
+            const cluster = result.data.data.materialized_clusters[0]; //[0] has to be generalized
+
+            const outputId = cluster.case_ocels_file_id;
+
+            const name = node?.data.assets.find((a) => a.io === 'input')?.name + '_cluster_' + cluster.cluster_id;
+            console.log("name:", name);
+            console.log("outputId:", outputId);
             setOutputname(name);
-            setSubOutputFileId(result.data.data.materialized_clusters[0].case_ocels_file_id);
-            console.log("SuboutputfileId: ", subOutputFileId);
-            console.log("name: ", name);
-        }
+            setSubOutputFileId(outputId);
+            console.log("result2:", result);
+            console.log("subOutputFileId:", subOutputFileId);
+        };
         fetching();
-        navigate(`/data/pipeline/explore`);
+        //navigate(`/data/pipeline/explore`); //macht das updaten kaput -> Anders lösen
         return;
     };
 
     const toggle = (i: any) => {
-        console.log("i: ", i);
+        console.log('i: ', i);
         setSelected((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]));
     };
 
@@ -258,178 +260,190 @@ const CaseClustering: React.FC = () => {
                         <aside className="w-80 min-w-[18rem] rounded-md border p-4 bg-background min-h-0">
                             <h2 className="mb-3 text-lg font-semibold">Case Clustering — Settings</h2>
                             {submitted ? (
-                                    <div className="flex flex-col gap-y-0.5">
-                                        <p className="text-sm text-green-600">Data Submitted.</p>
-                                        <hr />
-                                        <label className="block mb-2 text-s mt-3"> Select Cluster</label>
-                                        {Array.from({ length: params.k }, (_, i) => (
-                                            <label key={i}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selected.includes(i)}
-                                                    onChange={() => toggle(i)}
-                                                />
-                                                Element {i}
-                                            </label>
-                                        ))}
-                                        <Button
-                                            onClick={() => {
-                                                exportAsNode();
-                                            }}
-                                            className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md mt-3"
-                                            aria-label="Load and display the result"
-                                        >
-                                            <span className="text-xs text-blue-600">Export as Node</span>
-                                        </Button>
-                                        <Button
-                                            onClick={() => {
-                                                setSubmitted(false);
-                                            }}
-                                            className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md mt-3"
-                                            aria-label="Load and display the result"
-                                        >
-                                            <span className="text-xs text-blue-600">Edit</span>
-                                        </Button>
-                                    </div>
-                                ) : 
-                            (<div className="flex flex-col gap-y-0.5">
-                                <div className="mb-2 text-xs">
-                                    Input-File:{' '}
-                                    <strong>{node?.data.assets.find((asset) => asset.io === 'input')?.name}</strong>
+                                <div className="flex flex-col gap-y-0.5">
+                                    <p className="text-sm text-green-600">Data Submitted.</p>
+                                    <hr />
+                                    <label className="block mb-2 text-s mt-3"> Select Cluster</label>
+                                    {Array.from({ length: params.k }, (_, i) => (
+                                        <label key={i}>
+                                            <input
+                                                type="checkbox"
+                                                checked={selected.includes(i)}
+                                                onChange={() => toggle(i)}
+                                            />
+                                            Element {i}
+                                        </label>
+                                    ))}
+                                    <Button
+                                        onClick={() => {
+                                            exportAsNode();
+                                        }}
+                                        className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md mt-3"
+                                        aria-label="Load and display the result"
+                                    >
+                                        <span className="text-xs text-blue-600">Export as Node</span>
+                                    </Button>
+                                    <Button
+                                        onClick={() => {
+                                            setSubmitted(false);
+                                        }}
+                                        className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md mt-3"
+                                        aria-label="Load and display the result"
+                                    >
+                                        <span className="text-xs text-blue-600">Edit</span>
+                                    </Button>
                                 </div>
-                                <label className="block mb-2 text-sm mt-3">Distance Measure</label>
-                                <Select
-                                    value={params.distanceMeasure}
-                                    onValueChange={(e) => setParams((s) => ({ ...s, distanceMeasure: e.toString() }))}
-                                >
-                                    <SelectTrigger
-                                        className="h-07 px-2 bg-gray-100 text-amber-600 hover:bg-gray-200 rounded-md w-full gap-1 text-s font-semibold"
-                                        aria-label="Select Measurement"
-                                    >
-                                        <SelectValue placeholder="Measurement" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem className="text-xs text-amber-600 font-semibold" value="dfg-typ">
-                                            Dfg-typ
-                                        </SelectItem>
-                                        <SelectItem className="text-xs text-amber-600 font-semibold" value="dfg-obj">
-                                            Dfg-obj
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <label className="block mb-2 text-sm mt-3">Algorithm</label>
-                                <Select
-                                    value={params.algorithm}
-                                    onValueChange={(e) => setParams((s) => ({ ...s, algorithm: e.toString() }))}
-                                >
-                                    <SelectTrigger
-                                        className="h-07 px-2 bg-gray-100 text-amber-600 hover:bg-gray-200 rounded-md w-full gap-1 text-s font-semibold"
-                                        aria-label="Select Algorithm"
-                                    >
-                                        <SelectValue placeholder="Algorithm" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem className="text-xs text-amber-600 font-semibold" value="k-medoids">
-                                            k-medoids
-                                        </SelectItem>
-                                        <SelectItem
-                                            className="text-xs text-amber-600 font-semibold"
-                                            value="agglomerative"
-                                        >
-                                            agglomerative clustering
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                {params.algorithm !== 'agglomerative' ? (
-                                    <label className="block mb-2 text-sm mt-3">Number of clusters (k)</label>
-                                ) : null}
-                                {params.algorithm !== 'agglomerative' ? (
-                                    <input
-                                        type="number"
-                                        value={params.k}
-                                        onChange={(e) => setParams((s) => ({ ...s, k: Number(e.target.value) }))}
-                                        className="mb-4 w-full rounded border px-2 py-1"
-                                    />
-                                ) : null}
-                                <Button
-                                    onClick={() => {
-                                        setloadResult(true);
-                                        setSlider(false);
-                                        if (params.distanceMeasure === 'dfg-typ') {
-                                            setInputFileId(aggTypFileId);
-                                        }
-                                        if (params.distanceMeasure === 'dfg-obj') {
-                                            setInputFileId(aggObjFileId);
-                                        }
-                                    }}
-                                    className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md mt-3"
-                                    aria-label="Load and display the result"
-                                >
-                                    <span className="text-xs text-blue-600">Load</span>
-                                </Button>
-                                {params.algorithm === 'agglomerative' ? (
-                                    <div className="mb-4">
-                                        <div className="flex items-center justify-between text-xs mb-1">
-                                            <span className="block mb-2 text-sm mt-3">Number of clusters (k)</span>
-                                            <span className="font-semibold">{params.k}</span>
-                                        </div>
-                                        <input
-                                            id="kRange"
-                                            type="range"
-                                            min={1}
-                                            max={20}
-                                            step={1}
-                                            value={params.k}
-                                            onChange={(e) => {
-                                                setParams((s) => ({ ...s, k: Number(e.target.value) }));
-                                                setSlider(true);
-                                            }}
-                                            className="w-full"
-                                            aria-label="Number of clusters"
-                                        />
+                            ) : (
+                                <div className="flex flex-col gap-y-0.5">
+                                    <div className="mb-2 text-xs">
+                                        Input-File:{' '}
+                                        <strong>{node?.data.assets.find((asset) => asset.io === 'input')?.name}</strong>
                                     </div>
-                                ) : null}
+                                    <label className="block mb-2 text-sm mt-3">Distance Measure</label>
+                                    <Select
+                                        value={params.distanceMeasure}
+                                        onValueChange={(e) =>
+                                            setParams((s) => ({ ...s, distanceMeasure: e.toString() }))
+                                        }
+                                    >
+                                        <SelectTrigger
+                                            className="h-07 px-2 bg-gray-100 text-amber-600 hover:bg-gray-200 rounded-md w-full gap-1 text-s font-semibold"
+                                            aria-label="Select Measurement"
+                                        >
+                                            <SelectValue placeholder="Measurement" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem
+                                                className="text-xs text-amber-600 font-semibold"
+                                                value="dfg-typ"
+                                            >
+                                                Dfg-typ
+                                            </SelectItem>
+                                            <SelectItem
+                                                className="text-xs text-amber-600 font-semibold"
+                                                value="dfg-obj"
+                                            >
+                                                Dfg-obj
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <label className="block mb-2 text-sm mt-3">Algorithm</label>
+                                    <Select
+                                        value={params.algorithm}
+                                        onValueChange={(e) => setParams((s) => ({ ...s, algorithm: e.toString() }))}
+                                    >
+                                        <SelectTrigger
+                                            className="h-07 px-2 bg-gray-100 text-amber-600 hover:bg-gray-200 rounded-md w-full gap-1 text-s font-semibold"
+                                            aria-label="Select Algorithm"
+                                        >
+                                            <SelectValue placeholder="Algorithm" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem
+                                                className="text-xs text-amber-600 font-semibold"
+                                                value="k-medoids"
+                                            >
+                                                k-medoids
+                                            </SelectItem>
+                                            <SelectItem
+                                                className="text-xs text-amber-600 font-semibold"
+                                                value="agglomerative"
+                                            >
+                                                agglomerative clustering
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    {params.algorithm !== 'agglomerative' ? (
+                                        <label className="block mb-2 text-sm mt-3">Number of clusters (k)</label>
+                                    ) : null}
+                                    {params.algorithm !== 'agglomerative' ? (
+                                        <input
+                                            type="number"
+                                            value={params.k}
+                                            onChange={(e) => setParams((s) => ({ ...s, k: Number(e.target.value) }))}
+                                            className="mb-4 w-full rounded border px-2 py-1"
+                                        />
+                                    ) : null}
+                                    <Button
+                                        onClick={() => {
+                                            setloadResult(true);
+                                            setSlider(false);
+                                            if (params.distanceMeasure === 'dfg-typ') {
+                                                setInputFileId(aggTypFileId);
+                                            }
+                                            if (params.distanceMeasure === 'dfg-obj') {
+                                                setInputFileId(aggObjFileId);
+                                            }
+                                        }}
+                                        className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md mt-3"
+                                        aria-label="Load and display the result"
+                                    >
+                                        <span className="text-xs text-blue-600">Load</span>
+                                    </Button>
+                                    {params.algorithm === 'agglomerative' ? (
+                                        <div className="mb-4">
+                                            <div className="flex items-center justify-between text-xs mb-1">
+                                                <span className="block mb-2 text-sm mt-3">Number of clusters (k)</span>
+                                                <span className="font-semibold">{params.k}</span>
+                                            </div>
+                                            <input
+                                                id="kRange"
+                                                type="range"
+                                                min={1}
+                                                max={20}
+                                                step={1}
+                                                value={params.k}
+                                                onChange={(e) => {
+                                                    setParams((s) => ({ ...s, k: Number(e.target.value) }));
+                                                    setSlider(true);
+                                                }}
+                                                className="w-full"
+                                                aria-label="Number of clusters"
+                                            />
+                                        </div>
+                                    ) : null}
 
-                                {query.isError ? (
-                                    <p className="text-sm text-green-600">Error occured during loading</p>
-                                ) : query.isFetching ? (
-                                    <p className="text-sm text-green-600">Loading...</p>
-                                ) : query.isSuccess ? (
-                                    <p className="text-sm text-green-600">Loading Successfull</p>
-                                ) : (
-                                    <p className="text-sm text-green-600"></p>
-                                )}
-                                <hr />
-                                <label className="block mb-2 text-s mt-3"> Visualisation</label>
-                                <div className="flex gap-2">
-                                    {['tabular-simple', 'tabular-detailed', 'graphic'].map((option) => (
-                                        <button
-                                            key={option}
-                                            onClick={() => {
-                                                display(option);
-                                            }}
-                                            className={`px-3 py-1 rounded-md text-xs font-semibold transition
+                                    {query.isError ? (
+                                        <p className="text-sm text-green-600">Error occured during loading</p>
+                                    ) : query.isFetching ? (
+                                        <p className="text-sm text-green-600">Loading...</p>
+                                    ) : query.isSuccess ? (
+                                        <p className="text-sm text-green-600">Loading Successfull</p>
+                                    ) : (
+                                        <p className="text-sm text-green-600"></p>
+                                    )}
+                                    <hr />
+                                    <label className="block mb-2 text-s mt-3"> Visualisation</label>
+                                    <div className="flex gap-2">
+                                        {['tabular-simple', 'tabular-detailed', 'graphic'].map((option) => (
+                                            <button
+                                                key={option}
+                                                onClick={() => {
+                                                    display(option);
+                                                }}
+                                                className={`px-3 py-1 rounded-md text-xs font-semibold transition
                                             ${
                                                 params.visMethod === option
                                                     ? 'bg-amber-500 text-white'
                                                     : 'bg-gray-100 text-amber-600 hover:bg-gray-200'
                                             }`}
-                                        >
-                                            {option}
-                                        </button>
-                                    ))}
+                                            >
+                                                {option}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <hr />
+                                    <Button
+                                        onClick={() => {
+                                            handleSubmit();
+                                        }}
+                                        className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md mt-3"
+                                        aria-label="Load and display the result"
+                                    >
+                                        <span className="text-xs text-blue-600">Submit</span>
+                                    </Button>
                                 </div>
-                                <hr />
-                                <Button
-                                    onClick={() => {
-                                        handleSubmit();
-                                    }}
-                                    className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md mt-3"
-                                    aria-label="Load and display the result"
-                                >
-                                    <span className="text-xs text-blue-600">Submit</span>
-                                </Button>
-                            </div>)}
+                            )}
                         </aside>
 
                         {!generateTable ? null : (
