@@ -31,5 +31,13 @@ pub fn compute_numeric_stats(values: &[f64]) -> Option<NumericStats> {
         sorted[count / 2]
     };
 
-    Some(NumericStats { count, min, max, mean, median, std_dev, sum })
+    Some(NumericStats {
+        count,
+        min,
+        max,
+        mean,
+        median,
+        std_dev,
+        sum,
+    })
 }

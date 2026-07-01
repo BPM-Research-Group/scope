@@ -68,7 +68,6 @@ pub async fn post_fix_multiple_special_activities(
     }
 
     let mut ocel = OCEL::import_from_path(&file_id).await?;
-    let response =
-        fix_multiple_special_activities(&mut ocel, &file_id, &body.activities).await?;
+    let response = fix_multiple_special_activities(&mut ocel, &file_id, &body.activities).await?;
     Ok(Json(response))
 }

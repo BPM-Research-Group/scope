@@ -192,8 +192,7 @@ pub async fn fix_multiple_special_activities(
         // Rebuild each iteration: previous fixes add new silent objects to ocel.objects,
         // so the map must be refreshed to include them.
         let object_id_to_type = build_object_id_to_type(ocel);
-        let activity_profiles =
-            build_activity_event_profiles(ocel, activity, &object_id_to_type);
+        let activity_profiles = build_activity_event_profiles(ocel, activity, &object_id_to_type);
 
         let mut selected: Option<Vec<String>> = None;
         for size in 2..=related_types_sorted.len() {
@@ -450,7 +449,7 @@ fn compute_event_signature(
 }
 
 // Creates silent objects for each unique combination signature and attaches them to all
-// matching events in the log. 
+// matching events in the log.
 fn attach_silent_objects(
     ocel: &mut OCEL,
     combination: &[String],
@@ -480,15 +479,18 @@ fn attach_silent_objects(
     let event_silent_ids: Vec<Option<String>> = event_signatures
         .into_iter()
         .map(|sig_opt| {
-            sig_opt
-                .map(|sig| registry.get_or_create(&mut ocel.objects, silent_object_type, sig))
+            sig_opt.map(|sig| registry.get_or_create(&mut ocel.objects, silent_object_type, sig))
         })
         .collect();
 
     // Attach silent IDs to ocel.events
     for (event, silent_id_opt) in ocel.events.iter_mut().zip(event_silent_ids) {
         if let Some(silent_id) = silent_id_opt {
-            if !event.relationships.iter().any(|rel| rel.object_id == silent_id) {
+            if !event
+                .relationships
+                .iter()
+                .any(|rel| rel.object_id == silent_id)
+            {
                 event.relationships.push(OCELRelationship {
                     object_id: silent_id,
                     qualifier: "silent_object".to_string(),

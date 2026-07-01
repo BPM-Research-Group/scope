@@ -231,8 +231,10 @@ fn add_identity_relation_property(
     match node.properties.get_mut("identity_relations") {
         Some(Value::Array(existing)) => existing.push(relation_value),
         _ => {
-            node.properties
-                .insert("identity_relations".to_string(), Value::Array(vec![relation_value]));
+            node.properties.insert(
+                "identity_relations".to_string(),
+                Value::Array(vec![relation_value]),
+            );
         }
     }
 }

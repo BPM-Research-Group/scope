@@ -1,18 +1,18 @@
 use crate::core::kpi::attribute_stats::compute_numeric_stats;
-use crate::core::kpi::histogram::{build_range_histogram, default_bin_count};
 use crate::core::kpi::case_kpis::{
     collect_case_attribute_combination_values, collect_case_attribute_kpi_values,
     collect_case_duration_values, collect_case_time_values, collect_pooled_attribute_values,
     compute_activity_successors,
 };
+use crate::core::kpi::histogram::{build_range_histogram, default_bin_count};
 use crate::models::kpi::{
     ActivitySuccessorsQuery, ActivitySuccessorsResponse, AttributeMetadata,
     CaseAttributeCombinationRequest, CaseAttributeCombinationStatsResponse, CaseAttributeQuery,
-    CaseAttributeStatsResponse, CaseDurationQuery, CaseDurationResponse,
-    CaseTimeQuery, CaseTimeStatsResponse, EventTypeMetadata,
-    KpiHistogramBin, ObjectTypeMetadata, OcelMetadataResponse,
+    CaseAttributeStatsResponse, CaseDurationQuery, CaseDurationResponse, CaseTimeQuery,
+    CaseTimeStatsResponse, EventTypeMetadata, KpiHistogramBin, ObjectTypeMetadata,
+    OcelMetadataResponse,
 };
-use crate::models::ocel::{OCELEvent, OCELObject, OCELType, OCEL};
+use crate::models::ocel::{OCEL, OCELEvent, OCELObject, OCELType};
 use crate::traits::import_export::ImportableFromPath;
 use async_trait::async_trait;
 use axum::{
@@ -54,7 +54,10 @@ async fn load_case_notion(
         Ok(data) => Ok(data),
         Err((status, _)) if status == StatusCode::NOT_FOUND => Err((
             StatusCode::NOT_FOUND,
-            format!("No stored case notion found for fileId: {}", case_notion_file_id),
+            format!(
+                "No stored case notion found for fileId: {}",
+                case_notion_file_id
+            ),
         )
             .into_response()),
         Err((status, message)) => Err((status, message).into_response()),
@@ -178,7 +181,8 @@ pub async fn get_case_attribute_stats(
     Path(case_notion_file_id): Path<String>,
     Query(query): Query<CaseAttributeQuery>,
 ) -> impl IntoResponse {
-    if let Err(message) = validate_attribute_source(&query.object_type, &query.event_type, "query") {
+    if let Err(message) = validate_attribute_source(&query.object_type, &query.event_type, "query")
+    {
         return (StatusCode::BAD_REQUEST, message).into_response();
     }
 
@@ -212,7 +216,8 @@ pub async fn get_case_attribute_stats(
             query.object_type.as_deref(),
             query.event_type.as_deref(),
             agg_str,
-        ).values
+        )
+        .values
     } else {
         collect_pooled_attribute_values(
             &persisted.case_notion,
@@ -227,17 +232,20 @@ pub async fn get_case_attribute_stats(
     let stats = compute_numeric_stats(&values);
     let (bins_used, histogram) = optional_histogram(&values, query.histogram);
 
-    (StatusCode::OK, Json(CaseAttributeStatsResponse {
-        case_notion_file_id,
-        origin_file_id_ocel: persisted.origin_file_id_ocel,
-        case_notion_type: persisted.case_notion_type,
-        attribute: query.attribute,
-        intra_case_agg: query.intra_case_agg,
-        stats,
-        bins_used,
-        histogram,
-    }))
-    .into_response()
+    (
+        StatusCode::OK,
+        Json(CaseAttributeStatsResponse {
+            case_notion_file_id,
+            origin_file_id_ocel: persisted.origin_file_id_ocel,
+            case_notion_type: persisted.case_notion_type,
+            attribute: query.attribute,
+            intra_case_agg: query.intra_case_agg,
+            stats,
+            bins_used,
+            histogram,
+        }),
+    )
+        .into_response()
 }
 
 /// Combines two per-case attribute operands, then returns stats over the results.
@@ -250,9 +258,11 @@ pub async fn post_attribute_combination(
     {
         return (StatusCode::BAD_REQUEST, message).into_response();
     }
-    if let Err(message) =
-        validate_attribute_source(&payload.right_object_type, &payload.right_event_type, "right")
-    {
+    if let Err(message) = validate_attribute_source(
+        &payload.right_object_type,
+        &payload.right_event_type,
+        "right",
+    ) {
         return (StatusCode::BAD_REQUEST, message).into_response();
     }
 
@@ -346,18 +356,21 @@ pub async fn get_case_time_stats(
     let stats = compute_numeric_stats(&values);
     let (bins_used, histogram) = optional_histogram(&values, query.histogram);
 
-    (StatusCode::OK, Json(CaseTimeStatsResponse {
-        case_notion_file_id,
-        origin_file_id_ocel: persisted.origin_file_id_ocel,
-        case_notion_type: persisted.case_notion_type,
-        object_type: query.object_type,
-        from_activity: query.from_activity,
-        to_activity: query.to_activity,
-        stats,
-        bins_used,
-        histogram,
-    }))
-    .into_response()
+    (
+        StatusCode::OK,
+        Json(CaseTimeStatsResponse {
+            case_notion_file_id,
+            origin_file_id_ocel: persisted.origin_file_id_ocel,
+            case_notion_type: persisted.case_notion_type,
+            object_type: query.object_type,
+            from_activity: query.from_activity,
+            to_activity: query.to_activity,
+            stats,
+            bins_used,
+            histogram,
+        }),
+    )
+        .into_response()
 }
 
 /// `GET /v1/kpi/activity_successors/{case_notion_file_id}?object_type=...`
@@ -421,15 +434,18 @@ pub async fn get_case_duration(
     let stats = compute_numeric_stats(&result.values);
     let (bins_used, histogram) = optional_histogram(&result.values, query.histogram);
 
-    (StatusCode::OK, Json(CaseDurationResponse {
-        case_notion_file_id,
-        origin_file_id_ocel: persisted.origin_file_id_ocel,
-        case_notion_type: persisted.case_notion_type,
-        cases_with_duration: result.values.len(),
-        cases_skipped: result.cases_skipped,
-        stats,
-        bins_used,
-        histogram,
-    }))
-    .into_response()
+    (
+        StatusCode::OK,
+        Json(CaseDurationResponse {
+            case_notion_file_id,
+            origin_file_id_ocel: persisted.origin_file_id_ocel,
+            case_notion_type: persisted.case_notion_type,
+            cases_with_duration: result.values.len(),
+            cases_skipped: result.cases_skipped,
+            stats,
+            bins_used,
+            histogram,
+        }),
+    )
+        .into_response()
 }

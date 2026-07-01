@@ -249,8 +249,7 @@ pub fn collect_case_time_values(
                 let mut j = i + 1;
                 while j < timeline.len() {
                     if timeline[j].1 == to_activity {
-                        let secs = (timeline[j].0 - from_time).num_milliseconds() as f64
-                            / 1000.0;
+                        let secs = (timeline[j].0 - from_time).num_milliseconds() as f64 / 1000.0;
                         all_durations.push(secs);
                         i = j + 1;
                         break;
@@ -338,8 +337,7 @@ pub fn collect_case_duration_values(
         times.sort();
 
         if times.len() >= 2 {
-            let secs = (*times.last().unwrap() - *times.first().unwrap())
-                .num_milliseconds() as f64
+            let secs = (*times.last().unwrap() - *times.first().unwrap()).num_milliseconds() as f64
                 / 1000.0;
             values.push(secs);
         } else {

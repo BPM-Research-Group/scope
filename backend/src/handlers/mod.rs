@@ -1,5 +1,4 @@
 pub mod abstractions;
-pub mod kpi;
 pub mod case_notion;
 pub mod clustering;
 pub mod collection_ocels;
@@ -9,6 +8,7 @@ pub mod df2;
 pub mod event_object_frequencies;
 pub mod export;
 pub mod extended_ocpt;
+pub mod kpi;
 pub mod log_graphs;
 pub mod ocel;
 pub mod ocim;
