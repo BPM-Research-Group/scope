@@ -128,30 +128,6 @@ pub fn collect_per_case_attribute_kpi_values(
         .collect()
 }
 
-/// All raw attribute values pooled across all cases (no intra-case aggregation).
-pub fn collect_pooled_attribute_values(
-    cases: &[CaseEntry],
-    event_lookup: &FxHashMap<String, &OCELEvent>,
-    object_lookup: &FxHashMap<String, &OCELObject>,
-    attribute: &str,
-    filter_object_type: Option<&str>,
-    filter_event_type: Option<&str>,
-) -> Vec<f64> {
-    let mut pooled: Vec<f64> = Vec::new();
-    for (event_ids, object_ids, _) in cases {
-        pooled.extend(collect_case_attribute_values(
-            event_ids,
-            object_ids,
-            event_lookup,
-            object_lookup,
-            attribute,
-            filter_object_type,
-            filter_event_type,
-        ));
-    }
-    pooled
-}
-
 /// One combined KPI value per case.
 pub fn collect_case_attribute_combination_values(
     cases: &[CaseEntry],
@@ -238,7 +214,76 @@ pub fn collect_per_case_attribute_combination_values(
         .collect()
 }
 
-/// Elapsed seconds for each `from → to` transition across all object timelines.
+/// Raw `from → to` transition durations for one case across object timelines.
+fn collect_case_time_transition_durations(
+    event_ids: &[String],
+    object_ids: &[String],
+    arches: &[(String, String)],
+    event_lookup: &FxHashMap<String, &OCELEvent>,
+    object_lookup: &FxHashMap<String, &OCELObject>,
+    object_type: &str,
+    from_activity: &str,
+    to_activity: &str,
+) -> Vec<f64> {
+    let mut durations: Vec<f64> = Vec::new();
+    let event_set: FxHashSet<&str> = event_ids.iter().map(String::as_str).collect();
+    let object_set: FxHashSet<&str> = object_ids.iter().map(String::as_str).collect();
+
+    let mut object_timelines: FxHashMap<
+        &str,
+        Vec<(chrono::DateTime<chrono::FixedOffset>, &str)>,
+    > = FxHashMap::default();
+
+    for (ev_id, obj_id) in arches {
+        if !event_set.contains(ev_id.as_str()) || !object_set.contains(obj_id.as_str()) {
+            continue;
+        }
+        if let Some(obj) = object_lookup.get(obj_id.as_str()) {
+            if obj.object_type != object_type {
+                continue;
+            }
+        } else {
+            continue;
+        }
+        if let Some(event) = event_lookup.get(ev_id.as_str()) {
+            object_timelines
+                .entry(obj_id.as_str())
+                .or_default()
+                .push((event.time, event.event_type.as_str()));
+        }
+    }
+
+    for timeline in object_timelines.values_mut() {
+        timeline.sort_by_key(|(t, _)| *t);
+
+        let mut i = 0;
+        while i < timeline.len() {
+            if timeline[i].1 != from_activity {
+                i += 1;
+                continue;
+            }
+            let from_time = timeline[i].0;
+            let mut j = i + 1;
+            while j < timeline.len() {
+                if timeline[j].1 == to_activity {
+                    let secs =
+                        (timeline[j].0 - from_time).num_milliseconds() as f64 / 1000.0;
+                    durations.push(secs);
+                    i = j + 1;
+                    break;
+                }
+                j += 1;
+            }
+            if j == timeline.len() {
+                break;
+            }
+        }
+    }
+
+    durations
+}
+
+/// One aggregated `from → to` time (seconds) per case (`intra_case_agg` required).
 pub fn collect_case_time_values(
     cases: &[CaseEntry],
     event_lookup: &FxHashMap<String, &OCELEvent>,
@@ -246,66 +291,45 @@ pub fn collect_case_time_values(
     object_type: &str,
     from_activity: &str,
     to_activity: &str,
-) -> Vec<f64> {
-    let mut all_durations: Vec<f64> = Vec::new();
+    intra_case_agg: &str,
+) -> CaseKpiValues {
+    case_kpi_values_from_per_case(collect_per_case_time_values(
+        cases,
+        event_lookup,
+        object_lookup,
+        object_type,
+        from_activity,
+        to_activity,
+        intra_case_agg,
+    ))
+}
 
-    for (event_ids, object_ids, arches) in cases {
-        let event_set: FxHashSet<&str> = event_ids.iter().map(String::as_str).collect();
-        let object_set: FxHashSet<&str> = object_ids.iter().map(String::as_str).collect();
-
-        let mut object_timelines: FxHashMap<
-            &str,
-            Vec<(chrono::DateTime<chrono::FixedOffset>, &str)>,
-        > = FxHashMap::default();
-
-        for (ev_id, obj_id) in arches {
-            if !event_set.contains(ev_id.as_str()) || !object_set.contains(obj_id.as_str()) {
-                continue;
-            }
-            if let Some(obj) = object_lookup.get(obj_id.as_str()) {
-                if obj.object_type != object_type {
-                    continue;
-                }
-            } else {
-                continue;
-            }
-            if let Some(event) = event_lookup.get(ev_id.as_str()) {
-                object_timelines
-                    .entry(obj_id.as_str())
-                    .or_default()
-                    .push((event.time, event.event_type.as_str()));
-            }
-        }
-
-        for timeline in object_timelines.values_mut() {
-            timeline.sort_by_key(|(t, _)| *t);
-
-            let mut i = 0;
-            while i < timeline.len() {
-                if timeline[i].1 != from_activity {
-                    i += 1;
-                    continue;
-                }
-                let from_time = timeline[i].0;
-                let mut j = i + 1;
-                while j < timeline.len() {
-                    if timeline[j].1 == to_activity {
-                        let secs = (timeline[j].0 - from_time).num_milliseconds() as f64
-                            / 1000.0;
-                        all_durations.push(secs);
-                        i = j + 1;
-                        break;
-                    }
-                    j += 1;
-                }
-                if j == timeline.len() {
-                    break;
-                }
-            }
-        }
-    }
-
-    all_durations
+/// One optional aggregated time per case index.
+pub fn collect_per_case_time_values(
+    cases: &[CaseEntry],
+    event_lookup: &FxHashMap<String, &OCELEvent>,
+    object_lookup: &FxHashMap<String, &OCELObject>,
+    object_type: &str,
+    from_activity: &str,
+    to_activity: &str,
+    intra_case_agg: &str,
+) -> Vec<Option<f64>> {
+    cases
+        .iter()
+        .map(|(event_ids, object_ids, arches)| {
+            let raw = collect_case_time_transition_durations(
+                event_ids,
+                object_ids,
+                arches,
+                event_lookup,
+                object_lookup,
+                object_type,
+                from_activity,
+                to_activity,
+            );
+            reduce_values(&raw, intra_case_agg)
+        })
+        .collect()
 }
 
 /// Returns, for each activity, the set of activities that follow it within

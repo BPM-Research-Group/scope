@@ -20,7 +20,7 @@ pub fn build_range_histogram(values: &[f64], bins: usize) -> Vec<KpiHistogramBin
 
     if min == max {
         return vec![KpiHistogramBin {
-            count: min,
+            bin_midpoint: min,
             frequency: values.len(),
             bin_start: min,
             bin_end: max,
@@ -51,7 +51,7 @@ pub fn build_range_histogram(values: &[f64], bins: usize) -> Vec<KpiHistogramBin
                 bin_start + width
             };
             KpiHistogramBin {
-                count: (bin_start + bin_end) / 2.0,
+                bin_midpoint: (bin_start + bin_end) / 2.0,
                 frequency,
                 bin_start,
                 bin_end,

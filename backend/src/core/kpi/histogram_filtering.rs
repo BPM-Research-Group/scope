@@ -1,8 +1,8 @@
 use crate::core::kpi::case_kpis::{
     collect_per_case_attribute_combination_values, collect_per_case_attribute_kpi_values,
-    collect_per_case_duration_values, CaseEntry,
+    collect_per_case_duration_values, collect_per_case_time_values, CaseEntry,
 };
-use crate::core::kpi::validation::{resolve_intra_case_agg, validate_attribute_source};
+use crate::core::kpi::validation::{validate_attribute_source, validate_intra_case_agg};
 use crate::models::kpi::{KpiFilterSpec, KpiHistogramFilterPayload};
 use crate::models::ocel::{OCELEvent, OCELObject};
 use rustc_hash::FxHashMap;
@@ -53,7 +53,7 @@ fn collect_per_case_values_for_filter(
             intra_case_agg,
         } => {
             validate_attribute_source(object_type, event_type, "query")?;
-            let agg = resolve_intra_case_agg(Some(intra_case_agg.clone()), "intra_case_agg")?;
+            validate_intra_case_agg(intra_case_agg, "intra_case_agg")?;
             Ok(collect_per_case_attribute_kpi_values(
                 cases,
                 event_lookup,
@@ -61,7 +61,7 @@ fn collect_per_case_values_for_filter(
                 attribute,
                 object_type.as_deref(),
                 event_type.as_deref(),
-                &agg,
+                intra_case_agg,
             ))
         }
         KpiFilterSpec::AttributeCombination {
@@ -77,10 +77,8 @@ fn collect_per_case_values_for_filter(
         } => {
             validate_attribute_source(left_object_type, left_event_type, "left")?;
             validate_attribute_source(right_object_type, right_event_type, "right")?;
-            let left_agg =
-                resolve_intra_case_agg(left_intra_case_agg.clone(), "left_intra_case_agg")?;
-            let right_agg =
-                resolve_intra_case_agg(right_intra_case_agg.clone(), "right_intra_case_agg")?;
+            validate_intra_case_agg(left_intra_case_agg, "left_intra_case_agg")?;
+            validate_intra_case_agg(right_intra_case_agg, "right_intra_case_agg")?;
             Ok(collect_per_case_attribute_combination_values(
                 cases,
                 event_lookup,
@@ -88,12 +86,29 @@ fn collect_per_case_values_for_filter(
                 left_attribute,
                 left_object_type.as_deref(),
                 left_event_type.as_deref(),
-                &left_agg,
+                left_intra_case_agg,
                 right_attribute,
                 right_object_type.as_deref(),
                 right_event_type.as_deref(),
-                &right_agg,
+                right_intra_case_agg,
                 *operation,
+            ))
+        }
+        KpiFilterSpec::CaseTimeStats {
+            object_type,
+            from_activity,
+            to_activity,
+            intra_case_agg,
+        } => {
+            validate_intra_case_agg(intra_case_agg, "intra_case_agg")?;
+            Ok(collect_per_case_time_values(
+                cases,
+                event_lookup,
+                object_lookup,
+                object_type,
+                from_activity,
+                to_activity,
+                intra_case_agg,
             ))
         }
     }

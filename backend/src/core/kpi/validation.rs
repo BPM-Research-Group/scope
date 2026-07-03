@@ -18,9 +18,8 @@ pub fn validate_attribute_source(
     }
 }
 
-pub fn resolve_intra_case_agg(value: Option<String>, field: &str) -> Result<String, String> {
-    let agg = value.unwrap_or_else(|| "sum".to_string());
-    if !VALID_INTRA_CASE_AGG.contains(&agg.as_str()) {
+pub fn validate_intra_case_agg(agg: &str, field: &str) -> Result<(), String> {
+    if !VALID_INTRA_CASE_AGG.contains(&agg) {
         return Err(format!(
             "Invalid {} '{}'. Must be one of: {}",
             field,
@@ -28,5 +27,5 @@ pub fn resolve_intra_case_agg(value: Option<String>, field: &str) -> Result<Stri
             VALID_INTRA_CASE_AGG.join(", ")
         ));
     }
-    Ok(agg)
+    Ok(())
 }

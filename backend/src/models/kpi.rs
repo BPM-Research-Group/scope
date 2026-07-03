@@ -43,14 +43,13 @@ pub struct NumericStats {
     pub sum: f64,
 }
 
-/// `GET /v1/kpi/case_attribute_stats/{case_notion_file_id}`
-/// Provide exactly one of `object_type` or `event_type`. Add `histogram=true` for a chart.
+/// Provide exactly one of `object_type` or `event_type`. `intra_case_agg` is required. Add `histogram=true` for a chart.
 #[derive(Deserialize)]
 pub struct CaseAttributeQuery {
     pub attribute: String,
     pub object_type: Option<String>,
     pub event_type: Option<String>,
-    pub intra_case_agg: Option<String>,
+    pub intra_case_agg: String,
     pub histogram: Option<bool>,
 }
 
@@ -60,8 +59,10 @@ pub struct CaseAttributeStatsResponse {
     pub origin_file_id_ocel: String,
     pub case_notion_type: String,
     pub attribute: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub intra_case_agg: Option<String>,
+    pub intra_case_agg: String,
+    pub cases_with_value: usize,
+    /// Cases skipped due to missing attribute values for the query.
+    pub cases_skipped: usize,
     pub stats: Option<NumericStats>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bins_used: Option<usize>,
@@ -79,16 +80,17 @@ pub enum CombinationOperator {
 }
 
 /// `POST /v1/kpi/attribute_combination/{case_notion_file_id}`
+/// `left_intra_case_agg` and `right_intra_case_agg` are required.
 #[derive(Deserialize)]
 pub struct CaseAttributeCombinationRequest {
     pub left_attribute: String,
     pub left_object_type: Option<String>,
     pub left_event_type: Option<String>,
-    pub left_intra_case_agg: Option<String>,
+    pub left_intra_case_agg: String,
     pub right_attribute: String,
     pub right_object_type: Option<String>,
     pub right_event_type: Option<String>,
-    pub right_intra_case_agg: Option<String>,
+    pub right_intra_case_agg: String,
     pub operation: CombinationOperator,
     pub histogram: Option<bool>,
 }
@@ -111,7 +113,9 @@ pub struct CaseAttributeCombinationStatsResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct KpiHistogramBin {
-    pub count: f64,
+    /// Bin midpoint — x-axis position for chart.
+    pub bin_midpoint: f64,
+    /// Number of per-case KPI values in this bin — bar height.
     pub frequency: usize,
     /// Inclusive lower edge of the bin (for filtering).
     pub bin_start: f64,
@@ -141,22 +145,28 @@ pub enum KpiFilterSpec {
         left_attribute: String,
         left_object_type: Option<String>,
         left_event_type: Option<String>,
-        left_intra_case_agg: Option<String>,
+        left_intra_case_agg: String,
         right_attribute: String,
         right_object_type: Option<String>,
         right_event_type: Option<String>,
-        right_intra_case_agg: Option<String>,
+        right_intra_case_agg: String,
         operation: CombinationOperator,
+    },
+    CaseTimeStats {
+        object_type: String,
+        from_activity: String,
+        to_activity: String,
+        intra_case_agg: String,
     },
 }
 
 /// `GET /v1/kpi/case_time_stats/{case_notion_file_id}`
-/// All three params required. `histogram=true` bins per-transition times, not per-case.
 #[derive(Deserialize)]
 pub struct CaseTimeQuery {
     pub object_type: String,
     pub from_activity: String,
     pub to_activity: String,
+    pub intra_case_agg: String,
     pub histogram: Option<bool>,
 }
 
@@ -168,7 +178,10 @@ pub struct CaseTimeStatsResponse {
     pub object_type: String,
     pub from_activity: String,
     pub to_activity: String,
-    /// null if no from→to pairs were found.
+    pub intra_case_agg: String,
+    pub cases_with_value: usize,
+    pub cases_skipped: usize,
+    /// null if no case had a computable from→to time.
     pub stats: Option<NumericStats>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bins_used: Option<usize>,
