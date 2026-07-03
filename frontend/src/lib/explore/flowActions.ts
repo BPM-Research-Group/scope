@@ -222,6 +222,80 @@ export const spawnDownstreamNode = (sourceNodeId: string, nodeType: ExploreNodeT
     handleConnect({ source: sourceNode.id, target: newNode.id, sourceHandle: 'source', targetHandle: 'target' });
 };
 
+export type MinerOutputConfig = Omit<HandleMinerOutputParams, 'nodeId'>;
+
+export const handleMultipleMinerOutputs = (
+    nodeId: string,
+    outputs: MinerOutputConfig[]
+) => {
+    const { updateNodeData, getNode, edges: freshEdges, nodes: freshNodes } = useExploreFlowStore.getState();
+    const node = getNode(nodeId);
+    if (!node) return;
+
+    // 1. Alle neuen Assets für den Ursprungsknoten sammeln
+    const newAssets = outputs.map(out => ({
+        id: out.outputAssetId!,
+        io: 'output' as const,
+        origin: 'mined' as const,
+        type: out.outputAssetType,
+        name: out.inputFileName,
+    }));
+
+    // Ursprungsknoten einmalig mit allen neuen Assets aktualisieren
+    updateNodeData(nodeId, (prev) => {
+        const currentAssets = prev.assets.filter((a) => a.io !== 'output');
+        return { assets: [...currentAssets, ...newAssets] };
+    });
+
+    const freshNode = freshNodes.find((n) => n.id === nodeId);
+
+    // NEU: Wir tracken, welche Zielknoten wir bereits mit einem Output befüllt haben.
+    const assignedTargetIds = new Set<string>();
+
+    // 2. Jeden Output einzeln durchgehen
+    outputs.forEach((out, index) => {
+        const correspondingAsset = newAssets[index];
+        
+        // Suche nach einer Kante, die noch NICHT für einen vorherigen Output verwendet wurde
+        const existingEdgeForType = freshEdges.find((edge) => {
+            if (edge.source !== nodeId) return false;
+            
+            const targetNode = freshNodes.find((n) => n.id === edge.target);
+            return (
+                targetNode && 
+                targetNode.type === out.outputNodeType &&
+                !assignedTargetIds.has(targetNode.id) // WICHTIG: Überspringe bereits befüllte Knoten
+            );
+        });
+
+        if (existingEdgeForType) {
+            const targetId = existingEdgeForType.target;
+            
+            // Markiere diesen Zielknoten als "verbraucht" für diesen Render-Zyklus
+            assignedTargetIds.add(targetId);
+
+            updateNodeData(targetId, (prev: any) => {
+                const otherAssets = prev.assets.filter((a: any) => a.io !== 'output');
+                const sourceColorMap = (freshNode?.data as any)?.colorMap;
+                const existingColorMap = prev.colorMap || {};
+                const nextColorMap = sourceColorMap ? { ...existingColorMap, ...sourceColorMap } : existingColorMap;
+                
+                return {
+                    assets: [...otherAssets, { ...correspondingAsset, io: 'output' }],
+                    colorMap: nextColorMap,
+                };
+            });
+            
+            if ((freshNode?.data as any)?.colorMap) {
+                propagateMapDownstream(nodeId, (freshNode!.data as any).colorMap);
+            }
+        } else {
+            // Wenn keine FREIE Kante mehr existiert -> Neuen Knoten erzeugen!
+            spawnDownstreamNode(nodeId, out.outputNodeType);
+        }
+    });
+};
+
 export interface HandleMinerOutputParams {
     nodeId: string;
     outputAssetId: string | null | undefined;
