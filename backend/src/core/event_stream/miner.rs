@@ -286,8 +286,7 @@ impl MinerSnapshot {
             &process_forest, 
             &self.convergent, 
             &self.deficient, 
-            &self.divergent,
-            &self.related
+            &self.divergent
         );
         let json = serde_json::to_string(&output_json).unwrap();
         let mut deserializer = serde_json::Deserializer::from_str(&json);
