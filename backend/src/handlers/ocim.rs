@@ -18,6 +18,20 @@ pub async fn apply_ocim(
         },
     };
 
+    if ocels.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "OCIM requires at least one OCEL".to_string(),
+        ));
+    }
+
+    if ocels.iter().all(|ocel| ocel.events.is_empty()) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "OCIM requires at least one event across the input OCELs".to_string(),
+        ));
+    }
+
     let ocpt = ocim_init(&ocels);
     //let ocpt_frontend = backend_to_frontend(&ocpt); //needed to add this step since frontend has a different ocpt format, than we use in the backend
 

@@ -9,6 +9,7 @@ pub mod event_object_frequencies;
 pub mod event_stream_mining;
 pub mod export;
 pub mod extended_ocpt;
+pub mod kpi;
 pub mod log_graphs;
 pub mod ocel;
 pub mod ocim;

@@ -1,8 +1,5 @@
 use crate::handlers::export::{export_ocpn_pm4py, export_ocpt_pm4py};
-use axum::{
-    Router,
-    routing::get,
-};
+use axum::{Router, routing::get};
 
 pub fn router() -> Router {
     Router::new()
