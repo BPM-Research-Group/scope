@@ -49,7 +49,9 @@ pub trait ImportableFromPath: Sized + DeserializeOwned {
             }
         })?;
 
-        serde_json::from_str::<Self>(&content).map_err(|err| {
+        let mut deserializer = serde_json::Deserializer::from_str(&content);
+        deserializer.disable_recursion_limit();
+        serde::Deserialize::deserialize(&mut deserializer).map_err(|err| {
             log::error!("Failed to parse JSON file {}: {}", path, err);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,

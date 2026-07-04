@@ -16,7 +16,8 @@ pub fn find_cuts_start(
 ) -> ProcessForest {
     let mut forest = Vec::new();
 
-    let activities: Vec<String> = all_activities.clone().into_iter().collect();
+    let mut activities: Vec<String> = all_activities.iter().cloned().collect();
+    activities.sort();
     let n = activities.len();
 
     if n == 1 {
@@ -193,7 +194,10 @@ fn find_exclusive_choice_cut(
     let mut visited: HashSet<String> = HashSet::new();
     let mut components: Vec<HashSet<String>> = Vec::new();
 
-    for activity in all_activities {
+    let mut all_activities_sorted: Vec<String> = all_activities.iter().cloned().collect();
+    all_activities_sorted.sort();
+
+    for activity in &all_activities_sorted {
         if !visited.contains(activity) {
             let mut component = HashSet::new();
             let mut queue = VecDeque::new();
@@ -202,8 +206,15 @@ fn find_exclusive_choice_cut(
 
             while let Some(current) = queue.pop_front() {
                 component.insert(current.clone());
-                for neighbor in undirected_graph.get(&current).unwrap_or(&HashSet::new()) {
-                    if !visited.contains(neighbor) {
+                let mut neighbors: Vec<String> = undirected_graph
+                    .get(&current)
+                    .unwrap_or(&HashSet::new())
+                    .iter()
+                    .cloned()
+                    .collect();
+                neighbors.sort();
+                for neighbor in neighbors {
+                    if !visited.contains(&neighbor) {
                         visited.insert(neighbor.clone());
                         queue.push_back(neighbor.clone());
                     }
@@ -214,11 +225,15 @@ fn find_exclusive_choice_cut(
         }
     }
 
-    // // Step 3: Print disjoint components
-    // info!("Disjoint components:");
-    // for (i, comp) in components.iter().enumerate() {
-    //     info!("Component {}: {:?}", i + 1, comp);
-    // }
+    // Step 3: Sort components to ensure deterministic set1 and set2
+    // We can sort components by their smallest element
+    components.sort_by(|a, b| {
+        let mut a_sorted: Vec<_> = a.iter().collect();
+        a_sorted.sort();
+        let mut b_sorted: Vec<_> = b.iter().collect();
+        b_sorted.sort();
+        a_sorted[0].cmp(b_sorted[0])
+    });
 
     // Step 4: Assign first component to set1, rest to set2
     let mut set1 = HashSet::new();
@@ -296,6 +311,9 @@ fn strongly_connected_components(
     for activity in all_activities {
         graph.entry(activity.clone()).or_default();
     }
+    for neighbors in graph.values_mut() {
+        neighbors.sort();
+    }
 
     // Tarjan’s setup
     let mut index = 0;
@@ -352,10 +370,12 @@ fn strongly_connected_components(
     }
 
     // Run Tarjan's on all nodes
-    for node in all_activities {
-        if !indices.contains_key(node) {
+    let mut all_activities_sorted: Vec<String> = all_activities.iter().cloned().collect();
+    all_activities_sorted.sort();
+    for node in all_activities_sorted {
+        if !indices.contains_key(&node) {
             strongconnect(
-                node,
+                &node,
                 &graph,
                 &mut index,
                 &mut indices,
@@ -366,6 +386,11 @@ fn strongly_connected_components(
             );
         }
     }
+
+    for scc in &mut sccs {
+        scc.sort();
+    }
+    sccs.sort_by(|a, b| a[0].cmp(&b[0]));
 
     sccs
 }
@@ -411,7 +436,8 @@ pub fn partition_scc_sets(
 
     // Find common activities and remove them from both sets
     let intersection: HashSet<_> = set1.intersection(&set2).cloned().collect();
-    let common_activities = intersection.clone();
+    let mut common_activities: Vec<_> = intersection.iter().cloned().collect();
+    common_activities.sort();
 
     for i in &intersection {
         set1.remove(i);
@@ -423,7 +449,9 @@ pub fn partition_scc_sets(
         let mut all_can_reach_and_c_cannot_reach_back = true;
 
         // Check if every activity 't' in set1 can reach 'c', and 'c' cannot reach 't'
-        for t in &set1 {
+        let mut set1_sorted: Vec<_> = set1.iter().cloned().collect();
+        set1_sorted.sort();
+        for t in &set1_sorted {
             if !is_reachable_in_dag(dag, *t, c) || is_reachable_in_dag(dag, c, *t) {
                 all_can_reach_and_c_cannot_reach_back = false;
                 break;
@@ -441,13 +469,17 @@ pub fn partition_scc_sets(
     let mut act_set1 = HashSet::new();
     let mut act_set2 = HashSet::new();
 
-    for i in &set1 {
+    let mut set1_final_sorted: Vec<_> = set1.iter().cloned().collect();
+    set1_final_sorted.sort();
+    for i in &set1_final_sorted {
         for act in &sccs[*i] {
             act_set1.insert(act.clone());
         }
     }
 
-    for i in &set2 {
+    let mut set2_final_sorted: Vec<_> = set2.iter().cloned().collect();
+    set2_final_sorted.sort();
+    for i in &set2_final_sorted {
         for act in &sccs[*i] {
             act_set2.insert(act.clone());
         }
@@ -507,7 +539,10 @@ fn find_parallel_cut(
     let mut set1: HashSet<String> = HashSet::new();
     let mut set2: HashSet<String> = HashSet::new();
 
-    for act in all_activities {
+    let mut all_activities_sorted: Vec<String> = all_activities.iter().cloned().collect();
+    all_activities_sorted.sort();
+
+    for act in all_activities_sorted {
         if set1.is_empty() {
             set1.insert(act.clone());
             continue;
@@ -567,13 +602,16 @@ fn find_redo_cut(
     set1.extend(start_activities.iter().cloned());
     set1.extend(end_activities.iter().cloned());
 
-    for x in all_activities {
-        if set1.contains(x) {
+    let mut all_activities_sorted: Vec<String> = all_activities.iter().cloned().collect();
+    all_activities_sorted.sort();
+
+    for x in all_activities_sorted {
+        if set1.contains(&x) {
             continue;
         }
 
-        let is_s1_redo = is_reachable_before_end_activity(start_activities, x, end_activities, dfg);
-        let is_s2_redo = is_reachable_before_end_activity(end_activities, x, start_activities, dfg);
+        let is_s1_redo = is_reachable_before_end_activity(start_activities, &x, end_activities, dfg);
+        let is_s2_redo = is_reachable_before_end_activity(end_activities, &x, start_activities, dfg);
 
         if is_s1_redo && !is_s2_redo {
             set1.insert(x.clone());
@@ -718,11 +756,13 @@ fn get_start_and_end_activities(
     }
 
     // Add common activities from global sets
-    for activity in filtered_activities {
-        if global_start_activities.contains(activity) {
+    let mut filtered_activities_sorted: Vec<String> = filtered_activities.iter().cloned().collect();
+    filtered_activities_sorted.sort();
+    for activity in filtered_activities_sorted {
+        if global_start_activities.contains(&activity) {
             start_activities.insert(activity.clone());
         }
-        if global_end_activities.contains(activity) {
+        if global_end_activities.contains(&activity) {
             end_activities.insert(activity.clone());
         }
     }
@@ -753,7 +793,9 @@ pub fn is_reachable_before_end_activity(
 
         visited.insert(current.clone());
 
-        for (src, dst) in dfg.keys() {
+        let mut keys: Vec<&(String, String)> = dfg.keys().collect();
+        keys.sort();
+        for (src, dst) in keys {
             if src == current {
                 if dfs(dst, target, end_activities, dfg, visited) {
                     return true;
@@ -764,9 +806,11 @@ pub fn is_reachable_before_end_activity(
         false
     }
 
-    for start in start_activities {
+    let mut start_activities_sorted: Vec<String> = start_activities.iter().cloned().collect();
+    start_activities_sorted.sort();
+    for start in start_activities_sorted {
         let mut visited = HashSet::new();
-        if dfs(start, target, end_activities, dfg, &mut visited) {
+        if dfs(&start, target, end_activities, dfg, &mut visited) {
             return true;
         }
     }
