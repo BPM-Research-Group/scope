@@ -1,12 +1,13 @@
 pub mod abstractions;
 pub mod case_notion;
-pub mod kpi;
 pub mod clustering;
 pub mod conformance;
 pub mod df2;
 pub mod event_object_frequencies;
+pub mod event_stream_mining;
 pub mod export;
 pub mod extended_ocpt;
+pub mod kpi;
 pub mod log_graphs;
 pub mod objects;
 pub mod ocim;
@@ -33,6 +34,7 @@ pub fn router() -> Router {
         .nest("/ocpt", df2::router())
         .nest("/ocpt", ocim::router())
         .nest("/ocpt", extended_ocpt::router())
+        .nest("/event_stream", event_stream_mining::router())
         .nest("/resource_miner", resource_miner::router())
         .nest("/kpi", kpi::router())
 }

@@ -39,6 +39,7 @@ interface MinerNodeProps {
     onReset?: () => void;
     customActions?: ReactNode;
     settings?: ReactNode;
+    customContent?: ReactNode;
     children?: ReactNode;
 }
 
@@ -92,6 +93,7 @@ const BaseMinerNode = memo<MinerNodeProps>((props) => {
         onReset,
         customActions,
         settings,
+        customContent,
         children,
     } = props;
     const { assets, isStale } = data;
@@ -142,6 +144,8 @@ const BaseMinerNode = memo<MinerNodeProps>((props) => {
     }, [isStale, id, onReset, updateNodeData, assets]);
 
     const renderFileContent = () => {
+        if (customContent) return customContent;
+
         if (isWaitingForInput) {
             return (
                 <div className="flex flex-col items-center justify-center py-2 gap-2 px-2">

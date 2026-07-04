@@ -6,6 +6,7 @@ use crate::core::kpi::case_kpis::{
     collect_case_attribute_combination_values, collect_case_attribute_kpi_values,
     collect_case_duration_values, collect_case_time_values, compute_activity_successors,
 };
+use crate::core::kpi::histogram::{build_range_histogram, default_bin_count};
 use crate::models::kpi::{
     ActivitySuccessorsQuery, ActivitySuccessorsResponse, AttributeMetadata,
     CaseAttributeCombinationRequest, CaseAttributeCombinationStatsResponse, CaseAttributeQuery,
@@ -13,7 +14,7 @@ use crate::models::kpi::{
     CaseTimeQuery, CaseTimeStatsResponse, EventTypeMetadata,
     KpiHistogramBin, KpiHistogramFilterPayload, ObjectTypeMetadata, OcelMetadataResponse,
 };
-use crate::models::ocel::{OCELEvent, OCELObject, OCELType, OCEL};
+use crate::models::ocel::{OCEL, OCELEvent, OCELObject, OCELType};
 use crate::traits::import_export::ImportableFromPath;
 use async_trait::async_trait;
 use axum::{
@@ -57,7 +58,10 @@ async fn load_case_notion(
         Ok(data) => Ok(data),
         Err((status, _)) if status == StatusCode::NOT_FOUND => Err((
             StatusCode::NOT_FOUND,
-            format!("No stored case notion found for fileId: {}", case_notion_file_id),
+            format!(
+                "No stored case notion found for fileId: {}",
+                case_notion_file_id
+            ),
         )
             .into_response()),
         Err((status, message)) => Err((status, message).into_response()),
@@ -164,7 +168,8 @@ pub async fn get_case_attribute_stats(
     Path(case_notion_file_id): Path<String>,
     Query(query): Query<CaseAttributeQuery>,
 ) -> impl IntoResponse {
-    if let Err(message) = validate_attribute_source(&query.object_type, &query.event_type, "query") {
+    if let Err(message) = validate_attribute_source(&query.object_type, &query.event_type, "query")
+    {
         return (StatusCode::BAD_REQUEST, message).into_response();
     }
 
@@ -216,9 +221,11 @@ pub async fn post_attribute_combination(
     {
         return (StatusCode::BAD_REQUEST, message).into_response();
     }
-    if let Err(message) =
-        validate_attribute_source(&payload.right_object_type, &payload.right_event_type, "right")
-    {
+    if let Err(message) = validate_attribute_source(
+        &payload.right_object_type,
+        &payload.right_event_type,
+        "right",
+    ) {
         return (StatusCode::BAD_REQUEST, message).into_response();
     }
 

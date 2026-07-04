@@ -3,7 +3,7 @@
 // Definitions:
 //   resource     : an object type that is divergent in every activity it participates in
 //   non-resource : an object type that is NOT divergent in at least one activity
-//   special activity: an activity where ALL related object types are divergent 
+//   special activity: an activity where ALL related object types are divergent
 
 use crate::core::resource_miner::is_special_activity;
 use crate::models::ocel::{OCEL, OCELUtils};
