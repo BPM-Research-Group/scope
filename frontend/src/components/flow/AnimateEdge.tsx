@@ -22,7 +22,6 @@ export type AnimatedSvgEdgeData = {
     isDivLoopEntry?: boolean;
     visibleTokens?: ObjectFlowAtEdge[];
     currentTime?: Date;
-    parallelJoinWaitingTokens?: ObjectFlowAtEdge[];
     branchOriginContexts?: BranchOriginData[];
 };
 
