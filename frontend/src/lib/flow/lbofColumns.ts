@@ -35,18 +35,6 @@ const nodeWidth = (object: AltFlowNode): number => {
     return GATEWAY_NODE.width;
 };
 
-/**
- * Computes a global column x for every flow node across all object-type lanes.
- *
- * A single merged dagre graph (rankdir 'LR') is laid out using canonical ids, so
- * that shared activities, the start event and the end event each exist as one
- * node — guaranteeing aligned activity columns, a flush-left start and a
- * flush-right end. Loop back-edges (divLoopEnd -> divLoopStart) are excluded so
- * the graph stays acyclic and longest-path ranking is well defined.
- *
- * Dagre's raw x is then re-indexed into evenly spaced columns: distinct x values
- * correspond to ranks, sorted left-to-right and multiplied by COLUMN_WIDTH.
- */
 export const computeColumnX = (jsonFlows: AltFlowJson[]): Map<string, number> => {
     const g = new dagre.graphlib.Graph();
     g.setGraph({ rankdir: 'LR', ranksep: 80, nodesep: 40 });
@@ -54,7 +42,7 @@ export const computeColumnX = (jsonFlows: AltFlowJson[]): Map<string, number> =>
 
     const widthById = new Map<string, number>();
     const seenEdges = new Set<string>();
-    // Activities render as full-height boxes, so no gateway/event may share their column.
+    // Activities render as full-height boxes.
     const activityIds = new Set<string>();
 
     jsonFlows.forEach((jsonFlow) => {
@@ -86,14 +74,14 @@ export const computeColumnX = (jsonFlows: AltFlowJson[]): Map<string, number> =>
         });
     });
 
-    // Assign sizes (setEdge auto-created the nodes; this just sets dimensions).
+    // Assign sizes.
     widthById.forEach((width, id) => {
         g.setNode(id, { width, height: 40 });
     });
 
     dagre.layout(g);
 
-    // Group distinct x values (= ranks) into integer column indices.
+    // Re-index distinct dagre x values.
     const xById = new Map<string, number>();
     const distinctX = new Set<number>();
     g.nodes().forEach((id) => {
@@ -104,33 +92,37 @@ export const computeColumnX = (jsonFlows: AltFlowJson[]): Map<string, number> =>
         distinctX.add(x);
     });
 
-    const colIndexByX = new Map<number, number>();
-    [...distinctX].sort((a, b) => a - b).forEach((x, i) => colIndexByX.set(x, i));
+    const rankByX = new Map<number, number>();
+    [...distinctX].sort((a, b) => a - b).forEach((x, i) => rankByX.set(x, i));
+    const rankById = new Map<string, number>();
+    xById.forEach((x, id) => rankById.set(id, rankByX.get(x) ?? 0));
 
-    const colById = new Map<string, number>();
-    xById.forEach((x, id) => colById.set(id, colIndexByX.get(x) ?? 0));
-
-    // Columns that contain an activity must stay activity-exclusive. Any gateway/event
-    // that dagre placed in such a column is nudged to a half-step before it (col - 0.5);
-    // re-indexing the distinct positions then promotes that into its own dedicated column,
-    // so a gateway can never be drawn inside an activity box.
-    const activityColumns = new Set<number>();
-    colById.forEach((col, id) => {
-        if (activityIds.has(id)) activityColumns.add(col);
+    // Assign each node to a column group:
+    // - Each distinct activity gets its own group, so the same activity shares one column
+    //   across lanes, but two different activities never collapse onto the same column
+    //   (their boxes are full-height and would otherwise stack on top of each other).
+    // - All non-activity nodes (gateways/events) at a given rank share a group, which also
+    //   keeps them out of any activity's column. Same-rank nodes are always in different
+    //   lanes (same-lane nodes are ordered by edges into different ranks), so grouping them
+    //   never causes an in-lane overlap.
+    const groupKeyById = new Map<string, string>();
+    rankById.forEach((rank, id) => {
+        groupKeyById.set(id, activityIds.has(id) ? `act:${id}` : `rank:${rank}`);
     });
 
-    const posById = new Map<string, number>();
-    colById.forEach((col, id) => {
-        const collidesWithActivity = !activityIds.has(id) && activityColumns.has(col);
-        posById.set(id, collidesWithActivity ? col - 0.5 : col);
+    // Order the distinct groups left-to-right by (rank, key) and give each its own column.
+    const rankByGroup = new Map<string, number>();
+    groupKeyById.forEach((key, id) => {
+        if (!rankByGroup.has(key)) rankByGroup.set(key, rankById.get(id) ?? 0);
     });
-
-    const finalIndexByPos = new Map<number, number>();
-    [...new Set(posById.values())].sort((a, b) => a - b).forEach((pos, i) => finalIndexByPos.set(pos, i));
+    const columnIndexByGroup = new Map<string, number>();
+    [...rankByGroup.keys()]
+        .sort((a, b) => rankByGroup.get(a)! - rankByGroup.get(b)! || (a < b ? -1 : a > b ? 1 : 0))
+        .forEach((key, i) => columnIndexByGroup.set(key, i));
 
     const columnX = new Map<string, number>();
-    posById.forEach((pos, id) => {
-        columnX.set(id, (finalIndexByPos.get(pos) ?? 0) * COLUMN_WIDTH);
+    groupKeyById.forEach((key, id) => {
+        columnX.set(id, (columnIndexByGroup.get(key) ?? 0) * COLUMN_WIDTH);
     });
     return columnX;
 };

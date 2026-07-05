@@ -25,7 +25,7 @@ const Token: React.FC<TokenProps> = ({ id, type, radius, onMount, onUnmount }) =
             <circle
                 className={`token-circle token-${id}`}
                 r={radius}
-                fill={colorScale(type.charAt(0).toUpperCase() + type.slice(1))}
+                fill={colorScale(type)}
             />
             <text textAnchor="middle" dy=".3em" fontSize="10" fill="#fff">
                 {id}

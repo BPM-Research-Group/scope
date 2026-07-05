@@ -363,8 +363,8 @@ export const visualizeObject = (
                         edge.source.includes('activity') &&
                         edge.source.includes('in')
                     ) {
-                        tokenDataPayload.activity = edge.data.activity;
-                        addTokenToEdge(edge, tokenDataPayload);
+                        // Execute-edge tokens are added eagerly when the activity is reached
+                        // (see below), so skip here to avoid adding a duplicate.
                     } else {
                         addTokenToEdge(edge, tokenDataPayload);
                     }
@@ -372,14 +372,35 @@ export const visualizeObject = (
 
                 if (actualLastEdgeIdToActivity) {
                     const lastEdge = edgesById.get(actualLastEdgeIdToActivity);
-                    if (lastEdge) startEdgesForNextOuterIteration.push(lastEdge);
+                    if (lastEdge) {
+                        startEdgesForNextOuterIteration.push(lastEdge);
+
+                        // Token the activity's own execute edge eagerly, the moment the
+                        // activity is reached. Otherwise the token is only added when this
+                        // edge is later traversed as a start edge — which never happens if
+                        // parallel routing finishes the branch, so the token would be lost.
+                        if (lastEdge.data && lastEdge.id.includes('execute')) {
+                            const execStartMs = new Date(toTimestamp).getTime();
+                            const nextTimestamp =
+                                activityIndex + 1 < activityCount ? timestamps[activityIndex + 1] : endTime;
+                            const execDurationMs = Math.max(0, new Date(nextTimestamp).getTime() - execStartMs);
+                            addTokenToEdge(lastEdge, {
+                                id,
+                                type,
+                                timestamp: new Date(execStartMs).toISOString(),
+                                timestampMs: execStartMs,
+                                executionDurationMs: execDurationMs,
+                                realTimeExecutionDuration: execDurationMs,
+                                fromActivity: toActivity,
+                                toActivity: toActivity,
+                                activity: lastEdge.data.activity,
+                                pathLength: 1,
+                                currentPositionInPath: 0,
+                            });
+                        }
+                    }
                 }
                 startEdges = startEdgesForNextOuterIteration;
-                // console.log(
-                //     `End of activity ${toActivity} for object ${id}. New start edges:`,
-                //     startEdges.map((e) => e.id)
-                // );
-
                 currentTimestamp = new Date(toTimestamp);
                 activityIndex++;
             }
@@ -390,7 +411,7 @@ export const visualizeObject = (
             const toTimestamp = endTime;
 
             startEdges.forEach((startEdge) => {
-                // --- FIND PATH TO END EVENT ---
+                // Find path to end event.
                 let { found, path, lastEdgeId } = findShortestPathToNextActivity(
                     startEdge,
                     toActivity,
@@ -401,20 +422,15 @@ export const visualizeObject = (
                 // console.warn('Path for remaining startEdge', path, startEdge);
 
                 if (!found) {
-                    console.error(
-                        'FATAL: Could not find path for remaining the remaining edge to finish',
-                        path,
-                        startEdge,
-                        object
-                    );
-                    throw new Error('FATAL: Could not find path for remaining the remaining edge to finish');
+                    console.warn('Skipping unroutable leftover edge while finishing object', startEdge, object);
+                    return;
                 }
 
                 let fromActivity = '';
                 let prevPathIndex = 0;
                 let prevPathLength = 0;
 
-                // Check if the chosenStartEdge for this segment originated from a parallel split
+                // Check if the chosenStartEdge for this segment originated from a parallel split.
                 if (startEdge.data?.branchOriginContexts) {
                     const contexts = startEdge.data.branchOriginContexts;
                     const contextIndex = contexts.findIndex((ctx) => ctx.forObjectId === id);
@@ -450,7 +466,7 @@ export const visualizeObject = (
 
                 const fullPathToEndEvent = [...path, lastEdgeId];
 
-                // If we met a parallel join we just want to wait and skip the entire path of the token that needs to wait
+                // If we met a parallel join we just want to wait and skip the entire path of the token that needs to wait.
                 let disablePath = false;
 
                 fullPathToEndEvent.forEach((edgeId, pathIndex) => {
@@ -475,7 +491,7 @@ export const visualizeObject = (
 
                     const executionDuration = segmentDurationMs / (path.length || 1);
 
-                    // Interpolation
+                    // Interpolation for Animation.
                     const progressWithinTotalSegment = path.length > 0 ? pathIndex / path.length : 0;
                     const interpolatedStartOfEdgeMs =
                         segmentStartTimeMs + segmentDurationMs * progressWithinTotalSegment;
@@ -511,7 +527,7 @@ export const visualizeObject = (
                             edge.data.parallelJoinWaitingTokens.push(tokenDataPayload);
                         }
 
-                        // Then we can finally merge the tokens again and go on with the path
+                        // Then we can finally merge the tokens again and go on with the path.
                         if (edge.data.parallelJoinWaitingTokens?.length === parallelJoinNode.data?.branches) {
                             const highestToken = edge.data.parallelJoinWaitingTokens?.reduce(
                                 (highest, current) => {
@@ -540,7 +556,7 @@ export const visualizeObject = (
 
                             tokenDataPayload.executionDurationMs = highestToken.executionDurationMs;
 
-                            // Reset the parallelJoinWatitingTokens for the next object
+                            // Reset the parallelJoinWatitingTokens for the next object.
                             edge.data.parallelJoinWaitingTokens = [];
 
                             addTokenToEdge(edge, tokenDataPayload);
@@ -553,8 +569,7 @@ export const visualizeObject = (
                         edge.source.includes('activity') &&
                         edge.source.includes('in')
                     ) {
-                        tokenDataPayload.activity = edge.data.activity;
-                        addTokenToEdge(edge, tokenDataPayload);
+                        // Execute-edge tokens are added eagerly in phase 1; skip here.
                     } else {
                         addTokenToEdge(edge, tokenDataPayload);
                     }
