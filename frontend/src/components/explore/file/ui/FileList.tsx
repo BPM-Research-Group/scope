@@ -43,10 +43,10 @@ const FileList: React.FC = () => {
                 }
             }
 
-            const ocpnResponse = await fetch('/example_data/rust_ocpn.json');
+            const ocpnResponse = await fetch('/example_data/rust_ocpn_numID.json');
             if (ocpnResponse.ok) {
                 const ocpnBlob = await ocpnResponse.blob();
-                const ocpnFile = new File([ocpnBlob], 'rust_ocpn.json', { type: 'application/json' });
+                const ocpnFile = new File([ocpnBlob], 'rust_ocpn_numID.json', { type: 'application/json' });
                 handleFileUpload(ocpnFile, 'ocpnFile');
             }
         } catch (error) {
