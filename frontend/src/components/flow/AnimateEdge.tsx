@@ -30,8 +30,11 @@ type AnimatedSVGComponentProps = EdgeProps<Edge<AnimatedSvgEdgeData>> & {
     circleColor?: string;
     circleDuration?: number;
     circleRadius?: number;
-    tokenSpacing?: number; // New prop to control spacing between tokens
 };
+
+// Hover text for a group token; very large groups are truncated.
+const formatGroupMembers = (ids: string[]) =>
+    ids.length <= 12 ? ids.join(', ') : `${ids.slice(0, 12).join(', ')}, +${ids.length - 12} more`;
 
 export const AnimatedSVGEdge = ({
     id,
@@ -45,7 +48,6 @@ export const AnimatedSVGEdge = ({
     label,
     circleRadius = 10,
     circleDuration = 5,
-    tokenSpacing = 0.2,
     data,
 }: AnimatedSVGComponentProps) => {
     const { colorScale } = useColorScaleStore();
@@ -131,9 +133,12 @@ export const AnimatedSVGEdge = ({
     useEffect(() => {
         if (data?.execOption === 'Execute') {
             visibleTokens.forEach((token) => {
-                if (token.activity) {
-                    addActivityExecution(token.activity, token.timestamp, token.id, token.type);
-                }
+                const activity = token.activity;
+                if (!activity) return;
+                // Cluster tokens execute the activity for every grouped object.
+                (token.groupedIds ?? [token.id]).forEach((objectId) => {
+                    addActivityExecution(activity, token.timestamp, objectId, token.type);
+                });
             });
         }
         // Only run when visibleTokens or execOption changes
@@ -166,8 +171,8 @@ export const AnimatedSVGEdge = ({
             }
 
             // For each visible token, check if it needs animation
-            visibleTokens.forEach((token, i) => {
-                const tokenId = token.id;
+            visibleTokens.forEach((token) => {
+                const tokenId = token.renderKey ?? token.id;
                 const element = tokenRefs.current.get(tokenId);
 
                 if (!element || tokenAnimsRef.current.has(tokenId)) {
@@ -181,7 +186,6 @@ export const AnimatedSVGEdge = ({
                         path: edgePath,
                         alignOrigin: [0.5, 0.5],
                     },
-                    delay: 0.5 * i,
                     immediateRender: false,
                     onComplete: () => {
                         setCompletedTokens((prev) => new Set(prev).add(token));
@@ -206,18 +210,23 @@ export const AnimatedSVGEdge = ({
         { dependencies: [visibleTokens, edgePath, circleDuration] }
     );
 
-    // Render tokens
+    // Render tokens; group/cluster tokens show a "×n" badge and list their members on hover.
     const tokenElements = useMemo(() => {
-        return visibleTokens.map((token) => (
-            <MemoizedToken
-                key={token.id}
-                id={token.id}
-                type={token.type}
-                radius={circleRadius}
-                onMount={(el) => tokenRefs.current.set(token.id, el)}
-                onUnmount={() => tokenRefs.current.delete(token.id)}
-            />
-        ));
+        return visibleTokens.map((token) => {
+            const tokenId = token.renderKey ?? token.id;
+            return (
+                <MemoizedToken
+                    key={tokenId}
+                    id={token.id}
+                    type={token.type}
+                    radius={circleRadius}
+                    label={token.groupedIds ? `×${token.groupedIds.length}` : token.id}
+                    title={token.groupedIds ? formatGroupMembers(token.groupedIds) : undefined}
+                    onMount={(el) => tokenRefs.current.set(tokenId, el)}
+                    onUnmount={() => tokenRefs.current.delete(tokenId)}
+                />
+            );
+        });
     }, [visibleTokens, circleRadius]);
 
     return (

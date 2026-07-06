@@ -20,6 +20,11 @@ export interface ObjectFlowAtEdge extends BaseObjectFlow {
     timestampMs: number;
     activity?: string;
     edgeId?: string;
+    /** Set on aggregated cluster tokens: the object ids travelling together. */
+    groupedIds?: string[];
+    /** Unique per edge — the same object can traverse an edge several times
+     *  (loops), so the object id alone cannot key the rendered tokens. */
+    renderKey?: string;
     executionDurationMs: number;
     realTimeExecutionDuration: number;
     fromActivity: string;

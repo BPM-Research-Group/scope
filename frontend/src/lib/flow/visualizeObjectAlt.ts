@@ -4,6 +4,10 @@ import type { PlusNodeType } from '~/components/flow/nodes/FlowParallelNode';
 import type { ObjectFlowAtEdge, ObjectFlowMapRecord } from '~/types/ocel.types';
 
 const MAX_JOIN_SYNC_DEPTH = 8;
+const TOKEN_GAP_PX = 26;
+const MAX_CONVOY_TOKENS = 4;
+const MAX_CONVOY_SHIFT_FRACTION = 0.5;
+const SCHEDULE_EQUALITY_TOLERANCE_MS = 500;
 
 const getMostRecentTimestampOfActivityBeforeIndex = (
     targetActivityName: string,
@@ -156,8 +160,6 @@ interface WalkStart {
     prevPathLength: number;
 }
 
-// Determines where (in simulation time) a walk beginning at this start edge departs:
-// either at the recorded split time (branch context), at the last execution of the
 // activity the edge belongs to, or at the provided fallback.
 const resolveWalkStart = (
     startEdge: Edge<AnimatedSvgEdgeData>,
@@ -211,6 +213,9 @@ interface WalkContext {
     toActivity: string;
     // Simulation time at which the walk must arrive at the end of the path.
     segmentEndMs: number;
+    // Geometric length per edge id, used to distribute segment time so the
+    // token travels at a constant speed instead of one time-slice per edge.
+    edgeLengthById: Map<string, number>;
     fromActivity: string;
     prevPathIndex: number;
     prevPathLength: number;
@@ -228,13 +233,18 @@ interface WalkContext {
 }
 
 // Walks a path edge by edge with a simulation-time cursor, emitting one token per
-// edge. Without gateways this is identical to uniform interpolation between
-// startMs and segmentEndMs. At an AND-split the sibling branches fan out at the
-// exact arrival time at the gate; at an AND-join the walk waits until every
-// sibling branch has been routed to the gate before the merged token leaves.
+// edge. The segment time between startMs and segmentEndMs is distributed over the
+// edges proportionally to their geometric length, so the token moves at a constant
+// speed and is on exactly one edge at any moment (execute edges included). At an
+// AND-split the sibling branches fan out at the exact arrival time at the gate; at
+// an AND-join the walk waits until every sibling branch has been routed to the
+// gate before the merged token leaves.
 const walkPath = (pathEdgeIds: string[], startMs: number, ctx: WalkContext): void => {
     let cursorMs = startMs;
     let prevToken: ObjectFlowAtEdge | null = null;
+
+    const pathLengths = pathEdgeIds.map((edgeId) => ctx.edgeLengthById.get(edgeId) ?? 0);
+    let remainingLength = pathLengths.reduce((sum, length) => sum + length, 0);
 
     pathEdgeIds.forEach((edgeId, pathIndex) => {
         const edge = ctx.edgesById.get(edgeId);
@@ -259,8 +269,13 @@ const walkPath = (pathEdgeIds: string[], startMs: number, ctx: WalkContext): voi
             }
         }
 
+        const availableMs = Math.max(0, ctx.segmentEndMs - cursorMs);
         const remainingEdges = pathEdgeIds.length - pathIndex;
-        const durationMs = Math.max(0, ctx.segmentEndMs - cursorMs) / remainingEdges;
+        const durationMs =
+            remainingLength > 0
+                ? (availableMs * pathLengths[pathIndex]) / remainingLength
+                : availableMs / remainingEdges;
+        remainingLength -= pathLengths[pathIndex];
 
         const token: ObjectFlowAtEdge = {
             id: ctx.objectId,
@@ -271,18 +286,13 @@ const walkPath = (pathEdgeIds: string[], startMs: number, ctx: WalkContext): voi
             realTimeExecutionDuration: durationMs,
             fromActivity: ctx.fromActivity,
             toActivity: ctx.toActivity,
+            activity: edge.data.activity,
             pathLength: pathEdgeIds.length + ctx.prevPathLength,
             currentPositionInPath: ctx.prevPathIndex + pathIndex,
         };
 
-        // Execute-edge tokens are added eagerly when the activity is reached,
-        // so skip them here to avoid adding a duplicate.
-        const isExecuteEdge =
-            edge.id.includes('execute') && edge.source.includes('activity') && edge.source.includes('in');
-        if (!isExecuteEdge) {
-            addTokenToEdge(edge, token);
-            prevToken = token;
-        }
+        addTokenToEdge(edge, token);
+        prevToken = token;
 
         // AND-split: fan the sibling branches out at the moment this token
         // arrives at the gate, so all outgoing tokens depart simultaneously.
@@ -378,6 +388,136 @@ const syncSiblingsAtJoin = (joinNodeId: string, ownArrivalMs: number, ctx: WalkC
     return mergeMs;
 };
 
+// Post-pass over the finished schedule, per edge:
+// 1. Tokens with (near-)identical schedules are merged into one group token —
+//    they belong to the same event or travel exactly together, and pulling
+//    them apart would misrepresent the log (e.g. two workers unloading in one
+//    event must execute together).
+// 2. Execute edges are otherwise left untouched: execution starts are event
+//    timestamps, never interpolation, so they must not be shifted.
+// 3. On travel edges, remaining near-coinciding tokens form a convoy — each
+//    follower departs slightly later (but still arrives on time, so the
+//    cross-edge timing stays truthful) and trails the token ahead by roughly
+//    one token diameter. When an edge gets busier than a convoy can fit, the
+//    surplus is aggregated into a cluster token riding at the convoy tail.
+const applyConvoySpacingAndClustering = (edges: Edge<AnimatedSvgEdgeData>[], edgeLengthById: Map<string, number>) => {
+    edges.forEach((edge) => {
+        const tokens = edge.data?.tokens;
+        if (!tokens || tokens.length < 2) return;
+
+        const edgeLength = edgeLengthById.get(edge.id) ?? 0;
+        // Gap between token centers as a fraction of the traversal.
+        const gapFraction = Math.min(TOKEN_GAP_PX / Math.max(edgeLength, 1), 1 / (MAX_CONVOY_TOKENS - 1));
+
+        const byStart = [...tokens].sort(
+            (a, b) => a.timestampMs - b.timestampMs || a.realTimeExecutionDuration - b.realTimeExecutionDuration
+        );
+
+        // 1. Merge identical schedules into group tokens.
+        const sorted: ObjectFlowAtEdge[] = [];
+        let groupCount = 0;
+        byStart.forEach((token) => {
+            const head = sorted[sorted.length - 1];
+            const sameSchedule =
+                head &&
+                Math.abs(head.timestampMs - token.timestampMs) < SCHEDULE_EQUALITY_TOLERANCE_MS &&
+                Math.abs(head.realTimeExecutionDuration - token.realTimeExecutionDuration) <
+                    SCHEDULE_EQUALITY_TOLERANCE_MS;
+            if (!sameSchedule) {
+                sorted.push(token);
+                return;
+            }
+            if (head.groupedIds) {
+                head.groupedIds.push(token.id);
+            } else {
+                groupCount++;
+                sorted[sorted.length - 1] = {
+                    ...head,
+                    id: `group-${edge.id}-${groupCount}`,
+                    groupedIds: [head.id, token.id],
+                };
+            }
+        });
+
+        // 2. Execution starts are event timestamps — never shift them.
+        const isExecuteEdge =
+            edge.id.includes('execute') && edge.source.includes('activity') && edge.source.includes('in');
+        if (isExecuteEdge) {
+            edge.data!.tokens = sorted;
+            return;
+        }
+
+        // 3. Convoy spacing + overflow clustering on travel edges.
+        const result: ObjectFlowAtEdge[] = [];
+
+        // Individually visible tokens currently on the edge, oldest first.
+        let convoy: ObjectFlowAtEdge[] = [];
+        let activeCluster: ObjectFlowAtEdge | null = null;
+        let clusterCount = 0;
+
+        sorted.forEach((token) => {
+            const startMs = token.timestampMs;
+            const endMs = token.timestampMs + token.realTimeExecutionDuration;
+
+            convoy = convoy.filter((member) => member.timestampMs + member.realTimeExecutionDuration > startMs);
+            if (activeCluster && activeCluster.timestampMs + activeCluster.realTimeExecutionDuration <= startMs) {
+                activeCluster = null;
+            }
+
+            const leader = convoy[convoy.length - 1];
+            const minStartMs = leader ? leader.timestampMs + gapFraction * leader.realTimeExecutionDuration : startMs;
+
+            // Leads the convoy or is already spaced far enough behind it.
+            if (!leader || startMs >= minStartMs) {
+                result.push(token);
+                convoy.push(token);
+                return;
+            }
+
+            // Trail the leader: depart later, arrive on time (slightly faster travel).
+            const remainingMs = endMs - minStartMs;
+            if (
+                !activeCluster &&
+                convoy.length < MAX_CONVOY_TOKENS &&
+                remainingMs >= MAX_CONVOY_SHIFT_FRACTION * token.realTimeExecutionDuration
+            ) {
+                token.timestampMs = minStartMs;
+                token.timestamp = new Date(minStartMs).toISOString();
+                token.realTimeExecutionDuration = remainingMs;
+                token.executionDurationMs = remainingMs;
+                result.push(token);
+                convoy.push(token);
+                return;
+            }
+
+            // Overflow: aggregate into a cluster badge at the convoy tail.
+            if (!activeCluster) {
+                clusterCount++;
+                const clusterStartMs = Math.min(minStartMs, endMs);
+                activeCluster = {
+                    ...token,
+                    id: `cluster-${edge.id}-${clusterCount}`,
+                    timestamp: new Date(clusterStartMs).toISOString(),
+                    timestampMs: clusterStartMs,
+                    realTimeExecutionDuration: endMs - clusterStartMs,
+                    executionDurationMs: endMs - clusterStartMs,
+                    groupedIds: [...(token.groupedIds ?? [token.id])],
+                };
+                result.push(activeCluster);
+            } else {
+                activeCluster.groupedIds!.push(...(token.groupedIds ?? [token.id]));
+                const clusterEndMs = activeCluster.timestampMs + activeCluster.realTimeExecutionDuration;
+                if (endMs > clusterEndMs) {
+                    activeCluster.realTimeExecutionDuration = endMs - activeCluster.timestampMs;
+                    activeCluster.executionDurationMs = activeCluster.realTimeExecutionDuration;
+                }
+            }
+        });
+
+        edge.data!.tokens = result;
+    });
+};
+
 export const visualizeObject = (
     objects: ObjectFlowMapRecord,
     edges: Edge<AnimatedSvgEdgeData>[],
@@ -410,6 +550,47 @@ export const visualizeObject = (
         edgesBySource.get(edge.source)!.push(edge);
         edgesByTarget.get(edge.target)!.push(edge);
         edgesById.set(edge.id, edge);
+    });
+
+    // Approximate geometric length per edge (Manhattan distance between the node
+    // centers, matching the L-shaped smoothstep rendering). Child node positions
+    // are relative to their parent lane, so resolve the parent chain.
+    const nodeById = new Map(nodes.map((node) => [node.id, node]));
+    const nodeCenterById = new Map<string, { x: number; y: number }>();
+    const getNodeCenter = (nodeId: string): { x: number; y: number } | null => {
+        const cached = nodeCenterById.get(nodeId);
+        if (cached) return cached;
+
+        const node = nodeById.get(nodeId);
+        if (!node) return null;
+
+        let x = node.position.x + (node.width ?? 0) / 2;
+        let y = node.position.y + (node.height ?? 0) / 2;
+
+        const seen = new Set<string>([nodeId]);
+        let parentId = node.parentId;
+        while (parentId && !seen.has(parentId)) {
+            seen.add(parentId);
+            const parent = nodeById.get(parentId);
+            if (!parent) break;
+            x += parent.position.x;
+            y += parent.position.y;
+            parentId = parent.parentId;
+        }
+
+        const center = { x, y };
+        nodeCenterById.set(nodeId, center);
+        return center;
+    };
+
+    const edgeLengthById = new Map<string, number>();
+    edges.forEach((edge) => {
+        const source = getNodeCenter(edge.source);
+        const target = getNodeCenter(edge.target);
+        edgeLengthById.set(
+            edge.id,
+            source && target ? Math.abs(target.x - source.x) + Math.abs(target.y - source.y) : 0
+        );
     });
 
     let errorCount = 0;
@@ -514,6 +695,7 @@ export const visualizeObject = (
                     objectType: type,
                     toActivity,
                     segmentEndMs: new Date(toTimestamp).getTime(),
+                    edgeLengthById,
                     fromActivity: walkStart.fromActivity,
                     prevPathIndex: walkStart.prevPathIndex,
                     prevPathLength: walkStart.prevPathLength,
@@ -528,34 +710,15 @@ export const visualizeObject = (
                     joinSyncDepth: 0,
                 });
 
+                // The activity's execute edge becomes a pending start edge. Its token is
+                // NOT added here: the edge is path[0] of whichever walk departs from it
+                // later (next activity, join sync, or routing to the end event), which
+                // starts exactly at the activity's timestamp. That way execution and the
+                // onward travel are laid out back-to-back instead of overlapping.
                 if (actualLastEdgeIdToActivity) {
                     const lastEdge = edgesById.get(actualLastEdgeIdToActivity);
                     if (lastEdge) {
                         pendingStartEdges.push(lastEdge);
-
-                        // Token the activity's own execute edge eagerly, the moment the
-                        // activity is reached. Otherwise the token is only added when this
-                        // edge is later traversed as a start edge — which never happens if
-                        // parallel routing finishes the branch, so the token would be lost.
-                        if (lastEdge.data && lastEdge.id.includes('execute')) {
-                            const execStartMs = new Date(toTimestamp).getTime();
-                            const nextTimestamp =
-                                activityIndex + 1 < activityCount ? timestamps[activityIndex + 1] : endTime;
-                            const execDurationMs = Math.max(0, new Date(nextTimestamp).getTime() - execStartMs);
-                            addTokenToEdge(lastEdge, {
-                                id,
-                                type,
-                                timestamp: new Date(execStartMs).toISOString(),
-                                timestampMs: execStartMs,
-                                executionDurationMs: execDurationMs,
-                                realTimeExecutionDuration: execDurationMs,
-                                fromActivity: toActivity,
-                                toActivity: toActivity,
-                                activity: lastEdge.data.activity,
-                                pathLength: 1,
-                                currentPositionInPath: 0,
-                            });
-                        }
                     }
                 }
 
@@ -593,6 +756,24 @@ export const visualizeObject = (
                 );
 
                 if (!found || !lastEdgeId) {
+                    // Keep the activity execution visible even when the token cannot be
+                    // routed onward from it.
+                    if (startEdge.id.includes('execute') && startEdge.data) {
+                        const strandedDurationMs = Math.max(0, endTimeMs - walkStart.startMs);
+                        addTokenToEdge(startEdge, {
+                            id,
+                            type,
+                            timestamp: new Date(walkStart.startMs).toISOString(),
+                            timestampMs: walkStart.startMs,
+                            executionDurationMs: strandedDurationMs,
+                            realTimeExecutionDuration: strandedDurationMs,
+                            fromActivity: walkStart.fromActivity,
+                            toActivity: 'endEvent',
+                            activity: startEdge.data.activity,
+                            pathLength: 1,
+                            currentPositionInPath: 0,
+                        });
+                    }
                     console.warn('Skipping unroutable leftover edge while finishing object', startEdge, object);
                     continue;
                 }
@@ -602,6 +783,7 @@ export const visualizeObject = (
                     objectType: type,
                     toActivity: 'endEvent',
                     segmentEndMs: endTimeMs,
+                    edgeLengthById,
                     fromActivity: walkStart.fromActivity,
                     prevPathIndex: walkStart.prevPathIndex,
                     prevPathLength: walkStart.prevPathLength,
@@ -622,6 +804,17 @@ export const visualizeObject = (
                 console.error(err.message, object);
             }
         }
+    });
+
+    applyConvoySpacingAndClustering(edges, edgeLengthById);
+
+    // Unique render keys per edge: the same object may traverse an edge several
+    // times (loops), so React keys and animation bookkeeping cannot use the
+    // object id alone.
+    edges.forEach((edge) => {
+        edge.data?.tokens?.forEach((token, index) => {
+            token.renderKey = `${token.id}#${index}`;
+        });
     });
 
     return { edges, actExecEdgesByObject, errorCount };
