@@ -6,6 +6,7 @@ import { ExploreNodeType } from '~/types/explore/nodeTypesCategories';
 import { AssetType } from '~/types/files.types';
 import { createNode } from '~/lib/explore/createNode';
 import { ExploreNode } from '~/types/explore/nodes';
+import { c } from 'node_modules/vite/dist/node/types.d-aGj9QkWt';
 
 function hslToHex(h: number, s: number, l: number): string {
     s /= 100;
@@ -124,6 +125,7 @@ export const updateNodeColorAndPropagate = (nodeId: string, key: string, color: 
  * Copies a color map to all DOWNSTREAM nodes recursively.
  */
 export const propagateMapDownstream = (sourceNodeId: string, newMap: Record<string, string>) => {
+    //console.log(`propagateMapDownstream Starting from: ${sourceNodeId} with map:`, newMap);
     const state = useExploreFlowStore.getState();
     const { nodes, edges, updateNodeData } = state;
     console.log(`[Propagation Down] Starting from: ${sourceNodeId}`);
@@ -231,8 +233,6 @@ export const handleMultipleMinerOutputs = (
     const { updateNodeData, getNode, edges: freshEdges, nodes: freshNodes } = useExploreFlowStore.getState();
     const node = getNode(nodeId);
     if (!node) return;
-
-    // 1. Alle neuen Assets für den Ursprungsknoten sammeln
     const newAssets = outputs.map(out => ({
         id: out.outputAssetId!,
         io: 'output' as const,
@@ -246,52 +246,67 @@ export const handleMultipleMinerOutputs = (
         const currentAssets = prev.assets.filter((a) => a.io !== 'output');
         return { assets: [...currentAssets, ...newAssets] };
     });
-
     const freshNode = freshNodes.find((n) => n.id === nodeId);
-
-    // NEU: Wir tracken, welche Zielknoten wir bereits mit einem Output befüllt haben.
     const assignedTargetIds = new Set<string>();
 
-    // 2. Jeden Output einzeln durchgehen
     outputs.forEach((out, index) => {
         const correspondingAsset = newAssets[index];
         
-        // Suche nach einer Kante, die noch NICHT für einen vorherigen Output verwendet wurde
-        const existingEdgeForType = freshEdges.find((edge) => {
-            if (edge.source !== nodeId) return false;
-            
-            const targetNode = freshNodes.find((n) => n.id === edge.target);
-            return (
-                targetNode && 
-                targetNode.type === out.outputNodeType &&
-                !assignedTargetIds.has(targetNode.id) // WICHTIG: Überspringe bereits befüllte Knoten
-            );
-        });
-
-        if (existingEdgeForType) {
-            const targetId = existingEdgeForType.target;
-            
-            // Markiere diesen Zielknoten als "verbraucht" für diesen Render-Zyklus
+        const applyAssetToTargetEdge = (edge: any, currentNodes: any[], currentFreshNode: any) => {
+            const targetId = edge.target;
             assignedTargetIds.add(targetId);
 
             updateNodeData(targetId, (prev: any) => {
-                const otherAssets = prev.assets.filter((a: any) => a.io !== 'output');
-                const sourceColorMap = (freshNode?.data as any)?.colorMap;
-                const existingColorMap = prev.colorMap || {};
+                const otherAssets = (prev?.assets || []).filter((a: any) => a.io !== 'output');
+                const sourceColorMap = (currentFreshNode?.data as any)?.colorMap;
+                const existingColorMap = prev?.colorMap || {};
                 const nextColorMap = sourceColorMap ? { ...existingColorMap, ...sourceColorMap } : existingColorMap;
-                
                 return {
                     assets: [...otherAssets, { ...correspondingAsset, io: 'output' }],
                     colorMap: nextColorMap,
                 };
             });
-            
-            if ((freshNode?.data as any)?.colorMap) {
-                propagateMapDownstream(nodeId, (freshNode!.data as any).colorMap);
+
+            if ((currentFreshNode?.data as any)?.colorMap) {
+                propagateMapDownstream(nodeId, (currentFreshNode!.data as any).colorMap);
             }
+        };
+
+        const existingEdgeForType = freshEdges.find((edge) => {
+            if (edge.source !== nodeId) return false;
+            const targetNode = freshNodes.find((n) => n.id === edge.target);
+            return (
+                targetNode && 
+                targetNode.type === out.outputNodeType &&
+                !assignedTargetIds.has(targetNode.id)
+            );
+        });
+
+        if (existingEdgeForType) {
+            applyAssetToTargetEdge(existingEdgeForType, freshNodes, freshNode);
         } else {
-            // Wenn keine FREIE Kante mehr existiert -> Neuen Knoten erzeugen!
             spawnDownstreamNode(nodeId, out.outputNodeType);
+
+            setTimeout(() => {
+                const { edges: postEdges, nodes: postNodes } = useExploreFlowStore.getState();
+                const latestFreshNode = postNodes.find((n) => n.id === nodeId);
+
+                const newlyCreatedEdge = postEdges.find((edge) => {
+                    if (edge.source !== nodeId) return false;
+                    const targetNode = postNodes.find((n) => n.id === edge.target);
+                    return (
+                        targetNode && 
+                        targetNode.type === out.outputNodeType &&
+                        !assignedTargetIds.has(targetNode.id) 
+                    );
+                });
+
+                if (newlyCreatedEdge) {
+                    applyAssetToTargetEdge(newlyCreatedEdge, postNodes, latestFreshNode);
+                } else {
+                    console.error("Kante konnte auch asynchron nicht gefunden werden. Überprüfe spawnDownstreamNode.");
+                }
+            }, 50); // 50ms damit React-Flow / Zustand die Edges einhängt
         }
     });
 };

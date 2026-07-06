@@ -3,7 +3,7 @@ import { flexRender, getCoreRowModel, getSortedRowModel, SortingState, useReactT
 import { ParentSize } from '@visx/responsive';
 import { ReactFlowProvider } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { isError, template } from 'lodash-es';
+import { isError, set, template } from 'lodash-es';
 import { useParams } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '~/components/ui/button';
@@ -12,9 +12,11 @@ import { SidebarInset, SidebarProvider } from '~/components/ui/sidebar';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '~/components/ui/table';
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 import ClusterVis from '~/components/ClusteringVis';
-import { useMinerOutput } from '~/hooks/explore/useMinerAssets';
+import { useMinerOutput, useMultipleMinerOutputs } from '~/hooks/explore/useMinerAssets';
+import { MinerOutputConfig } from '~/lib/explore/flowActions';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { useAgglomerativeClustering, useCaseClustering, useMaterialiseClustering } from '~/services/queries';
+import { useRef } from 'react';
 
 const CaseClustering: React.FC = () => {
     const [params, setParams] = useState({
@@ -42,8 +44,9 @@ const CaseClustering: React.FC = () => {
     const [aggTypFileId, setaggTypFileId] = useState<string | undefined>(undefined); //Id of the calc aggTyp custering
     const [aggObjFileId, setaggObjFileId] = useState<string | undefined>(undefined); //Id of the calc aggTyp custering
     const [inputFileId, setInputFileId] = useState<string | undefined>(undefined); //Input für die Query
-    const [subOutputFileId, setSubOutputFileId] = useState<string | undefined>(undefined); //Final settings
-    const [outputname, setOutputname] = useState<string | undefined>(undefined);
+
+    const [minerOutputs, setMinerOutputs] = useState<MinerOutputConfig[]>([]);
+    const [outputActivated, setOutputActivated] = useState(false);
 
     const [slider, setSlider] = useState(false);
     const [selected, setSelected] = useState<number[]>([]);
@@ -60,7 +63,7 @@ const CaseClustering: React.FC = () => {
     const data = slider ? aggQuery.data : query.data;
     const outputFileId = data?.file_id ?? null; //fileID of the last query return
 
-    const matClustQuery = useMaterialiseClustering(fileId ?? ' ', data?.case_assignments ?? [1], selected, false);
+    const matClustQuery = useMaterialiseClustering(fileId ?? ' ', data?.case_assignments ?? [0,1], selected, false);
 
     //Get Assets
     useMemo(() => {
@@ -87,6 +90,10 @@ const CaseClustering: React.FC = () => {
         }
     }
 
+    useEffect(() => {   
+        console.log('getNode changed: ', getNode)
+    }, [getNode]);
+
     // Load the new clustering result from the backend when Load button is pressed. Right know a example file is read
     useEffect(() => {
         if (!loadResult) {
@@ -106,6 +113,7 @@ const CaseClustering: React.FC = () => {
             }
         };
         loadData();
+        console.log('getNode: ', getNode)
         setloadResult(false);
     }, [loadResult]);
 
@@ -221,25 +229,27 @@ const CaseClustering: React.FC = () => {
         console.log('nodeId, aggTypFileId: ', nodeId, aggTypFileId);
     }, [nodeId, outputFileId]);
 
-    useMinerOutput( nodeId ?? ' ', subOutputFileId ?? null, outputname ?? ' ', 'ocelCollectionFile', 'ocelCollectionNode'  );
+    //useMinerOutput( nodeId ?? ' ', subOutputFileId ?? null, outputname ?? ' ', 'ocelCollectionFile', 'ocelCollectionNode'  );
     //useMinerOutput( (nodeId + '1'), subOutputFileId ?? null, (outputname+ "1") ?? ' ', 'ocelCollectionFile', 'ocelCollectionNode'  );
+    useMultipleMinerOutputs(nodeId ?? ' ', minerOutputs, outputActivated);
 
     const exportAsNode = () => {
         //setSubOutputFileId(outputFileId);
         const fetching = async () => {
+            //console.log("EXPORT ------------------------------")
             const result = await matClustQuery.refetch();
-            console.log("result:", result);
-            const cluster = result.data.data.materialized_clusters[0]; //[0] has to be generalized
-
-            const outputId = cluster.case_ocels_file_id;
-
-            const name = node?.data.assets.find((a) => a.io === 'input')?.name + '_cluster_' + cluster.cluster_id;
-            console.log("name:", name);
-            console.log("outputId:", outputId);
-            setOutputname(name);
-            setSubOutputFileId(outputId);
-            console.log("result2:", result);
-            console.log("subOutputFileId:", subOutputFileId);
+            //console.log("result.data.data.materialized_clusters:", result.data.data.materialized_clusters);
+            const mappedOutputs: MinerOutputConfig[] = result.data.data.materialized_clusters.map((item: any) => ({
+                outputAssetId: item.case_ocels_file_id, // oder wie auch immer das Feld im Backend heißt
+                inputFileName: ('cluster_' +item.cluster_id + '_' + node?.data.assets.find((asset) => asset.io === 'input')?.name),
+                outputAssetType: 'ocelCollectionFile',
+                outputNodeType: 'ocelCollectionNode'
+            }));
+            //console.log("mappedOutputs:", mappedOutputs);
+            setMinerOutputs(mappedOutputs);
+            //console.log("minerOutputs:", minerOutputs);
+            //console.log("selected:", selected);
+            setOutputActivated(true);
         };
         fetching();
         //navigate(`/data/pipeline/explore`); //macht das updaten kaput -> Anders lösen
@@ -247,7 +257,7 @@ const CaseClustering: React.FC = () => {
     };
 
     const toggle = (i: any) => {
-        console.log('i: ', i);
+        //console.log('i: ', i);
         setSelected((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]));
     };
 
@@ -291,6 +301,15 @@ const CaseClustering: React.FC = () => {
                                         aria-label="Load and display the result"
                                     >
                                         <span className="text-xs text-blue-600">Edit</span>
+                                    </Button>
+                                    <Button
+                                        onClick={() => {
+                                            navigate(`/data/pipeline/explore`); //macht das updaten kaput -> Anders lösen
+                                        }}
+                                        className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md mt-3"
+                                        aria-label="Load and display the result"
+                                    >
+                                        <span className="text-xs text-blue-600">Back to explore</span>
                                     </Button>
                                 </div>
                             ) : (
