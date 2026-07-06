@@ -288,25 +288,43 @@ export const handleMultipleMinerOutputs = (
             spawnDownstreamNode(nodeId, out.outputNodeType);
 
             setTimeout(() => {
-                const { edges: postEdges, nodes: postNodes } = useExploreFlowStore.getState();
+                const { edges: postEdges, nodes: postNodes, updateNodeData } = useExploreFlowStore.getState();
                 const latestFreshNode = postNodes.find((n) => n.id === nodeId);
 
                 const newlyCreatedEdge = postEdges.find((edge) => {
                     if (edge.source !== nodeId) return false;
                     const targetNode = postNodes.find((n) => n.id === edge.target);
-                    return (
-                        targetNode && 
-                        targetNode.type === out.outputNodeType &&
-                        !assignedTargetIds.has(targetNode.id) 
-                    );
+                    return targetNode && targetNode.type === out.outputNodeType && !assignedTargetIds.has(targetNode.id);
                 });
-
+            
                 if (newlyCreatedEdge) {
-                    applyAssetToTargetEdge(newlyCreatedEdge, postNodes, latestFreshNode);
-                } else {
-                    console.error("Kante konnte auch asynchron nicht gefunden werden. Überprüfe spawnDownstreamNode.");
+                    const targetId = newlyCreatedEdge.target;
+                    assignedTargetIds.add(targetId);
+                
+                    const targetNode = postNodes.find((n) => n.id === targetId);
+
+                    if (targetNode && latestFreshNode) {
+                        const spacing = 140;  //space between the created nodes
+
+                        targetNode.position = {
+                            x: latestFreshNode.position.x + 450, //movement to the right
+                            y: latestFreshNode.position.y + (index * spacing) - ((outputs.length - 1) * spacing) / 2 
+                        };
+                    }
+                    updateNodeData(targetId, (prev: any) => {
+                        const otherAssets = (prev?.assets || []).filter((a: any) => a.io !== 'output');
+                        return {
+                            ...prev,
+                            position: targetNode?.position,
+                            assets: [...otherAssets, { ...correspondingAsset, io: 'output' }]
+                        };
+                    });
+                
+                    if ((latestFreshNode?.data as any)?.colorMap) {
+                        propagateMapDownstream(nodeId, (latestFreshNode!.data as any).colorMap);
+                    }
                 }
-            }, 50); // 50ms damit React-Flow / Zustand die Edges einhängt
+            }, 50);
         }
     });
 };
