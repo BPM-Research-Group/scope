@@ -35,12 +35,6 @@ const OcpnSidebar: React.FC<OcpnSidebarProps> = ({
 }) => {
     return (
         <aside className="w-72 border-r border-slate-200 flex flex-col bg-white z-10 shadow-sm shrink-0">
-            <div className="p-5 border-b border-slate-100 bg-slate-50/50">
-                <div className="flex items-center gap-2">
-                    <Activity className="w-5 h-5 text-blue-600" />
-                    <h1 className="text-lg font-bold tracking-tight text-slate-800">OCPN Visualizer</h1>
-                </div>
-            </div>
             <ScrollArea className="flex-1 min-h-0">
                 <div className="p-4 space-y-1">
                     <div className="space-y-1">

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '~/components/ui/button';
+import { SidebarProvider } from '~/components/ui/sidebar';
+import BreadcrumbNav from '~/components/BreadcrumbNav';
 import OCPN from '~/components/ocpn/OCPN';
 import OcpnSidebar from '~/components/ocpn/OcpnSidebar';
 import { getArcId, OcpnVizParams, toFlowId } from '~/components/ocpn/OcpnRendering';
@@ -89,35 +91,45 @@ export default function OcpnViewer({ nodeId: propNodeId }: { nodeId?: string }) 
 
     if (!rawData?.places) {
         return (
-            <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-slate-50 text-slate-500 font-medium">
-                <AlertTriangle className="w-10 h-10 text-amber-500" />
-                <h2 className="text-lg font-bold text-slate-700">Incomplete Data</h2>
-                <p className="text-sm text-slate-500 max-w-md text-center">
-                    The backend payload is missing or not formatted correctly. Ensure processedData contains places and
-                    transitions.
-                </p>
-                <Button variant="outline" onClick={handleBackToPipeline}>
-                    Return to Pipeline
-                </Button>
-            </div>
+            <SidebarProvider>
+                <div className="flex flex-col h-screen w-screen overflow-hidden">
+                    <BreadcrumbNav />
+                    <div className="flex flex-1 flex-col items-center justify-center gap-4 bg-slate-50 text-slate-500 font-medium">
+                        <AlertTriangle className="w-10 h-10 text-amber-500" />
+                        <h2 className="text-lg font-bold text-slate-700">Incomplete Data</h2>
+                        <p className="text-sm text-slate-500 max-w-md text-center">
+                            The backend payload is missing or not formatted correctly. Ensure processedData contains
+                            places and transitions.
+                        </p>
+                        <Button variant="outline" onClick={handleBackToPipeline}>
+                            Return to Pipeline
+                        </Button>
+                    </div>
+                </div>
+            </SidebarProvider>
         );
     }
 
     return (
-        <div className="flex absolute inset-0 w-full h-full bg-white text-slate-900 font-sans overflow-hidden">
-            <OcpnSidebar
-                objectTypes={allObjectTypes}
-                colorMap={colorMap}
-                visibleObjectTypes={visibleObjectTypes}
-                expandedSections={expandedSections}
-                params={vizParams}
-                isExiting={isExiting}
-                onToggleSection={toggleSection}
-                onToggleObjectType={toggleObjectType}
-                onParamsChange={setVizParams}
-                onBackToPipeline={handleBackToPipeline}
-            />
-            <OCPN data={filteredData!} params={vizParams} colorMap={colorMap} isExiting={isExiting} />
-        </div>
+        <SidebarProvider>
+            <div className="flex flex-col h-screen w-screen bg-white text-slate-900 font-sans overflow-hidden">
+                <BreadcrumbNav />
+                <div className="flex flex-1 min-h-0 w-full overflow-hidden">
+                    <OcpnSidebar
+                        objectTypes={allObjectTypes}
+                        colorMap={colorMap}
+                        visibleObjectTypes={visibleObjectTypes}
+                        expandedSections={expandedSections}
+                        params={vizParams}
+                        isExiting={isExiting}
+                        onToggleSection={toggleSection}
+                        onToggleObjectType={toggleObjectType}
+                        onParamsChange={setVizParams}
+                        onBackToPipeline={handleBackToPipeline}
+                    />
+                    <OCPN data={filteredData!} params={vizParams} colorMap={colorMap} isExiting={isExiting} />
+                </div>
+            </div>
+        </SidebarProvider>
     );
 }
