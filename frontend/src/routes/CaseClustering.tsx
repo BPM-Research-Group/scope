@@ -51,6 +51,8 @@ const CaseClustering: React.FC = () => {
     const [slider, setSlider] = useState(false);
     const [selected, setSelected] = useState<number[]>([]);
 
+    const [exportState, setExportState] = useState<string | undefined>(undefined); //undefined, 'Select a cluster', 'Exporting ...', 'Nodes Created
+
     const query = useCaseClustering(
         node?.id ?? '',
         fileId ?? '',
@@ -234,7 +236,13 @@ const CaseClustering: React.FC = () => {
     useMultipleMinerOutputs(nodeId ?? ' ', minerOutputs, outputActivated);
 
     const exportAsNode = () => {
-        //setSubOutputFileId(outputFileId);
+        console.log("selected.length: ", selected.length);
+        if(selected.length === 0) {
+            setExportState('Select a cluster');
+            return;
+        } else {
+            setExportState('Exporting ...');
+        }
         const fetching = async () => {
             //console.log("EXPORT ------------------------------")
             const result = await matClustQuery.refetch();
@@ -251,6 +259,7 @@ const CaseClustering: React.FC = () => {
             //console.log("minerOutputs:", minerOutputs);
             //console.log("selected:", selected);
             setOutputActivated(true);
+            setExportState('Nodes Created');
         };
         fetching();
         //navigate(`/data/pipeline/explore`); //macht das updaten kaput -> Anders lösen
@@ -327,6 +336,10 @@ const CaseClustering: React.FC = () => {
                                     >
                                         <span className="text-xs text-blue-600">Back to explore</span>
                                     </Button>
+                                      {exportState=== 'Select a cluster' ? (
+                                        <p className="text-sm text-red-600">{exportState}</p>
+                                    ) : exportState ? (<p className="text-sm text-green-600">{exportState}</p>) : (null)}
+                                    <hr />
                                 </div>
                             ) : (
                                 <div className="flex flex-col gap-y-0.5">
