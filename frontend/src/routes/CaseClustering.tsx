@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useRef } from 'react';
 import { flexRender, getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from '@tanstack/react-table';
 import { ParentSize } from '@visx/responsive';
 import { ReactFlowProvider } from '@xyflow/react';
@@ -13,10 +14,9 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 import ClusterVis from '~/components/ClusteringVis';
 import { useMinerOutput, useMultipleMinerOutputs } from '~/hooks/explore/useMinerAssets';
-import { MinerOutputConfig } from '~/lib/explore/flowActions';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { useAgglomerativeClustering, useCaseClustering, useMaterialiseClustering } from '~/services/queries';
-import { useRef } from 'react';
+import { MinerOutputConfig } from '~/lib/explore/flowActions';
 
 const CaseClustering: React.FC = () => {
     const [params, setParams] = useState({
@@ -63,7 +63,7 @@ const CaseClustering: React.FC = () => {
     const data = slider ? aggQuery.data : query.data;
     const outputFileId = data?.file_id ?? null; //fileID of the last query return
 
-    const matClustQuery = useMaterialiseClustering(fileId ?? ' ', data?.case_assignments ?? [0,1], selected, false);
+    const matClustQuery = useMaterialiseClustering(fileId ?? ' ', data?.case_assignments ?? [0, 1], selected, false);
 
     //Get Assets
     useMemo(() => {
@@ -90,8 +90,8 @@ const CaseClustering: React.FC = () => {
         }
     }
 
-    useEffect(() => {   
-        console.log('getNode changed: ', getNode)
+    useEffect(() => {
+        console.log('getNode changed: ', getNode);
     }, [getNode]);
 
     // Load the new clustering result from the backend when Load button is pressed. Right know a example file is read
@@ -113,7 +113,7 @@ const CaseClustering: React.FC = () => {
             }
         };
         loadData();
-        console.log('getNode: ', getNode)
+        console.log('getNode: ', getNode);
         setloadResult(false);
     }, [loadResult]);
 
@@ -241,9 +241,10 @@ const CaseClustering: React.FC = () => {
             //console.log("result.data.data.materialized_clusters:", result.data.data.materialized_clusters);
             const mappedOutputs: MinerOutputConfig[] = result.data.data.materialized_clusters.map((item: any) => ({
                 outputAssetId: item.case_ocels_file_id, // oder wie auch immer das Feld im Backend heißt
-                inputFileName: ('cluster_' +item.cluster_id + '_' + node?.data.assets.find((asset) => asset.io === 'input')?.name),
+                inputFileName:
+                    'cluster_' + item.cluster_id + '_' + node?.data.assets.find((asset) => asset.io === 'input')?.name,
                 outputAssetType: 'ocelCollectionFile',
-                outputNodeType: 'ocelCollectionNode'
+                outputNodeType: 'ocelCollectionNode',
             }));
             //console.log("mappedOutputs:", mappedOutputs);
             setMinerOutputs(mappedOutputs);
@@ -273,7 +274,22 @@ const CaseClustering: React.FC = () => {
                                 <div className="flex flex-col gap-y-0.5">
                                     <p className="text-sm text-green-600">Data Submitted.</p>
                                     <hr />
-                                    <label className="block mb-2 text-s mt-3"> Select Cluster</label>
+                                    <label className="block mb-2 text-s mt-3"> Select Cluster: </label>
+                                    <label className="block mb-2 text-s mt-3">
+                                        <input
+                                            type="checkbox"
+                                            checked={selected.length === params.k}
+                                            onChange={() => {
+                                                if (selected.length === params.k) {
+                                                    setSelected([]);
+                                                } else {
+                                                    const allIndices = Array.from({ length: params.k }, (_, i) => i);
+                                                    setSelected(allIndices);
+                                                }
+                                            }}
+                                        />
+                                        Select all
+                                    </label>
                                     {Array.from({ length: params.k }, (_, i) => (
                                         <label key={i}>
                                             <input
