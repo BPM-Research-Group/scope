@@ -43,7 +43,7 @@ const CaseClustering: React.FC = () => {
 
     const [aggTypFileId, setaggTypFileId] = useState<string | undefined>(undefined); //Id of the calc aggTyp custering
     const [aggObjFileId, setaggObjFileId] = useState<string | undefined>(undefined); //Id of the calc aggTyp custering
-    const [inputFileId, setInputFileId] = useState<string | undefined>(undefined); //Input für die Query
+    const inputFileId = (params.distanceMeasure==='dfg-typ') ? aggTypFileId : aggObjFileId; //Input for the AgglomerativeQuery, always aggTypFileId or aggObjFileId
 
     const [minerOutputs, setMinerOutputs] = useState<MinerOutputConfig[]>([]);
     const [outputActivated, setOutputActivated] = useState(false);
@@ -78,11 +78,13 @@ const CaseClustering: React.FC = () => {
     }, [node]);
 
     function display(option: string) {
+        console.log('displaying: ', params);
         setParams((s) => ({ ...s, visMethod: option }));
         if (generateTable === true) {
             setReloadTable(true);
         }
         if (option === 'tabular-simple' || option === 'tabular-detailed') {
+            console.log('tab-simple: ');
             setGenerateMap(false);
             setGenerateTable(true);
         }
@@ -92,9 +94,23 @@ const CaseClustering: React.FC = () => {
         }
     }
 
-    useEffect(() => {
+    useEffect(() => { //temp
         console.log('getNode changed: ', getNode);
     }, [getNode]);
+
+    useEffect(() => {
+        //if (params.algorithm === 'agglomerative') {
+        //    if (params.distanceMeasure === 'dfg-typ') {
+        //        setInputFileId(aggTypFileId);
+        //    } else if (params.distanceMeasure === 'dfg-obj') {
+        //        setInputFileId(aggObjFileId);
+        //    }
+        //} 
+    }, [params.distanceMeasure]);
+
+    useEffect(() => { //temp
+        console.log('data changed: ', data, slider, params.distanceMeasure);
+    }, [data]);
 
     // Load the new clustering result from the backend when Load button is pressed. Right know a example file is read
     useEffect(() => {
@@ -108,11 +124,15 @@ const CaseClustering: React.FC = () => {
             }
             if (params.algorithm === 'agglomerative') {
                 if (params.distanceMeasure === 'dfg-typ') {
+                    console.log("setInputFIleId--------------------------------");
                     setaggTypFileId(result.data.file_id);
+                    //setInputFileId(aggTypFileId);
                 } else if (params.distanceMeasure === 'dfg-obj') {
                     setaggObjFileId(result.data.file_id);
+                    //setInputFileId(aggObjFileId);
                 }
             }
+            console.log("setInputFIleId: ", inputFileId);
         };
         loadData();
         console.log('getNode: ', getNode);
@@ -120,18 +140,25 @@ const CaseClustering: React.FC = () => {
     }, [loadResult]);
 
     useEffect(() => {
+        console.log('params.k changed: ', params.k);
+        console.log('params.k changed: inputFileID: ', inputFileId);
         if (!slider) {
             return;
         }
+        
+        
+        console.log('params.k changed &displaying ', params.k);
         display(params.visMethod);
     }, [params.k]);
 
     const tableData = useMemo(() => {
+        console.log('tableData: ', params.visMethod, generateTable, data);
         if (reloadTable === true) {
             setReloadTable(false);
         }
         if (!generateTable || !data) return [];
         if (params.visMethod === 'tabular-simple') {
+            console.log('tab-simple: ', data);
             return data.case_assignments.map(([caseId, cluster_id]: [number, number]) => ({
                 caseId,
                 cluster_id,
@@ -227,10 +254,6 @@ const CaseClustering: React.FC = () => {
         return;
     };
 
-    useEffect(() => {
-        console.log('nodeId, aggTypFileId: ', nodeId, aggTypFileId);
-    }, [nodeId, outputFileId]);
-
     //useMinerOutput( nodeId ?? ' ', subOutputFileId ?? null, outputname ?? ' ', 'ocelCollectionFile', 'ocelCollectionNode'  );
     //useMinerOutput( (nodeId + '1'), subOutputFileId ?? null, (outputname+ "1") ?? ' ', 'ocelCollectionFile', 'ocelCollectionNode'  );
     useMultipleMinerOutputs(nodeId ?? ' ', minerOutputs, outputActivated);
@@ -270,6 +293,10 @@ const CaseClustering: React.FC = () => {
         //console.log('i: ', i);
         setSelected((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]));
     };
+
+    useEffect(() => { //temp
+        console.log('slider: ', slider);
+    }, [slider]);
 
     return (
         <ReactFlowProvider>
@@ -416,12 +443,6 @@ const CaseClustering: React.FC = () => {
                                         onClick={() => {
                                             setloadResult(true);
                                             setSlider(false);
-                                            if (params.distanceMeasure === 'dfg-typ') {
-                                                setInputFileId(aggTypFileId);
-                                            }
-                                            if (params.distanceMeasure === 'dfg-obj') {
-                                                setInputFileId(aggObjFileId);
-                                            }
                                         }}
                                         className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md mt-3"
                                         aria-label="Load and display the result"
@@ -444,6 +465,7 @@ const CaseClustering: React.FC = () => {
                                                 onChange={(e) => {
                                                     setParams((s) => ({ ...s, k: Number(e.target.value) }));
                                                     setSlider(true);
+                                                    console.log('aggFiles: ', aggTypFileId, aggObjFileId);
                                                 }}
                                                 className="w-full"
                                                 aria-label="Number of clusters"
@@ -558,6 +580,12 @@ const CaseClustering: React.FC = () => {
                                     <div className="rounded-md border p-2">
                                         <p className="text-xs text-muted-foreground">Number of Clusters</p>
                                         <p className="text-lg font-semibold">{data ? data.run.k : 0}</p>
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    <div className="rounded-md border p-2">
+                                        <p className="text-xs text-muted-foreground">Number of Clusters</p>
+                                        <p className="text-lg font-semibold">{data ? data.metric : 0}</p>
                                     </div>
                                 </div>
                                 <div className="space-y-3">
