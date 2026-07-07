@@ -1,10 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useRef } from 'react';
 import { flexRender, getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from '@tanstack/react-table';
 import { ParentSize } from '@visx/responsive';
 import { ReactFlowProvider } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { isError, set, template } from 'lodash-es';
 import { useParams } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '~/components/ui/button';
@@ -13,7 +11,7 @@ import { SidebarInset, SidebarProvider } from '~/components/ui/sidebar';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '~/components/ui/table';
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 import ClusterVis from '~/components/ClusteringVis';
-import { useMinerOutput, useMultipleMinerOutputs } from '~/hooks/explore/useMinerAssets';
+import { useMultipleMinerOutputs } from '~/hooks/explore/useMinerAssets';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { useAgglomerativeClustering, useCaseClustering, useMaterialiseClustering } from '~/services/queries';
 import { MinerOutputConfig } from '~/lib/explore/flowActions';
@@ -63,7 +61,6 @@ const CaseClustering: React.FC = () => {
     );
     const aggQuery = useAgglomerativeClustering(node?.id ?? '', inputFileId ?? '', params.k, slider);
     const data = slider ? aggQuery.data : query.data;
-    const outputFileId = data?.file_id ?? null; //fileID of the last query return
 
     const matClustQuery = useMaterialiseClustering(fileId ?? ' ', data?.case_assignments ?? [0, 1], selected, false);
 
@@ -78,13 +75,11 @@ const CaseClustering: React.FC = () => {
     }, [node]);
 
     function display(option: string) {
-        console.log('displaying: ', params);
         setParams((s) => ({ ...s, visMethod: option }));
         if (generateTable === true) {
             setReloadTable(true);
         }
         if (option === 'tabular-simple' || option === 'tabular-detailed') {
-            console.log('tab-simple: ');
             setGenerateMap(false);
             setGenerateTable(true);
         }
@@ -94,71 +89,42 @@ const CaseClustering: React.FC = () => {
         }
     }
 
-    useEffect(() => { //temp
-        console.log('getNode changed: ', getNode);
-    }, [getNode]);
-
-    useEffect(() => {
-        //if (params.algorithm === 'agglomerative') {
-        //    if (params.distanceMeasure === 'dfg-typ') {
-        //        setInputFileId(aggTypFileId);
-        //    } else if (params.distanceMeasure === 'dfg-obj') {
-        //        setInputFileId(aggObjFileId);
-        //    }
-        //} 
-    }, [params.distanceMeasure]);
-
-    useEffect(() => { //temp
-        console.log('data changed: ', data, slider, params.distanceMeasure);
-    }, [data]);
-
-    // Load the new clustering result from the backend when Load button is pressed. Right know a example file is read
+    // Load the new clustering result from the backend when Load button is pressed
     useEffect(() => {
         if (!loadResult) {
             return;
         }
         const loadData = async () => {
-            const result = await query.refetch(); // waits to update the table until the results are in
+            const result = await query.refetch();       // waits to update the table until the results are in
             if (!query.isError && !result.isError) {
                 display(params.visMethod);
             }
             if (params.algorithm === 'agglomerative') {
                 if (params.distanceMeasure === 'dfg-typ') {
-                    console.log("setInputFIleId--------------------------------");
                     setaggTypFileId(result.data.file_id);
-                    //setInputFileId(aggTypFileId);
                 } else if (params.distanceMeasure === 'dfg-obj') {
                     setaggObjFileId(result.data.file_id);
-                    //setInputFileId(aggObjFileId);
                 }
             }
-            console.log("setInputFIleId: ", inputFileId);
         };
         loadData();
-        console.log('getNode: ', getNode);
         setloadResult(false);
     }, [loadResult]);
 
+    //Changes visualisation when the slider is used
     useEffect(() => {
-        console.log('params.k changed: ', params.k);
-        console.log('params.k changed: inputFileID: ', inputFileId);
         if (!slider) {
             return;
         }
-        
-        
-        console.log('params.k changed &displaying ', params.k);
         display(params.visMethod);
     }, [params.k]);
 
     const tableData = useMemo(() => {
-        console.log('tableData: ', params.visMethod, generateTable, data);
         if (reloadTable === true) {
             setReloadTable(false);
         }
         if (!generateTable || !data) return [];
         if (params.visMethod === 'tabular-simple') {
-            console.log('tab-simple: ', data);
             return data.case_assignments.map(([caseId, cluster_id]: [number, number]) => ({
                 caseId,
                 cluster_id,
@@ -250,16 +216,12 @@ const CaseClustering: React.FC = () => {
     const handleSubmit = () => {
         setSubmitted(true);
         //TODO another fetch
-        //setSubOutputFileId()
         return;
     };
 
-    //useMinerOutput( nodeId ?? ' ', subOutputFileId ?? null, outputname ?? ' ', 'ocelCollectionFile', 'ocelCollectionNode'  );
-    //useMinerOutput( (nodeId + '1'), subOutputFileId ?? null, (outputname+ "1") ?? ' ', 'ocelCollectionFile', 'ocelCollectionNode'  );
     useMultipleMinerOutputs(nodeId ?? ' ', minerOutputs, outputActivated);
 
     const exportAsNode = () => {
-        console.log("selected.length: ", selected.length);
         if(selected.length === 0) {
             setExportState('Select a cluster');
             return;
@@ -267,9 +229,7 @@ const CaseClustering: React.FC = () => {
             setExportState('Exporting ...');
         }
         const fetching = async () => {
-            //console.log("EXPORT ------------------------------")
             const result = await matClustQuery.refetch();
-            //console.log("result.data.data.materialized_clusters:", result.data.data.materialized_clusters);
             const mappedOutputs: MinerOutputConfig[] = result.data.data.materialized_clusters.map((item: any) => ({
                 outputAssetId: item.case_ocels_file_id, // oder wie auch immer das Feld im Backend heißt
                 inputFileName:
@@ -277,26 +237,17 @@ const CaseClustering: React.FC = () => {
                 outputAssetType: 'ocelCollectionFile',
                 outputNodeType: 'ocelCollectionNode',
             }));
-            //console.log("mappedOutputs:", mappedOutputs);
             setMinerOutputs(mappedOutputs);
-            //console.log("minerOutputs:", minerOutputs);
-            //console.log("selected:", selected);
             setOutputActivated(true);
             setExportState('Nodes Created');
         };
         fetching();
-        //navigate(`/data/pipeline/explore`); //macht das updaten kaput -> Anders lösen
         return;
     };
 
     const toggle = (i: any) => {
-        //console.log('i: ', i);
         setSelected((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]));
     };
-
-    useEffect(() => { //temp
-        console.log('slider: ', slider);
-    }, [slider]);
 
     return (
         <ReactFlowProvider>
@@ -465,7 +416,6 @@ const CaseClustering: React.FC = () => {
                                                 onChange={(e) => {
                                                     setParams((s) => ({ ...s, k: Number(e.target.value) }));
                                                     setSlider(true);
-                                                    console.log('aggFiles: ', aggTypFileId, aggObjFileId);
                                                 }}
                                                 className="w-full"
                                                 aria-label="Number of clusters"
