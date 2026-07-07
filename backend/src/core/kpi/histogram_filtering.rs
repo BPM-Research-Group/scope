@@ -7,10 +7,14 @@ use crate::models::kpi::{KpiFilterSpec, KpiHistogramFilterPayload};
 use crate::models::ocel::{OCELEvent, OCELObject};
 use rustc_hash::FxHashMap;
 
-fn value_in_ranges(value: f64, ranges: &[[f64; 2]]) -> bool {
-    ranges
-        .iter()
-        .any(|range| value >= range[0] && value <= range[1])
+fn value_in_ranges(value: f64, ranges: &[[f64; 2]], max_value: f64) -> bool {
+    ranges.iter().any(|&[start, end]| {
+        value >= start && if end == max_value {
+            value <= end
+        } else {
+            value < end
+        }
+    })
 }
 
 fn filter_cases_by_per_case_values(
@@ -25,12 +29,17 @@ fn filter_cases_by_per_case_values(
         return Err("Per-case KPI values do not align with case notion entries".to_string());
     }
 
+    let max_value = per_case_values
+        .iter()
+        .filter_map(|v| *v)
+        .fold(f64::NEG_INFINITY, f64::max);
+
     let filtered = cases
         .iter()
         .zip(per_case_values.iter())
         .filter_map(|(case_entry, value)| {
             value
-                .filter(|v| value_in_ranges(*v, value_ranges))
+                .filter(|v| value_in_ranges(*v, value_ranges, max_value))
                 .map(|_| case_entry.clone())
         })
         .collect();

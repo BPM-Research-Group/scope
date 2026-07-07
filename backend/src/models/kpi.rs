@@ -117,9 +117,10 @@ pub struct KpiHistogramBin {
     pub bin_midpoint: f64,
     /// Number of per-case KPI values in this bin — bar height.
     pub frequency: usize,
-    /// Inclusive lower edge of the bin (for filtering).
+    /// Lower edge of the bin, inclusive.
     pub bin_start: f64,
-    /// Inclusive upper edge of the bin (for filtering).
+    /// Upper edge of the bin. Exclusive, except the last bin where it equals
+    /// the dataset max and is inclusive.
     pub bin_end: f64,
 }
 
@@ -127,7 +128,6 @@ pub struct KpiHistogramBin {
 #[derive(Deserialize, Debug)]
 pub struct KpiHistogramFilterPayload {
     pub kpi_filter: KpiFilterSpec,
-    /// Inclusive `[min, max]` value ranges derived from selected histogram bins.
     pub value_ranges: Vec<[f64; 2]>,
 }
 

@@ -6,7 +6,6 @@ use crate::core::kpi::case_kpis::{
     collect_case_attribute_combination_values, collect_case_attribute_kpi_values,
     collect_case_duration_values, collect_case_time_values, compute_activity_successors,
 };
-use crate::core::kpi::histogram::{build_range_histogram, default_bin_count};
 use crate::models::kpi::{
     ActivitySuccessorsQuery, ActivitySuccessorsResponse, AttributeMetadata,
     CaseAttributeCombinationRequest, CaseAttributeCombinationStatsResponse, CaseAttributeQuery,
