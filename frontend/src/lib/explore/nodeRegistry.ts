@@ -156,6 +156,6 @@ export const nodeRegistry = {
     caseClusteringMinerNode: {
         category: 'miner',
         allowedAssetTypes: ['ocelFile'],
-        sidebar: { label: 'Clustering', icon: 'layers', group: 'miners' },
-    }
+        sidebar: { label: 'Clustering', icon: 'ungroup', group: 'miners' },
+    },
 } satisfies Record<RegistrableNodeType, NodeRegistryEntry>;

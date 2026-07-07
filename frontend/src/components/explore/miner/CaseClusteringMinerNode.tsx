@@ -99,7 +99,7 @@ const CaseClusteringMinerNode = memo<NodeProps<MinerNode>>((node) => {
         <BaseMinerNode
             {...node}
             title="Case Clustering Miner" //Title or node
-            iconName="layers"
+            iconName="ungroup"
             handleOptions={[
                 //Organises Input and output
                 { id: 'target', position: Position.Left, type: 'target' as const },
