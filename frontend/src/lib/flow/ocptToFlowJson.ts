@@ -336,7 +336,59 @@ const buildFlowRecursive = (
         } else if (operator === 'skip') {
             return [];
         } else if (operator === 'loop') {
-            // Will do this some time later sorry for now
+            const loopEntryId = getId('xorJoin');
+            const loopExitId = getId('xorSplit');
+
+            const [doChild, ...redoChildren] = node.children;
+
+            if (redoChildren.length > 1) {
+                logger.error('Loop operator with more than one redo child; chaining them inline', node);
+            }
+            let redoNodes: AltFlowNode[] = [];
+            let afterDoId = loopExitId;
+
+            [...redoChildren].reverse().forEach((redoChild) => {
+                const childResult = buildFlowRecursive(
+                    redoChild,
+                    getId,
+                    branchInfo,
+                    isArbitrarySubtree,
+                    afterDoId,
+                    ot,
+                    logger
+                );
+                if (childResult.length > 0) {
+                    afterDoId = childResult[0].id;
+                }
+                redoNodes = [...childResult, ...redoNodes];
+            });
+
+            const doNodes = buildFlowRecursive(doChild, getId, branchInfo, isArbitrarySubtree, afterDoId, ot, logger);
+
+            const entryNode: AltFlowNode = {
+                id: loopEntryId,
+                type: 'inter',
+                value: {
+                    operator: 'xorJoin',
+                    branches: 2,
+                },
+                next: doNodes.length > 0 ? doNodes[0].id : afterDoId,
+                branchInfo: branchInfo,
+            };
+
+            const exitNode: AltFlowNode = {
+                id: loopExitId,
+                type: 'inter',
+                value: {
+                    operator: 'xorSplit',
+                    branches: 2,
+                },
+                // Branch 0 continues in the sequence; branch 1 loops back to entry.
+                next: [parentNodeId, `${loopEntryId}#loop`],
+                branchInfo: branchInfo,
+            };
+
+            return [entryNode, ...doNodes, ...redoNodes, exitNode];
         } else {
             // unknown operator error!
             logger.error('Encountered an unknown operator!', operator, node);

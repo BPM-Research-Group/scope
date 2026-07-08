@@ -41,13 +41,25 @@ export const flattenOcel2Events = (ocel: Ocel2Response): OcelEventData[] => {
  * Builds an ObjectFlowMapRecord from OCEL 2.0 data.
  * For each object, collects the ordered list of timestamps and activities
  * from events it participates in (via relationships).
+ *
+ * The animation matches each token to the flow graph by its exact object-type
+ * string (e.g. `${type}-startEvent`). Those graph ids use the OCPT's object-type
+ * names (`ocpt.ots`), so token types must use that exact casing. OCEL 2.0 object
+ * types are typically lowercase (`worker`) while the OCPT capitalizes them
+ * (`Worker`), so we resolve each raw type against the known OCPT types
+ * case-insensitively and fall back to first-letter capitalization (the OCEL 1.0
+ * behaviour) when no OCPT type is supplied.
  */
-export const buildObjectFlowMap = (ocel: Ocel2Response): ObjectFlowMapRecord => {
-    // objectId → capitalized type name
+export const buildObjectFlowMap = (ocel: Ocel2Response, knownObjectTypes: string[] = []): ObjectFlowMapRecord => {
+    const resolveType = (rawType: string): string => {
+        const match = knownObjectTypes.find((ot) => ot.toLowerCase() === rawType.toLowerCase());
+        return match ?? rawType.charAt(0).toUpperCase() + rawType.slice(1);
+    };
+
+    // objectId → OCPT-aligned type name
     const objectTypeById = new Map<string, string>();
     ocel.objects.forEach((obj) => {
-        const capitalized = obj.type.charAt(0).toUpperCase() + obj.type.slice(1);
-        objectTypeById.set(obj.id, capitalized);
+        objectTypeById.set(obj.id, resolveType(obj.type));
     });
 
     const map: ObjectFlowMapRecord = new Map();
