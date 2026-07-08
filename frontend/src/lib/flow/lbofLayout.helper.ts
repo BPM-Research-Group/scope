@@ -139,7 +139,7 @@ export const createEdge = (object: AltFlowNode, nextObjectId: string, currOt: st
     }
 
     if (isLoopReturn && targetNodeId.toLowerCase().includes('join')) {
-        targetHandle = `${targetNodeId}-in-0`;
+        targetHandle = `${targetNodeId}-in-1`;
         data = {
             ...data,
             isDivLoopEntry: true,
