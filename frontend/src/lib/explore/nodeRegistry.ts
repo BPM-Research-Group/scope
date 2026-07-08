@@ -72,6 +72,7 @@ export const nodeRegistry = {
         category: 'file',
         allowedAssetTypes: ['ocelFile'],
         sidebar: { label: 'Event Stream', icon: 'activity', group: 'files' },
+    },
     flowFileNode: {
         category: 'file',
         allowedAssetTypes: ['flowAsset'],
@@ -121,12 +122,12 @@ export const nodeRegistry = {
         category: 'miner',
         allowedAssetTypes: ['ocptFile', 'ocptAsset'],
         sidebar: { label: 'OCPN Miner', icon: 'waypoints', group: 'miners' },
-    },    
+    },
     resourceMinerNode: {
         category: 'miner',
         allowedAssetTypes: ['ocelFile'],
         sidebar: { label: 'Resource Miner', icon: 'waves', group: 'miners' },
-        },
+    },
     conformanceMinerNode: {
         category: 'miner',
         allowedAssetTypes: ['ocptAsset', 'ocptFile', 'identityOcptAsset', 'ocelFile', 'ocelAsset', 'abstractionAsset'],
