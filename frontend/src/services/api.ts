@@ -285,11 +285,9 @@ export const saveOcpt = async (ocpt: any): Promise<{ file_id: string }> => {
 
 export const caseClustering = async (fileId: string, metric: string, algorithm: string = 'dfg-typ', k: number) => {
     if(algorithm === 'k-medoids') {
-        console.log('Api, caseClustering k-medoids called:', fileId, metric, algorithm, k);
         const response = await api.get(`/v1/clustering/cluster/${fileId}`, { params: { k, metric } });
         return response.data;
     } else if (algorithm === 'agglomerative') {
-        console.log('Api, caseClustering agglomerative called:', fileId, metric, algorithm, k);
         const response = await api.get(`/v1/clustering/agglomerative/${fileId}`, { params: { k, metric } });
         return response.data;
     }
@@ -297,20 +295,11 @@ export const caseClustering = async (fileId: string, metric: string, algorithm: 
 };
 
 export const agglomerativeClustering = async (aggFileId: string, k: number) => {
-    console.log('agglClust');
-    const start1 = performance.now();
     const response = await api.get(`/v1/clustering/agglomerative/${aggFileId}/cut?k=${k}`);
-    const end1 = performance.now();
-    console.log('time:', (end1-start1));
     return response.data;
 };
 
-export const materialiseClustering = async (case_ocels_file_id: string, case_assignments:any, cluster_ids: [number]) => {
-    console.log('api:', case_ocels_file_id, case_assignments, cluster_ids);
+export const materialiseClustering = async (case_ocels_file_id: string, case_assignments:any, cluster_ids: number[]) => {
     const response= await api.post(`/v1/clustering/materialize/${case_ocels_file_id}`, {case_assignments, cluster_ids}); 
-    console.log('response post: ', response);
-    console.log('response post, filename: ', response.data.materialized_clusters[0].case_ocels_file_id);
-    //const response2= await api.get(`/v1/clustering/materialize/${response}`); //clustered_cases_id
-    //console.log('response post2: ', response2);
     return response;
 };
