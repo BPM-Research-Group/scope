@@ -89,8 +89,15 @@ pub enum ProcessForestOperator {
 #[async_trait]
 impl ImportableFromPath for ProcessForest {
     async fn import_from_path(file_id: &str) -> Result<Self, (StatusCode, String)> {
-        let path = format!("./temp/process_forest_{}.json", file_id);
-        Self::from_json_file(&path).await
+        let path = format!("./temp/ocpf_{}.json", file_id);
+        match Self::from_json_file(&path).await {
+            Ok(process_forest) => Ok(process_forest),
+            Err((StatusCode::NOT_FOUND, _)) => {
+                let legacy_path = format!("./temp/process_forest_{}.json", file_id);
+                Self::from_json_file(&legacy_path).await
+            }
+            Err(err) => Err(err),
+        }
     }
 }
 
@@ -98,7 +105,7 @@ impl ImportableFromPath for ProcessForest {
 impl ExportableToPath for ProcessForest {
     async fn export_to_path(&self) -> Result<String, (StatusCode, String)> {
         let export_id = Uuid::new_v4().to_string();
-        let filename = format!("./temp/process_forest_{}.json", &export_id);
+        let filename = format!("./temp/ocpf_{}.json", &export_id);
 
         let data = serde_json::to_string_pretty(self).map_err(|err| {
             eprintln!("serialize Process Forest failed: {err}");
