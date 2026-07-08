@@ -1,0 +1,74 @@
+
+{
+  "ots": ["orders", "products", "packages", "items", "employees"],
+  "hierarchy": {
+    "value": {
+      "operators": {
+        "orders": "sequence",
+        "products": "sequence",
+        "packages": "sequence",
+        "items": "parallel",
+        "employees": "parallel"
+      },
+      "ots": [{"ot": "orders"}, {"ot": "products"}, {"ot": "packages"}, {"ot": "items"}, {"ot": "employees"}]
+    },
+    "children": [
+      {
+        "value": {
+          "activity": "place order",
+          "ots": [{"ot": "items"}, {"ot": "products"}, {"ot": "orders"}]
+        },
+        "children": []
+      },
+      {
+        "value": {
+          "operators": {
+            "orders": "parallel",
+            "products": "parallel",
+            "packages": "loop",
+            "items": "sequence",
+            "employees": "xor"
+          },
+          "ots": [{"ot": "orders"}, {"ot": "products"}, {"ot": "packages"}, {"ot": "items"}, {"ot": "employees"}]
+        },
+        "children": [
+          {
+            "value": {
+              "activity": "pay order",
+              "ots": [{"ot": "items"}, {"ot": "products"}, {"ot": "orders"}]
+            },
+            "children": []
+          },
+          {
+            "value": {
+              "operators": {
+                "orders": "sequence",
+                "products": "xor",
+                "packages": "sequence",
+                "items": "loop",
+                "employees": "loop"
+              },
+              "ots": [{"ot": "orders"}, {"ot": "products"}, {"ot": "packages"}, {"ot": "items"}, {"ot": "employees"}]
+            },
+            "children": [
+              {
+                "value": {
+                  "activity": "pick item",
+                  "ots": [{"ot": "employees"}, {"ot": "products"}, {"ot": "items"}]
+                },
+                "children": []
+              },
+              {
+                "value": {
+                  "activity": "create package",
+                  "ots": [{"ot": "items"}, {"ot": "products"}, {"ot": "employees"}, {"ot": "packages"}]
+                },
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
