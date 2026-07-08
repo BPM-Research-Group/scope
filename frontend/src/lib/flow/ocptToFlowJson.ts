@@ -336,7 +336,67 @@ const buildFlowRecursive = (
         } else if (operator === 'skip') {
             return [];
         } else if (operator === 'loop') {
-            // Will do this some time later sorry for now
+            const loopEntryId = getId('xorJoin');
+            const loopExitId = getId('xorSplit');
+
+            const [doChild, ...redoChildren] = node.children;
+
+            if (redoChildren.length > 1) {
+                logger.error('Loop operator with more than one redo child; chaining them on the redo path', node);
+            }
+
+            const doNodes = buildFlowRecursive(doChild, getId, branchInfo, isArbitrarySubtree, loopExitId, ot, logger);
+
+            const loopReturnTarget = `${loopEntryId}#loop`;
+            const currDepth = branchInfo ? branchInfo.depth : 0;
+            let redoNodes: AltFlowNode[] = [];
+            let redoNextId = loopReturnTarget;
+
+            [...redoChildren].reverse().forEach((redoChild) => {
+                const childResult = buildFlowRecursive(
+                    redoChild,
+                    getId,
+                    {
+                        parentSplitId: loopExitId,
+                        branchId: 1,
+                        depth: currDepth + 1,
+                    },
+                    isArbitrarySubtree,
+                    redoNextId,
+                    ot,
+                    logger
+                );
+                if (childResult.length > 0) {
+                    redoNextId = childResult[0].id;
+                }
+                redoNodes = [...childResult, ...redoNodes];
+            });
+
+            const entryNode: AltFlowNode = {
+                id: loopEntryId,
+                type: 'inter',
+                value: {
+                    operator: 'xorJoin',
+                    branches: 2,
+                },
+                next: doNodes.length > 0 ? doNodes[0].id : loopExitId,
+                branchInfo: branchInfo,
+            };
+
+            const redoBranchTarget = redoNodes.length > 0 ? `${redoNodes[0].id}#redo#${loopEntryId}` : loopReturnTarget;
+
+            const exitNode: AltFlowNode = {
+                id: loopExitId,
+                type: 'inter',
+                value: {
+                    operator: 'xorSplit',
+                    branches: 2,
+                },
+                next: [parentNodeId, redoBranchTarget],
+                branchInfo: branchInfo,
+            };
+
+            return [entryNode, ...doNodes, ...redoNodes, exitNode];
         } else {
             // unknown operator error!
             logger.error('Encountered an unknown operator!', operator, node);

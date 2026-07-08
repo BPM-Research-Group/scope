@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
-import { BaseEdge, type Edge, type EdgeProps, EdgeText, getSmoothStepPath } from '@xyflow/react';
+import { BaseEdge, type Edge, type EdgeProps, EdgeText, getSmoothStepPath, Position } from '@xyflow/react';
 import gsap from 'gsap';
 import { MemoizedToken } from '~/components/flow/MemoizedToken';
 import { useActivityExecutionStore, useColorScaleStore, useGlobalCurrentTimeMs } from '~/stores/store';
@@ -23,6 +23,8 @@ export type AnimatedSvgEdgeData = {
     visibleTokens?: ObjectFlowAtEdge[];
     currentTime?: Date;
     branchOriginContexts?: BranchOriginData[];
+    isReturnArc?: boolean;
+    returnChannelY?: number;
 };
 
 type AnimatedSVGComponentProps = EdgeProps<Edge<AnimatedSvgEdgeData>> & {
@@ -35,6 +37,47 @@ type AnimatedSVGComponentProps = EdgeProps<Edge<AnimatedSvgEdgeData>> & {
 // Hover text for a group token; very large groups are truncated.
 const formatGroupMembers = (ids: string[]) =>
     ids.length <= 12 ? ids.join(', ') : `${ids.slice(0, 12).join(', ')}, +${ids.length - 12} more`;
+
+const buildReturnArcPath = (
+    sx: number,
+    sy: number,
+    tx: number,
+    ty: number,
+    channelY: number,
+    horizontal: boolean
+): [string, number, number] => {
+    const clampR = (...limits: number[]) => Math.max(0, Math.min(10, ...limits));
+
+    if (horizontal) {
+        const approach = 24;
+        const turnX = tx - approach;
+        const hDir = turnX >= sx ? 1 : -1;
+        const r = clampR(Math.abs(turnX - sx) / 2, Math.abs(channelY - sy), Math.abs(channelY - ty) / 2, approach / 2);
+        const path = [
+            `M ${sx},${sy}`,
+            `L ${sx},${channelY - r}`,
+            `Q ${sx},${channelY} ${sx + hDir * r},${channelY}`,
+            `L ${turnX - hDir * r},${channelY}`,
+            `Q ${turnX},${channelY} ${turnX},${channelY - r}`,
+            `L ${turnX},${ty + r}`,
+            `Q ${turnX},${ty} ${turnX + r},${ty}`,
+            `L ${tx},${ty}`,
+        ].join(' ');
+        return [path, (sx + tx) / 2, channelY];
+    }
+
+    const dir = tx >= sx ? 1 : -1;
+    const r = clampR(Math.abs(tx - sx) / 2, Math.abs(channelY - sy), Math.abs(channelY - ty));
+    const path = [
+        `M ${sx},${sy}`,
+        `L ${sx},${channelY - r}`,
+        `Q ${sx},${channelY} ${sx + dir * r},${channelY}`,
+        `L ${tx - dir * r},${channelY}`,
+        `Q ${tx},${channelY} ${tx},${channelY - r}`,
+        `L ${tx},${ty}`,
+    ].join(' ');
+    return [path, (sx + tx) / 2, channelY];
+};
 
 export const AnimatedSVGEdge = ({
     id,
@@ -60,14 +103,40 @@ export const AnimatedSVGEdge = ({
     const [nextTokenIndex, setNextTokenIndex] = useState(0);
     const [completedTokens, setCompletedTokens] = useState<Set<ObjectFlowAtEdge>>(new Set());
 
-    const [edgePath, labelX, labelY] = getSmoothStepPath({
-        sourceX,
-        sourceY,
-        sourcePosition,
-        targetX,
-        targetY,
-        targetPosition,
-    });
+    const channelOffset = useMemo(() => {
+        let h = 0;
+        for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+        // 5 channels: -2, -1, 0, 1, 2 → ±18px, comfortably within the 50px row pitch.
+        return ((Math.abs(h) % 5) - 2) * 9;
+    }, [id]);
+
+    const isStepped = Math.abs(sourceY - targetY) > 1;
+
+    const [edgePath, labelX, labelY] =
+        typeof data?.returnChannelY === 'number'
+            ? buildReturnArcPath(
+                  sourceX,
+                  sourceY,
+                  targetX,
+                  targetY,
+                  data.returnChannelY,
+                  targetPosition === Position.Left || targetPosition === Position.Right
+              )
+            : getSmoothStepPath({
+                  sourceX,
+                  sourceY,
+                  sourcePosition,
+                  targetX,
+                  targetY,
+                  targetPosition,
+                  borderRadius: 10,
+                  ...(isStepped
+                      ? {
+                            centerX: (sourceX + targetX) / 2 + channelOffset,
+                            centerY: (sourceY + targetY) / 2 + channelOffset,
+                        }
+                      : {}),
+              });
 
     // Get edge color based on object type or default
     const edgeColor = useMemo(() => {

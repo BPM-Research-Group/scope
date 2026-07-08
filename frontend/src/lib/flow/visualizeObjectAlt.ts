@@ -439,7 +439,7 @@ const applyConvoySpacingAndClustering = (edges: Edge<AnimatedSvgEdgeData>[], edg
             }
         });
 
-        // 2. Execution starts are event timestamps — never shift them.
+        // 2. Execution starts are event timestamps, never shift them.
         const isExecuteEdge =
             edge.id.includes('execute') && edge.source.includes('activity') && edge.source.includes('in');
         if (isExecuteEdge) {
@@ -552,9 +552,6 @@ export const visualizeObject = (
         edgesById.set(edge.id, edge);
     });
 
-    // Approximate geometric length per edge (Manhattan distance between the node
-    // centers, matching the L-shaped smoothstep rendering). Child node positions
-    // are relative to their parent lane, so resolve the parent chain.
     const nodeById = new Map(nodes.map((node) => [node.id, node]));
     const nodeCenterById = new Map<string, { x: number; y: number }>();
     const getNodeCenter = (nodeId: string): { x: number; y: number } | null => {
@@ -756,24 +753,6 @@ export const visualizeObject = (
                 );
 
                 if (!found || !lastEdgeId) {
-                    // Keep the activity execution visible even when the token cannot be
-                    // routed onward from it.
-                    if (startEdge.id.includes('execute') && startEdge.data) {
-                        const strandedDurationMs = Math.max(0, endTimeMs - walkStart.startMs);
-                        addTokenToEdge(startEdge, {
-                            id,
-                            type,
-                            timestamp: new Date(walkStart.startMs).toISOString(),
-                            timestampMs: walkStart.startMs,
-                            executionDurationMs: strandedDurationMs,
-                            realTimeExecutionDuration: strandedDurationMs,
-                            fromActivity: walkStart.fromActivity,
-                            toActivity: 'endEvent',
-                            activity: startEdge.data.activity,
-                            pathLength: 1,
-                            currentPositionInPath: 0,
-                        });
-                    }
                     console.warn('Skipping unroutable leftover edge while finishing object', startEdge, object);
                     continue;
                 }

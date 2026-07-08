@@ -44,6 +44,7 @@ export const computeColumnX = (jsonFlows: AltFlowJson[]): Map<string, number> =>
     const seenEdges = new Set<string>();
     // Activities render as full-height boxes.
     const activityIds = new Set<string>();
+    const loopRankHints: { entryId: string; redoFirst: string }[] = [];
 
     jsonFlows.forEach((jsonFlow) => {
         const ot = jsonFlow.ot;
@@ -61,17 +62,37 @@ export const computeColumnX = (jsonFlows: AltFlowJson[]): Map<string, number> =>
                 g.setEdge(srcId, tgtId);
             };
 
+            const addNext = (rawNext: string, index: number) => {
+                if (rawNext.endsWith('#loop')) return;
+
+                const redoTag = rawNext.indexOf('#redo#');
+                if (redoTag !== -1) {
+                    const redoFirst = rawNext.slice(0, redoTag);
+                    const entryId = rawNext.slice(redoTag + '#redo#'.length);
+                    loopRankHints.push({ entryId, redoFirst });
+                    return;
+                }
+
+                // Skip the divLoop back-edge (end -> start) of the arbitrary operator.
+                if (object.id.includes('divLoopEnd') && index === 1) return;
+                addEdge(rawNext);
+            };
+
             if (object.next === '') return;
             if (typeof object.next === 'string') {
-                addEdge(object.next);
+                addNext(object.next, 0);
             } else if (Array.isArray(object.next)) {
-                object.next.forEach((nextId, index) => {
-                    // Skip the divLoop back-edge (end -> start) so the graph stays acyclic.
-                    if (object.id.includes('divLoopEnd') && index === 1) return;
-                    addEdge(nextId);
-                });
+                object.next.forEach(addNext);
             }
         });
+    });
+
+    loopRankHints.forEach(({ entryId, redoFirst }) => {
+        if (entryId === redoFirst) return;
+        const key = `${entryId}->${redoFirst}`;
+        if (seenEdges.has(key)) return;
+        seenEdges.add(key);
+        g.setEdge(entryId, redoFirst);
     });
 
     // Assign sizes.

@@ -5,9 +5,7 @@ interface TokenProps {
     id: string;
     type: string;
     radius: number;
-    /** Text inside the circle: the object id, or "×n" for group tokens. */
     label: string;
-    /** Hover tooltip; group tokens list their member object ids here. */
     title?: string;
     onMount: (element: SVGGElement) => void;
     onUnmount: () => void;
@@ -26,11 +24,6 @@ const Token: React.FC<TokenProps> = ({ id, type, radius, label, title, onMount, 
     };
 
     const tooltipWidth = title ? title.length * 6.2 + 16 : 0;
-
-    // pointerEvents="all" is required: React Flow styles edges with
-    // pointer-events: visibleStroke, under which a filled circle never
-    // receives hover events. The tooltip is drawn inline (a native SVG
-    // <title> is useless on a moving target) and rides along with the token.
     return (
         <g
             ref={tokenRef}
@@ -39,13 +32,8 @@ const Token: React.FC<TokenProps> = ({ id, type, radius, label, title, onMount, 
             onMouseEnter={title ? () => setHovered(true) : undefined}
             onMouseLeave={title ? () => setHovered(false) : undefined}
         >
-            {/* Enlarged invisible hit area so the moving token is easy to catch. */}
             {title && <circle r={radius + 6} fill="transparent" />}
-            <circle
-                className={`token-circle token-${id}`}
-                r={radius}
-                fill={colorScale(type)}
-            />
+            <circle className={`token-circle token-${id}`} r={radius} fill={colorScale(type)} />
             <text textAnchor="middle" dy=".3em" fontSize="10" fill="#fff">
                 {label}
             </text>
