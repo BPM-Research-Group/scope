@@ -15,4 +15,5 @@ pub mod ocel;
 pub mod ocim;
 pub mod ocpn;
 pub mod ocpt;
+pub mod process_forest;
 pub mod resource_miner;

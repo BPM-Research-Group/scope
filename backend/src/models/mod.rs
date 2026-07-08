@@ -11,5 +11,6 @@ pub mod ocgraphconf_case_compare;
 pub mod ocgraphconf_model_case_conformance;
 pub mod ocpn;
 pub mod ocpt;
+pub mod process_forest;
 pub mod resource_miner;
 pub mod streaming;
