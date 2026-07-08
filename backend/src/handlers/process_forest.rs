@@ -15,6 +15,7 @@ use axum::{
 };
 use serde::Deserialize;
 use serde_json::json;
+use std::io::ErrorKind;
 use tokio::fs;
 
 #[derive(Debug, Deserialize)]
@@ -72,9 +73,19 @@ pub async fn get_process_forest(Path(file_id): Path<String>) -> impl IntoRespons
 }
 
 pub async fn delete_process_forest(Path(file_id): Path<String>) -> impl IntoResponse {
-    let path = format!("./temp/process_forest_{}.json", file_id);
+    let path = format!("./temp/ocpf_{}.json", file_id);
     match fs::remove_file(&path).await {
         Ok(_) => (StatusCode::NO_CONTENT, "Deleted file").into_response(),
+        Err(err) if err.kind() == ErrorKind::NotFound => {
+            let legacy_path = format!("./temp/process_forest_{}.json", file_id);
+            match fs::remove_file(&legacy_path).await {
+                Ok(_) => (StatusCode::NO_CONTENT, "Deleted file").into_response(),
+                Err(err) => {
+                    eprintln!("Failed to delete file {}: {}", legacy_path, err);
+                    (StatusCode::INTERNAL_SERVER_ERROR, "Failed to delete file").into_response()
+                }
+            }
+        }
         Err(err) => {
             eprintln!("Failed to delete file {}: {}", path, err);
             (StatusCode::INTERNAL_SERVER_ERROR, "Failed to delete file").into_response()
