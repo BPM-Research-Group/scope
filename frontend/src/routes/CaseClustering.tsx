@@ -41,13 +41,14 @@ const CaseClustering: React.FC = () => {
 
     const [aggTypFileId, setaggTypFileId] = useState<string | undefined>(undefined); //Id of the calc aggTyp custering
     const [aggObjFileId, setaggObjFileId] = useState<string | undefined>(undefined); //Id of the calc aggTyp custering
-    const inputFileId = (params.distanceMeasure==='dfg-typ') ? aggTypFileId : aggObjFileId; //Input for the AgglomerativeQuery, always aggTypFileId or aggObjFileId
+    const inputFileId = params.distanceMeasure === 'dfg-typ' ? aggTypFileId : aggObjFileId; //Input for the AgglomerativeQuery, always aggTypFileId or aggObjFileId
 
     const [minerOutputs, setMinerOutputs] = useState<MinerOutputConfig[]>([]);
     const [outputActivated, setOutputActivated] = useState(false);
 
     const [slider, setSlider] = useState(false);
     const [selected, setSelected] = useState<number[]>([]);
+    const [clusterMax, setclusterMax] = useState<number | undefined>(20);
 
     const [exportState, setExportState] = useState<string | undefined>(undefined); //undefined, 'Select a cluster', 'Exporting ...', 'Nodes Created
 
@@ -95,16 +96,20 @@ const CaseClustering: React.FC = () => {
             return;
         }
         const loadData = async () => {
-            const result = await query.refetch();       // waits to update the table until the results are in
+            const result = await query.refetch(); // waits to update the table until the results are in
             if (!query.isError && !result.isError) {
                 display(params.visMethod);
             }
             if (params.algorithm === 'agglomerative') {
                 if (params.distanceMeasure === 'dfg-typ') {
                     setaggTypFileId(result.data.file_id);
+                    setclusterMax(data?.run?.num_cases);
                 } else if (params.distanceMeasure === 'dfg-obj') {
                     setaggObjFileId(result.data.file_id);
+                    setclusterMax(data?.run?.num_cases);
                 }
+            } else {
+                setclusterMax(data?.run?.num_cases);
             }
         };
         loadData();
@@ -222,7 +227,7 @@ const CaseClustering: React.FC = () => {
     useMultipleMinerOutputs(nodeId ?? ' ', minerOutputs, outputActivated);
 
     const exportAsNode = () => {
-        if(selected.length === 0) {
+        if (selected.length === 0) {
             setExportState('Select a cluster');
             return;
         } else {
@@ -314,9 +319,11 @@ const CaseClustering: React.FC = () => {
                                     >
                                         <span className="text-xs text-blue-600">Back to explore</span>
                                     </Button>
-                                      {exportState=== 'Select a cluster' ? (
+                                    {exportState === 'Select a cluster' ? (
                                         <p className="text-sm text-red-600">{exportState}</p>
-                                    ) : exportState ? (<p className="text-sm text-green-600">{exportState}</p>) : (null)}
+                                    ) : exportState ? (
+                                        <p className="text-sm text-green-600">{exportState}</p>
+                                    ) : null}
                                     <hr />
                                 </div>
                             ) : (
@@ -390,7 +397,12 @@ const CaseClustering: React.FC = () => {
                                             className="mb-4 w-full rounded border px-2 py-1"
                                         />
                                     ) : null}
-                                    
+                                    {params.algorithm !== 'agglomerative' && clusterMax && params.k > clusterMax ? (
+                                        <p className="text-sm text-red-600">
+                                            You have defined more clusters than there are cases, not all clusters will
+                                            be filled.
+                                        </p>
+                                    ) : null}
                                     <Button
                                         onClick={() => {
                                             setloadResult(true);
@@ -398,15 +410,17 @@ const CaseClustering: React.FC = () => {
                                         }}
                                         disabled={params.algorithm === 'agglomerative' && inputFileId ? true : false}
                                         className={`flex items-center h-6 px-2 bg-gray-100 text-gray-800 rounded-md mt-3 ${
-                                            params.algorithm === 'agglomerative' && inputFileId ? true : false 
-                                                ? 'opacity-50 cursor-not-allowed pointer-events-none' 
-                                                : 'hover:bg-gray-200'
+                                            params.algorithm === 'agglomerative' && inputFileId
+                                                ? true
+                                                : false
+                                                  ? 'opacity-50 cursor-not-allowed pointer-events-none'
+                                                  : 'hover:bg-gray-200'
                                         }`}
                                         aria-label="Load and display the result"
                                     >
                                         <span className="text-xs text-blue-600">Load</span>
                                     </Button>
-                                    {(params.algorithm == 'agglomerative' && inputFileId)? (
+                                    {params.algorithm == 'agglomerative' && inputFileId ? (
                                         <p className="text-sm text-green-600">
                                             Clustering result already exists for this input file.
                                         </p>
@@ -421,7 +435,7 @@ const CaseClustering: React.FC = () => {
                                                 id="kRange"
                                                 type="range"
                                                 min={1}
-                                                max={20}
+                                                max={clusterMax ? clusterMax : 20}
                                                 step={1}
                                                 value={params.k}
                                                 onChange={(e) => {
@@ -545,7 +559,7 @@ const CaseClustering: React.FC = () => {
                                 </div>
                                 <div className="space-y-3">
                                     <div className="rounded-md border p-2">
-                                        <p className="text-xs text-muted-foreground">Number of Clusters</p>
+                                        <p className="text-xs text-muted-foreground">Distance Measure</p>
                                         <p className="text-lg font-semibold">{data ? data.metric : 0}</p>
                                     </div>
                                 </div>
