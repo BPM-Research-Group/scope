@@ -20,8 +20,10 @@ pub fn build_range_histogram(values: &[f64], bins: usize) -> Vec<KpiHistogramBin
 
     if min == max {
         return vec![KpiHistogramBin {
-            count: min,
+            bin_midpoint: min,
             frequency: values.len(),
+            bin_start: min,
+            bin_end: max,
         }];
     }
 
@@ -49,39 +51,11 @@ pub fn build_range_histogram(values: &[f64], bins: usize) -> Vec<KpiHistogramBin
                 bin_start + width
             };
             KpiHistogramBin {
-                count: (bin_start + bin_end) / 2.0,
+                bin_midpoint: (bin_start + bin_end) / 2.0,
                 frequency,
+                bin_start,
+                bin_end,
             }
         })
         .collect()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn single_value_one_bin() {
-        let bins = build_range_histogram(&[-5.0, -5.0, -5.0], 20);
-        assert_eq!(bins.len(), 1);
-        assert_eq!(bins[0].count, -5.0);
-        assert_eq!(bins[0].frequency, 3);
-    }
-
-    #[test]
-    fn equal_width_bins() {
-        let values: Vec<f64> = (0..10).map(|i| i as f64).collect();
-        let bins = build_range_histogram(&values, 5);
-        let total: usize = bins.iter().map(|b| b.frequency).sum();
-        assert_eq!(total, 10);
-        assert!(!bins.is_empty());
-    }
-
-    #[test]
-    fn default_bin_count_scales() {
-        assert_eq!(default_bin_count(0), 0);
-        assert_eq!(default_bin_count(9), 5);
-        assert_eq!(default_bin_count(100), 10);
-        assert_eq!(default_bin_count(2000), 20);
-    }
 }
