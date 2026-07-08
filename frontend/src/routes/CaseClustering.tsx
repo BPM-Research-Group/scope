@@ -390,16 +390,27 @@ const CaseClustering: React.FC = () => {
                                             className="mb-4 w-full rounded border px-2 py-1"
                                         />
                                     ) : null}
+                                    
                                     <Button
                                         onClick={() => {
                                             setloadResult(true);
                                             setSlider(false);
                                         }}
-                                        className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md mt-3"
+                                        disabled={params.algorithm === 'agglomerative' && inputFileId ? true : false}
+                                        className={`flex items-center h-6 px-2 bg-gray-100 text-gray-800 rounded-md mt-3 ${
+                                            params.algorithm === 'agglomerative' && inputFileId ? true : false 
+                                                ? 'opacity-50 cursor-not-allowed pointer-events-none' 
+                                                : 'hover:bg-gray-200'
+                                        }`}
                                         aria-label="Load and display the result"
                                     >
                                         <span className="text-xs text-blue-600">Load</span>
                                     </Button>
+                                    {(params.algorithm == 'agglomerative' && inputFileId)? (
+                                        <p className="text-sm text-green-600">
+                                            Clustering result already exists for this input file.
+                                        </p>
+                                    ) : null}
                                     {params.algorithm === 'agglomerative' ? (
                                         <div className="mb-4">
                                             <div className="flex items-center justify-between text-xs mb-1">
