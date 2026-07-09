@@ -23,6 +23,8 @@ const FileTypeSelectionDialog: React.FC<FileTypeSelectionDialogProps> = ({ isOpe
     const OcelIcon = ocelVisuals.icon;
     const ocptVisuals = ASSET_TYPE_VISUALS.ocptFile;
     const OcptIcon = ocptVisuals.icon;
+    const ocpnVisuals = ASSET_TYPE_VISUALS.ocpnFile;
+    const OcpnIcon = ocpnVisuals.icon;
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -57,6 +59,20 @@ const FileTypeSelectionDialog: React.FC<FileTypeSelectionDialogProps> = ({ isOpe
                             <div className="font-medium">OCPT File</div>
                             <div className="text-sm text-muted-foreground">
                                 Pre-processed Object-Centric Process Tree
+                            </div>
+                        </div>
+                    </Button>
+
+                    <Button
+                        onClick={() => handleFileTypeSelect('ocpnFile')}
+                        variant="outline"
+                        className="flex items-center gap-3 h-16 justify-start p-4"
+                    >
+                        <OcpnIcon className={`h-6 w-6 ${ocpnVisuals.color}`} />
+                        <div className="text-left">
+                            <div className="font-medium">OCPN File</div>
+                            <div className="text-sm text-muted-foreground">
+                                Pre-processed Object-Centric Petri Net
                             </div>
                         </div>
                     </Button>

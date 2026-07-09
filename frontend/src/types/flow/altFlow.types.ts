@@ -9,6 +9,8 @@ export type AltFlowNode = AltInterNode | AltActivityNode;
 export interface EdgeData extends Record<string, unknown> {
     ot?: string;
     isDivLoopEntry?: boolean;
+    isReturnArc?: boolean;
+    returnChannelY?: number;
 }
 
 export interface BranchInfo {
