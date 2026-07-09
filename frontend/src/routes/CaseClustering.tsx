@@ -49,6 +49,9 @@ const CaseClustering: React.FC = () => {
     const [slider, setSlider] = useState(false);
     const [selected, setSelected] = useState<number[]>([]);
     const [clusterMax, setclusterMax] = useState<number | undefined>(20);
+    const sliderMax = Math.log2(clusterMax ? clusterMax : 20);
+    const ticks = [1, 2, 3, 5, 10, 15, 20].filter((t) => t <= (clusterMax ? clusterMax : 20));
+    const thumbWidth = 16;
 
     const [exportState, setExportState] = useState<string | undefined>(undefined); //undefined, 'Select a cluster', 'Exporting ...', 'Nodes Created
 
@@ -103,13 +106,12 @@ const CaseClustering: React.FC = () => {
             if (params.algorithm === 'agglomerative') {
                 if (params.distanceMeasure === 'dfg-typ') {
                     setaggTypFileId(result.data.file_id);
-                    setclusterMax(data?.run?.num_cases);
                 } else if (params.distanceMeasure === 'dfg-obj') {
                     setaggObjFileId(result.data.file_id);
-                    setclusterMax(data?.run?.num_cases);
                 }
+                setclusterMax(result.data.case_count);
             } else {
-                setclusterMax(data?.run?.num_cases);
+                setclusterMax(result.data.case_assignments.length);
             }
         };
         loadData();
@@ -403,8 +405,11 @@ const CaseClustering: React.FC = () => {
                                             be filled.
                                         </p>
                                     ) : null}
-                                    <Button
+                                    <Button //same load button for both algorithms, but for agglomerative it is disabled after the first time
                                         onClick={() => {
+                                            if (params.algorithm === 'agglomerative') {
+                                                setParams((s) => ({ ...s, k: 2 }));
+                                            }
                                             setloadResult(true);
                                             setSlider(false);
                                         }}
@@ -425,26 +430,46 @@ const CaseClustering: React.FC = () => {
                                             Clustering result already exists for this input file.
                                         </p>
                                     ) : null}
-                                    {params.algorithm === 'agglomerative' ? (
+                                    {params.algorithm === 'agglomerative' && inputFileId ? (
                                         <div className="mb-4">
                                             <div className="flex items-center justify-between text-xs mb-1">
                                                 <span className="block mb-2 text-sm mt-3">Number of clusters (k)</span>
                                                 <span className="font-semibold">{params.k}</span>
                                             </div>
-                                            <input
-                                                id="kRange"
-                                                type="range"
-                                                min={1}
-                                                max={clusterMax ? clusterMax : 20}
-                                                step={1}
-                                                value={params.k}
-                                                onChange={(e) => {
-                                                    setParams((s) => ({ ...s, k: Number(e.target.value) }));
-                                                    setSlider(true);
-                                                }}
-                                                className="w-full"
-                                                aria-label="Number of clusters"
-                                            />
+                                            <div className="relative w-full">
+                                                <input
+                                                    id="kRange"
+                                                    type="range"
+                                                    min={0}
+                                                    max={sliderMax}
+                                                    step={0.01}
+                                                    value={Math.log2(params.k)}
+                                                    onChange={(e) => {
+                                                        const logValue = Number(e.target.value);
+                                                        const actualK = Math.round(Math.pow(2, logValue));
+                                                        setParams((s) => ({ ...s, k: actualK }));
+                                                        setSlider(true);
+                                                    }}
+                                                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer block"
+                                                    aria-label="Number of clusters"
+                                                />
+                                                <div className="w-full relative h-6 mt-2 text-xs text-gray-500">
+                                                    {ticks.map((tick) => {
+                                                        const rawPct = (Math.log2(tick) / sliderMax) * 100;
+                                                        const correctedLeft = `calc(${rawPct}% - (${rawPct / 100} * ${thumbWidth}px) + ${thumbWidth / 2}px)`;
+                                                        return (
+                                                            <div
+                                                                key={tick}
+                                                                style={{ left: correctedLeft }}
+                                                                className="absolute top-0 -translate-x-1/2 flex flex-col items-center"
+                                                            >
+                                                                <div className="w-px h-1.5 bg-gray-400 mb-1"></div>
+                                                                <span className="font-medium select-none">{tick}</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
                                         </div>
                                     ) : null}
 
