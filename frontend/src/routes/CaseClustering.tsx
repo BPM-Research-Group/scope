@@ -267,33 +267,58 @@ const CaseClustering: React.FC = () => {
                             {submitted ? (
                                 <div className="flex flex-col gap-y-0.5">
                                     <p className="text-sm text-green-600">Data Submitted.</p>
-                                    <hr />
-                                    <label className="block mb-2 text-s mt-3"> Select Cluster: </label>
-                                    <label className="block mb-2 text-s mt-3">
-                                        <input
-                                            type="checkbox"
-                                            checked={selected.length === params.k}
-                                            onChange={() => {
-                                                if (selected.length === params.k) {
-                                                    setSelected([]);
-                                                } else {
-                                                    const allIndices = Array.from({ length: params.k }, (_, i) => i);
-                                                    setSelected(allIndices);
-                                                }
-                                            }}
-                                        />
-                                        Select all
-                                    </label>
-                                    {Array.from({ length: params.k }, (_, i) => (
-                                        <label key={i}>
-                                            <input
-                                                type="checkbox"
-                                                checked={selected.includes(i)}
-                                                onChange={() => toggle(i)}
-                                            />
-                                            Element {i}
-                                        </label>
-                                    ))}
+                                    <div className="mb-4 bg-background rounded-xl border border-gray-200 p-4 shadow-sm">
+                                        <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                                            Select Clusters
+                                        </h3>
+                                        <div className="mb-2 pb-2 border-b border-balck-100">
+                                            <label className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors group w-full">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selected.length === params.k}
+                                                    onChange={() => {
+                                                        if (selected.length === params.k) {
+                                                            setSelected([]);
+                                                        } else {
+                                                            const allIndices = Array.from(
+                                                                { length: params.k },
+                                                                (_, i) => i
+                                                            );
+                                                            setSelected(allIndices);
+                                                        }
+                                                    }}
+                                                    className="w-4 h-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500 cursor-pointer transition-colors"
+                                                />
+                                                <span className="text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
+                                                    Select all
+                                                </span>
+                                            </label>
+                                        </div>
+                                        <div className="flex flex-col gap-1.5 h-auto w-full">
+                                            {Array.from({ length: params.k }, (_, i) => {
+                                                const isChecked = selected.includes(i);
+                                                return (
+                                                    <label
+                                                        key={i}
+                                                        className={`flex items-center gap-3 px-3 py-2 rounded-lg border cursor-pointer select-none transition-all duration-150 w-full
+                                                        ${
+                                                            isChecked
+                                                                ? 'bg-blue-50/50 border-blue-200 text-blue-700 shadow-sm'
+                                                                : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300'
+                                                        }`}
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isChecked}
+                                                            onChange={() => toggle(i)}
+                                                            className="w-4 h-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500 cursor-pointer"
+                                                        />
+                                                        <span className="text-sm font-medium">Element {i}</span>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
                                     <Button
                                         onClick={() => {
                                             exportAsNode();
