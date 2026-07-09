@@ -573,7 +573,7 @@ const CaseClustering: React.FC = () => {
                             </main>
                         )}
 
-                        <aside className="w-64 min-w-[16rem] rounded-md border p-4 bg-background min-h-0">
+                        <aside className="w-15 min-w-[13rem] rounded-md border p-4 bg-background min-h-0">
                             <h3 className="mb-2 text-sm font-semibold">Data Overview</h3>
                             <div className="flex flex-col gap-2">
                                 <div className="space-y-3">
@@ -606,7 +606,7 @@ const CaseClustering: React.FC = () => {
                                     <div className="rounded-md border p-2">
                                         <p className="text-xs text-muted-foreground">total_runtime_seconds</p>
                                         <p className="text-lg font-semibold">
-                                            {data ? data.run.total_runtime_seconds : 0}
+                                            {data ? data.run.total_runtime_seconds.toFixed(3) : 0}
                                         </p>
                                     </div>
                                 </div>
@@ -617,7 +617,7 @@ const CaseClustering: React.FC = () => {
                                             {data ? (
                                                 data?.run?.within_mean?.map((value: any, index: any) => (
                                                     <div key={index}>
-                                                        Cluster {index + 1}: {value.toFixed(5)}
+                                                        Cluster {index + 1}: {value.toFixed(3)}
                                                     </div>
                                                 ))
                                             ) : (
@@ -633,33 +633,13 @@ const CaseClustering: React.FC = () => {
                                             {data ? (
                                                 data?.run?.within_std?.map((value: any, index: any) => (
                                                     <div key={index}>
-                                                        Cluster {index + 1}: {value.toFixed(5)}
+                                                        Cluster {index + 1}: {value.toFixed(3)}
                                                     </div>
                                                 ))
                                             ) : (
                                                 <span>0</span>
                                             )}
                                         </div>
-                                    </div>
-                                </div>
-                                <div className="space-y-3">
-                                    <div className="rounded-md border p-2">
-                                        <p className="text-xs text-muted-foreground">cluster_event_counts</p>
-                                        {data?.run?.cluster_event_counts?.map((group: any, groupIndex: any) => (
-                                            <div key={groupIndex} className="mb-3">
-                                                <p className="text-sm font-bold text-muted-foreground">
-                                                    Cluster {groupIndex + 1}
-                                                </p>
-
-                                                <div className="ml-2">
-                                                    {group.map(([name, value]: [string, number]) => (
-                                                        <p key={name} className="text-base font-semibold">
-                                                            {name}: {value}
-                                                        </p>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        ))}
                                     </div>
                                 </div>
                             </div>
