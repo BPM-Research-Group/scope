@@ -68,6 +68,11 @@ export const nodeRegistry = {
         allowedAssetTypes: ['conformanceAsset'],
         sidebar: null,
     },
+    eventStreamNode: {
+        category: 'file',
+        allowedAssetTypes: ['ocelFile'],
+        sidebar: { label: 'Event Stream', icon: 'activity', group: 'files' },
+    },
 
     // ── Miner nodes ────────────────────────────────────────────────────────────
     ocptMinerNode: {
@@ -137,5 +142,15 @@ export const nodeRegistry = {
             },
         ],
         sidebar: { label: 'Conformance', icon: 'radar', group: 'miners' },
+    },
+    df2StreamMinerNode: {
+        category: 'miner',
+        allowedAssetTypes: ['ocelFile'],
+        sidebar: { label: 'DF2 Stream Miner', icon: 'network', group: 'miners' },
+    },
+    ocptStreamMinerNode: {
+        category: 'miner',
+        allowedAssetTypes: ['ocelFile'],
+        sidebar: { label: 'OCPT Stream Miner', icon: 'treePine', group: 'miners' },
     },
 } satisfies Record<RegistrableNodeType, NodeRegistryEntry>;

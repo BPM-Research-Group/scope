@@ -1,8 +1,8 @@
 pub mod abstraction;
-pub mod kpi;
 pub mod case_notion;
 pub mod clustering;
 pub mod dfg;
+pub mod kpi;
 pub mod ocel;
 pub mod ocel1;
 pub mod ocel_collection;
@@ -12,3 +12,4 @@ pub mod ocgraphconf_model_case_conformance;
 pub mod ocpn;
 pub mod ocpt;
 pub mod resource_miner;
+pub mod streaming;

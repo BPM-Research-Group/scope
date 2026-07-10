@@ -5,6 +5,7 @@ import { SidebarInset, SidebarProvider } from '~/components/ui/sidebar';
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 import { DnDProvider, useDnD } from '~/components/explore/DndContext';
 import ExploreSidebar from '~/components/explore/ExploreSidebar';
+import EventStreamNode from '~/components/explore/file/EventStreamNode';
 import OcelCollectionNode from '~/components/explore/file/OcelCollectionNode';
 import OcelFileNode from '~/components/explore/file/OcelFileNode';
 import OcpnFileNode from '~/components/explore/file/OcpnFileNode';
@@ -18,12 +19,14 @@ import ConformanceMinerNode from '~/components/explore/miner/ConformanceMinerNod
 import CaseNotionMinerNode from '~/components/explore/miner/CaseNotionMinerNode';
 import ExtendWithIdentityNode from '~/components/explore/miner/ExtendWithIdentityNode';
 import FlowVisualizationNode from '~/components/explore/miner/FlowVisualizationNode';
+import Df2StreamMinerNode from '~/components/explore/miner/Df2StreamMinerNode';
 import HistogramMinerNode from '~/components/explore/miner/HistogramMinerNode';
 import OcpnMinerNode from '~/components/explore/miner/OcpnMinerNode';
 import ResourceMinerNode from '~/components/explore/miner/ResourceMinerNode';
 import KpiBuilderNode from '~/components/explore/miner/KpiBuilderNode';
 import OcptMinerNode from '~/components/explore/miner/OcptMinerNode';
 import { RefocusProgressPanel } from '~/components/explore/RefocusProgressPanel';
+import OcptStreamMinerNode from '~/components/explore/miner/OcptStreamMinerNode';
 import { useConnections } from '~/hooks/explore/useConnections';
 import { useDragDrop } from '~/hooks/explore/useDragDrop';
 import { useNodeOperations } from '~/hooks/explore/useNodeOperations';
@@ -49,6 +52,9 @@ const nodeTypes = {
     resourceMinerNode: ResourceMinerNode,
     kpiBuilderNode: KpiBuilderNode,
     conformanceFileNode: ConformanceFileNode,
+    eventStreamNode: EventStreamNode,
+    df2StreamMinerNode: Df2StreamMinerNode,
+    ocptStreamMinerNode: OcptStreamMinerNode,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } satisfies Record<keyof typeof nodeRegistry, React.ComponentType<NodeProps<any>>>;
 

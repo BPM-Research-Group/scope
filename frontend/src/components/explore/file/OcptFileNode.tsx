@@ -17,8 +17,8 @@ import {
 } from '~/components/ui/dropdown-menu';
 import BaseFileNode from '~/components/explore/file/BaseFileNode';
 import { useExploreFlowStore } from '~/stores/exploreStore';
-import { useGetIdentityOcpt, useGetOcpt } from '~/services/queries';
 import { exportOcptPm4py } from '~/services/api';
+import { useGetIdentityOcpt, useGetOcpt } from '~/services/queries';
 import { generateColorMap, getDeterministicColor } from '~/lib/colors';
 import { propagateMapDownstream, syncMatchingColorsGlobally } from '~/lib/explore/flowActions';
 import { FileExploreNodeData } from '~/types/explore/nodeData/fileNodeData';
@@ -115,9 +115,12 @@ const OcptFileNode = memo<NodeProps<FileNode>>((props) => {
         },
     });
 
-    const handleDropdownAction = useCallback((action: string) => {
-        if (action === 'exportPm4pyOcpt') exportMutation.mutate();
-    }, [exportMutation]);
+    const handleDropdownAction = useCallback(
+        (action: string) => {
+            if (action === 'exportPm4pyOcpt') exportMutation.mutate();
+        },
+        [exportMutation]
+    );
 
     const visualize = (filter?: string) => {
         navigate(`/data/pipeline/explore/ocpt/${id}${filter ? `?filter=${filter}` : ''}`);
@@ -158,7 +161,9 @@ const OcptFileNode = memo<NodeProps<FileNode>>((props) => {
             dropdownOptions={[
                 { label: 'Open File', action: 'openFileDialog' as const, icon: 'file' },
                 { label: 'Set Custom Color', action: 'setCustomColor' as const, icon: 'palette' },
-                ...(hasFile ? [{ label: 'Export as PM4PY', action: 'exportPm4pyOcpt' as const, icon: 'download' }] : []),
+                ...(hasFile
+                    ? [{ label: 'Export as PM4PY', action: 'exportPm4pyOcpt' as const, icon: 'download' }]
+                    : []),
             ]}
             onDropdownAction={handleDropdownAction}
         >
@@ -170,7 +175,7 @@ const OcptFileNode = memo<NodeProps<FileNode>>((props) => {
                             variant="outline"
                             size="sm"
                             className="w-full justify-start h-7 px-2 text-xs"
-                            onClick={() => visualize(viewState.filteredObjectTypes.join(','))}
+                            onClick={() => visualize(viewState.filteredObjectTypes.join(',') ?? [])}
                         >
                             <TreePine className="mr-2 h-3.5 w-3.5 text-green-600" />
                             Process Tree

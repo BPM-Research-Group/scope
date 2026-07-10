@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useMineCaseNotionMutation } from '~/services/mutation';
 import { useAttributeStats, useMineKpi } from '~/services/queries';
 import { HistogramChart } from '../HistogramChart';
+import { HistChart } from './HistChart';
 
 type Stats = {
     count: number;
@@ -51,8 +52,10 @@ type Props = {
 };
 
 interface HistogramItem {
-    count: number;
+    bin_midpoint: number;
     frequency: number;
+    bin_start: number;
+    bin_end: number;
 }
 
 const COLORS = ['#2563eb', '#9333ea', '#14b8a6', '#f97316'];
@@ -71,6 +74,11 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
     const [showHistogram, setShowHistogram] = useState<boolean>(false);
     const [histogramData, setHistogramData] = useState<HistogramItem[]>([]);
     const [selectedBins, setSelectedBins] = useState<number[]>([]);
+    const [isApplyingFilter, setIsApplyingFilter] = useState(false);
+    const [isApplyingActivityFilter, setIsApplyingActivityFilter] = useState(false);
+    const [activityHistogramData, setActivityHistogramData] = useState<HistogramItem[]>([]);
+const [showActivityHistogram, setShowActivityHistogram] = useState(false);
+const [selectedActivityBins, setSelectedActivityBins] = useState<number[]>([]);
 
     const [hasUnminedChanges, setHasUnminedChanges] = useState(false);
 
@@ -89,8 +97,9 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
     const [isLoadingTimeKpi, setIsLoadingTimeKpi] = useState(false);
     const [successors, setSuccessors] = useState<Record<string, string[]>>({});
     const [isLoadingSuccessors, setIsLoadingSuccessors] = useState(false);
-    const [leftIntraCaseAgg, setLeftIntraCaseAgg] = useState<'sum' | 'mean' | 'min' | 'max' | 'count' | ''>('');
-    const [rightIntraCaseAgg, setRightIntraCaseAgg] = useState<'sum' | 'mean' | 'min' | 'max' | 'count' | ''>('');
+    const [leftIntraCaseAgg, setLeftIntraCaseAgg] = useState<'sum' | 'mean' | 'min' | 'max' | 'count' | ''>('sum');
+    const [rightIntraCaseAgg, setRightIntraCaseAgg] = useState<'sum' | 'mean' | 'min' | 'max' | 'count' | ''>('sum');
+    const [intraCaseAgg, setIntraCaseAgg] = useState<'sum' | 'mean' | 'min' | 'max' | 'count' >('sum');
     const [showStatsChart, setShowStatsChart] = useState(false);
 
     const {
@@ -110,7 +119,7 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
             setIsLoadingTimeKpi(true);
 
             const res = await axios.get(`http://localhost:3000/v1/kpi/case_duration/${currentCnFileId}`);
-            console.log(res.data.stats);
+            console.log(res.data);
             setTimeStats(res.data.stats);
         } catch (err) {
             console.error(err);
@@ -132,17 +141,119 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
                     object_type: selectedObjectType,
                     from_activity: fromActivity,
                     to_activity: toActivity,
+                    intra_case_agg: intraCaseAgg,
+                    histogram: selectedHistogramOption,
                 },
             });
             console.log('time kpi res');
             console.log(res.data);
             setTimeStats(res.data.stats);
+            setActivityHistogramData(res.data.histogram ?? []);
         } catch (err) {
             console.error(err);
         } finally {
             setIsLoadingTimeKpi(false);
         }
     };
+    const activityBins = useMemo(
+    () =>
+        activityHistogramData.map(item => ({
+            x: item.bin_midpoint,
+            y: item.frequency,
+            bin_start: item.bin_start,
+            bin_end: item.bin_end,
+        })),
+    [activityHistogramData]
+);
+
+const hasActivityHistogram = activityHistogramData.length > 0;
+useEffect(() => {
+    if (activityBins.length > 0) {
+        setSelectedActivityBins(
+            activityBins.map((_, index) => index)
+        );
+    }
+}, [activityBins]);
+
+    const applyHistogramFilter = async () => {
+    if (!currentCnFileId || selectedBins.length === 0) return;
+
+    const histogramFilter = {
+        type: "attribute_combination",
+
+        left_attribute: selectedLeftAttribute,
+        left_object_type: selectedLeftObjectType,
+        left_intra_case_agg: leftIntraCaseAgg,
+
+        right_attribute: selectedRightAttribute,
+        right_object_type: selectedRightObjectType,
+        right_intra_case_agg: rightIntraCaseAgg,
+
+        operation: selectedOperation,
+    };
+
+    const valueRanges = selectedBins.map(index => [
+        bins[index].bin_start,
+        bins[index].bin_end,
+    ]);
+
+    const payload = {
+        kpi_filter: histogramFilter,
+        value_ranges: valueRanges,
+    };
+
+    try {
+         setIsApplyingFilter(true);
+        const res = await axios.post(
+            `http://localhost:3000/v1/kpi/histogram_filter/${currentCnFileId}`,
+            payload
+        );
+        // setCurrentCnFileId(res.data.case_notion_file_id);
+
+        console.log(res.data);
+    } catch (err) {
+        console.error(err);
+    } finally {
+        setIsApplyingFilter(false);
+    }
+};
+
+
+
+
+
+// const applyActivityHistogramFilter = async () => {
+//     const valueRanges = selectedActivityBins.map(index => [
+//         activityBins[index].bin_start,
+//         activityBins[index].bin_end,
+//     ]);
+
+//     const payload = {
+//         kpi_filter: {
+//             type: "case_time",
+//             // object_type: selectedObjectType,
+//             // from_activity: fromActivity,
+//             // to_activity: toActivity,
+//             // intra_case_agg: intraCaseAgg,
+//         },
+//         value_ranges: valueRanges,
+//     };
+//  try {
+//          setIsApplyingActivityFilter(true);
+//         const res = await axios.post(
+//             `http://localhost:3000/v1/kpi/histogram_filter/${currentCnFileId}`,
+//             payload
+//         );
+
+//         console.log(res.data);
+//     } catch (err) {
+//         console.error(err);
+//     } finally {
+//         setIsApplyingActivityFilter(false);
+//     }
+// };
+
+
     const formatDuration = (seconds: number) => {
         const days = seconds / 86400;
 
@@ -161,15 +272,18 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
         try {
             setIsLoadingSuccessors(true);
             console.log(`http://localhost:3000/v1/kpi/activity_successors/${cnId}`);
-            const res = await axios.get(`http://localhost:3000/v1/kpi/activity_successors/${cnId}`);
+           const res = await axios.get(
+    `http://localhost:3000/v1/kpi/activity_successors/${cnId}?object_type=${selectedObjectType}`
+);
+             console.error(res);
 
             setSuccessors(res.data.successors ?? {});
         } catch (err: any) {
             console.error('Activity Successors Error');
 
-            console.error('Status:', err?.response?.status);
-            console.error('Data:', err?.response?.data);
-            console.error('URL:', err?.config?.url);
+            // console.error('Status:', err?.response?.status);
+            // console.error('Data:', err?.response?.data);
+            // console.error('URL:', err?.config?.url);
         } finally {
             setIsLoadingSuccessors(false);
         }
@@ -226,6 +340,7 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
             right_attribute: selectedRightAttribute,
             operation: selectedOperation,
             histogram: selectedHistogramOption,
+            intra_case_agg: intraCaseAgg,
             ...(selectedLeftObjectType && {
                 left_object_type: selectedLeftObjectType,
             }),
@@ -246,6 +361,7 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
             }),
         };
     }, [
+        intraCaseAgg,
         selectedLeftAttribute,
         selectedRightAttribute,
         selectedLeftObjectType,
@@ -259,6 +375,28 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
     ]);
     console.log(params);
     console.log('params');
+
+    const histogramFilter = useMemo(() => ({
+    type: "attribute_combination",
+
+    left_attribute: selectedLeftAttribute,
+    left_object_type: selectedLeftObjectType,
+    left_intra_case_agg: leftIntraCaseAgg,
+
+    right_attribute: selectedRightAttribute,
+    right_object_type: selectedRightObjectType,
+    right_intra_case_agg: rightIntraCaseAgg,
+
+    operation: selectedOperation,
+}), [
+    selectedLeftAttribute,
+    selectedLeftObjectType,
+    leftIntraCaseAgg,
+    selectedRightAttribute,
+    selectedRightObjectType,
+    rightIntraCaseAgg,
+    selectedOperation,
+]);
     const {
         data: attributeStatsData,
         isLoading: attributeStatsLoading,
@@ -277,8 +415,10 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
     const bins = useMemo(
         () =>
             histogramData.map((item) => ({
-                x: item.count,
+                x: item.bin_midpoint,
                 y: item.frequency,
+                bin_start: item.bin_start,
+                bin_end: item.bin_end,
             })),
         [histogramData]
     );
@@ -486,6 +626,40 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
                             </select>
                         </div>
 
+                         <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">
+                                Intra-Case Aggregation
+                            </label>
+
+                            <select
+                                value={intraCaseAgg}
+                                onChange={(e) => {
+                                    setIntraCaseAgg(e.target.value as any);
+                                    setShouldFetchStats(false);
+                                }}
+                                className="
+            w-full
+            border
+            border-slate-300
+            rounded-xl
+            px-4
+            py-3
+            bg-white
+            focus:ring-2
+            focus:ring-blue-500
+            focus:border-blue-500
+            outline-none
+        "
+                            >
+                                {/* <option value="">None (Default)</option> */}
+                                <option value="sum">Sum per Case</option>
+                                <option value="mean">Mean per Case</option>
+                                <option value="min">Min per Case</option>
+                                <option value="max">Max per Case</option>
+                                <option value="count">Count per Case</option>
+                            </select>
+                        </div>
+
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-2">Left Object Type</label>
 
@@ -583,7 +757,7 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
             outline-none
         "
                             >
-                                <option value="">None (Default)</option>
+                                {/* <option value="">None (Default)</option> */}
                                 <option value="sum">Sum per Case</option>
                                 <option value="mean">Mean per Case</option>
                                 <option value="min">Min per Case</option>
@@ -691,7 +865,7 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
             outline-none
         "
                             >
-                                <option value="">None (Default)</option>
+                                {/* <option value="">None (Default)</option> */}
                                 <option value="sum">Sum per Case</option>
                                 <option value="mean">Mean per Case</option>
                                 <option value="min">Min per Case</option>
@@ -820,6 +994,19 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
                         </div>
 
                         <div className="flex gap-3">
+
+{hasActivityHistogram && (
+    <div className="flex justify-end mt-4">
+        <button
+            onClick={() => setShowActivityHistogram(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl"
+        >
+            Show Histogram
+        </button>
+    </div>
+)}
+
+
                             <button
                                 onClick={() => setTimeKpiType('case_duration')}
                                 className={`px-4 py-2 rounded-xl text-sm font-medium transition ${
@@ -980,8 +1167,10 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
             )}
 
             {selectedHistogramOption == true && showHistogram && hasHistogram && (
+                // <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                //     <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl p-6 mx-4">
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl p-6 mx-4">
+    <div className="bg-white rounded-2xl shadow-xl w-[95vw] h-[90vh] overflow-auto p-6">
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-xl font-bold">Histogram Visualization</h2>
 
@@ -991,7 +1180,7 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
                         </div>
 
                         <div className="border rounded-xl p-4">
-                            <HistogramChart
+                            <HistChart
                                 id="kpi-histogram"
                                 fileId={currentCnFileId}
                                 bins={bins}
@@ -1001,13 +1190,72 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
                                 color="blue"
                                 event_type="KPI"
                                 object_type={selectedObjectType}
-                                width={900}
+                                width={950}
                                 height={500}
                             />
+                            <div className="mt-4 flex justify-end">
+        <button
+            onClick={applyHistogramFilter}
+            disabled={isApplyingFilter}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl"
+        >
+           {isApplyingFilter ? "Filtering..." : "Apply Filter"}
+        </button>
+    </div>
                         </div>
                     </div>
                 </div>
             )}
+
+{showActivityHistogram && hasActivityHistogram && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div className="bg-white rounded-2xl shadow-xl w-[95vw] h-[90vh] overflow-auto p-6">
+
+            <div className="flex justify-between mb-6">
+                <h2 className="text-xl font-bold">
+                    Activity Time Histogram
+                </h2>
+
+                <button
+                    onClick={() => setShowActivityHistogram(false)}
+                    className="text-2xl"
+                >
+                    ×
+                </button>
+            </div>
+
+            <div className="border rounded-xl p-4">
+                <HistChart
+                    id="activity-time-histogram"
+                    fileId={currentCnFileId}
+                    bins={activityBins}
+                    selectedIdx={selectedActivityBins}
+                    onSelect={setSelectedActivityBins}
+                    disabled={false}
+                    color="blue"
+                    event_type="KPI"
+                    object_type={selectedObjectType}
+                    width={950}
+                    height={500}
+                />
+                {/* <div className="mt-4 flex justify-end">
+        <button
+            onClick={applyActivityHistogramFilter}
+            disabled={isApplyingActivityFilter}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl"
+        >
+           {isApplyingActivityFilter ? "Filtering..." : "Apply Filter"}
+        </button>
+    </div> */}
+            </div>
+        </div>
+    </div>
+)}
+
+
+
+
+
         </div>
     );
 };

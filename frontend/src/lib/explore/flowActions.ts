@@ -1,10 +1,11 @@
-import { Connection } from '@xyflow/react';
+import { Connection, Edge } from '@xyflow/react';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { isFileNode } from '~/lib/explore/exploreNodes.utils';
 import { BaseExploreNodeAsset } from '~/types/explore/nodeData/baseNodeData';
 import { ExploreNodeType } from '~/types/explore/nodeTypesCategories';
 import { AssetType } from '~/types/files.types';
 import { createNode } from '~/lib/explore/createNode';
+import { ExploreNode } from '~/types/explore/nodes';
 
 function hslToHex(h: number, s: number, l: number): string {
     s /= 100;
@@ -321,4 +322,31 @@ export const pullUpstreamData = (targetNodeId: string) => {
             return updates;
         });
     }
+};
+
+/**
+ * Recursively searches upstream to find live streaming data. First checks itself.
+ */
+export const getUpstreamStreamingData = (
+    nodeId: string,
+    nodes: ExploreNode[],
+    edges: Edge[]
+): any | null => {
+    const selfNode = nodes.find((n) => n.id === nodeId);
+    if (selfNode?.data?.processedData) {
+        return selfNode.data.processedData;
+    }
+
+    const incomingEdge = edges.find((e) => e.target === nodeId);
+    if (!incomingEdge) return null;
+
+    const sourceNode = nodes.find((n) => n.id === incomingEdge.source);
+    if (!sourceNode) return null;
+
+    if (sourceNode.data.processedData) {
+        return sourceNode.data.processedData;
+    }
+
+    // Recurse
+    return getUpstreamStreamingData(sourceNode.id, nodes, edges);
 };

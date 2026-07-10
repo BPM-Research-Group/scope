@@ -71,6 +71,7 @@ export const HistogramChart: React.FC<Props> = ({
         end: null,
     });
 
+
     const xScale = useMemo(
         () =>
             scaleBand<number>({

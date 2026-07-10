@@ -5,13 +5,29 @@ use crate::models::ocpt::{
     OCPTOperatorType, ObjectTypeFE as FeObjectType, OcptFE, OperatorFE, OperatorValue,
     OperatorValueData,
 };
+use crate::traits::import_export::ExportableToPath;
 use anyhow::{Result, anyhow};
+use async_trait::async_trait;
+use axum::http::StatusCode;
 use std::collections::{HashMap, HashSet};
 
 /// Converts a frontend OCPT [OcptFE] to a backend OCPT [OCPT].
 pub fn frontend_to_backend(front: OcptFE) -> Result<OCPT> {
     let root = frontend_node_to_backend(&front.hierarchy)?;
     Ok(OCPT::new(root))
+}
+
+#[async_trait]
+impl ExportableToPath for OcptFE {
+    async fn export_to_path(&self) -> Result<String, (StatusCode, String)> {
+        let ocpt_be = frontend_to_backend(self.clone()).map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                format!("Invalid OCPT structure: {}", e),
+            )
+        })?;
+        ocpt_be.export_to_path().await
+    }
 }
 
 /// Converts a backend OCPT [OCPT] to a frontend OCPT [OcptFE].
