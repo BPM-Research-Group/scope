@@ -50,5 +50,5 @@ export function useMultipleMinerOutputs(
         const validOutputs = outputs.filter(o => o.outputAssetId && o.inputFileName);
         if (validOutputs.length === 0) return;
         handleMultipleMinerOutputs(nodeId, validOutputs);
-    }, [nodeId, JSON.stringify(outputs)]); // JSON.stringify als einfacher Deep-Check für das Array
+    }, [nodeId, JSON.stringify(outputs), isReady]);
 }

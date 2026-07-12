@@ -125,7 +125,7 @@ export const updateNodeColorAndPropagate = (nodeId: string, key: string, color: 
  * Copies a color map to all DOWNSTREAM nodes recursively.
  */
 export const propagateMapDownstream = (sourceNodeId: string, newMap: Record<string, string>) => {
-    //console.log(`propagateMapDownstream Starting from: ${sourceNodeId} with map:`, newMap);
+    console.log("Propagating Downstream");
     const state = useExploreFlowStore.getState();
     const { nodes, edges, updateNodeData } = state;
     console.log(`[Propagation Down] Starting from: ${sourceNodeId}`);
@@ -230,9 +230,12 @@ export const handleMultipleMinerOutputs = (
     nodeId: string,
     outputs: MinerOutputConfig[]
 ) => {
-    const { updateNodeData, getNode, edges: freshEdges, nodes: freshNodes } = useExploreFlowStore.getState();
+    const state = useExploreFlowStore.getState();
+    const { updateNodeData, getNode, edges: freshEdges, nodes: freshNodes } = state;
     const node = getNode(nodeId);
     if (!node) return;
+
+    //Assets for the current miner node
     const newAssets = outputs.map(out => ({
         id: out.outputAssetId!,
         io: 'output' as const,
@@ -241,24 +244,42 @@ export const handleMultipleMinerOutputs = (
         name: out.inputFileName,
     }));
 
-    // Ursprungsknoten einmalig mit allen neuen Assets aktualisieren
     updateNodeData(nodeId, (prev) => {
         const currentAssets = prev.assets.filter((a) => a.io !== 'output');
         return { assets: [...currentAssets, ...newAssets] };
     });
-    const freshNode = freshNodes.find((n) => n.id === nodeId);
-    const assignedTargetIds = new Set<string>();
 
+    //makes shure that we don't overwrite a node that is already connected to another node (upstream)
+    const isTrueDownstreamTarget = (targetId: string, currentEdges: any[]) => {
+        const incomingEdges = currentEdges.filter((e) => e.target === targetId);
+        return !incomingEdges.some((e) => e.source !== nodeId);
+    };
+
+    const assignedTargetIds = new Set<string>();
+    const outputsNeedingSpawns: Array<{ out: MinerOutputConfig, asset: any, originalIndex: number }> = [];
+
+    // Assign existing edges
     outputs.forEach((out, index) => {
         const correspondingAsset = newAssets[index];
         
-        const applyAssetToTargetEdge = (edge: any, currentNodes: any[], currentFreshNode: any) => {
-            const targetId = edge.target;
+        const existingEdgeForType = freshEdges.find((edge) => {
+            if (edge.source !== nodeId) return false;
+            const targetNode = freshNodes.find((n) => n.id === edge.target);
+            return (
+                targetNode && 
+                targetNode.type === out.outputNodeType &&
+                !assignedTargetIds.has(targetNode.id) &&
+                isTrueDownstreamTarget(targetNode.id, freshEdges)
+            );
+        });
+
+        if (existingEdgeForType) {
+            const targetId = existingEdgeForType.target;
             assignedTargetIds.add(targetId);
 
             updateNodeData(targetId, (prev: any) => {
                 const otherAssets = (prev?.assets || []).filter((a: any) => a.io !== 'output');
-                const sourceColorMap = (currentFreshNode?.data as any)?.colorMap;
+                const sourceColorMap = (node?.data as any)?.colorMap;
                 const existingColorMap = prev?.colorMap || {};
                 const nextColorMap = sourceColorMap ? { ...existingColorMap, ...sourceColorMap } : existingColorMap;
                 return {
@@ -266,67 +287,71 @@ export const handleMultipleMinerOutputs = (
                     colorMap: nextColorMap,
                 };
             });
-
-            if ((currentFreshNode?.data as any)?.colorMap) {
-                propagateMapDownstream(nodeId, (currentFreshNode!.data as any).colorMap);
-            }
-        };
-
-        const existingEdgeForType = freshEdges.find((edge) => {
-            if (edge.source !== nodeId) return false;
-            const targetNode = freshNodes.find((n) => n.id === edge.target);
-            return (
-                targetNode && 
-                targetNode.type === out.outputNodeType &&
-                !assignedTargetIds.has(targetNode.id)
-            );
-        });
-
-        if (existingEdgeForType) {
-            applyAssetToTargetEdge(existingEdgeForType, freshNodes, freshNode);
         } else {
-            spawnDownstreamNode(nodeId, out.outputNodeType);
+            outputsNeedingSpawns.push({ out, asset: correspondingAsset, originalIndex: index });
+        }
+    });
 
-            setTimeout(() => {
-                const { edges: postEdges, nodes: postNodes, updateNodeData } = useExploreFlowStore.getState();
-                const latestFreshNode = postNodes.find((n) => n.id === nodeId);
+    // Create the new nodes
+    outputsNeedingSpawns.forEach((item) => {
+        spawnDownstreamNode(nodeId, item.out.outputNodeType);
+    });
 
+    //One timer to ensure propper creation
+    if (outputsNeedingSpawns.length > 0) {
+        setTimeout(() => {
+            const { edges: postEdges, nodes: postNodes, updateNodeData } = useExploreFlowStore.getState();
+            const latestFreshNode = postNodes.find((n) => n.id === nodeId);
+
+            outputsNeedingSpawns.forEach((item) => {
                 const newlyCreatedEdge = postEdges.find((edge) => {
                     if (edge.source !== nodeId) return false;
                     const targetNode = postNodes.find((n) => n.id === edge.target);
-                    return targetNode && targetNode.type === out.outputNodeType && !assignedTargetIds.has(targetNode.id);
+                    return (
+                        targetNode && 
+                        targetNode.type === item.out.outputNodeType && 
+                        !assignedTargetIds.has(targetNode.id) &&
+                        isTrueDownstreamTarget(targetNode.id, postEdges)
+                    );
                 });
             
                 if (newlyCreatedEdge) {
                     const targetId = newlyCreatedEdge.target;
                     assignedTargetIds.add(targetId);
-                
                     const targetNode = postNodes.find((n) => n.id === targetId);
 
                     if (targetNode && latestFreshNode) {
-                        const spacing = 140;  //space between the created nodes
-
+                        const spacing = 140; 
                         targetNode.position = {
-                            x: latestFreshNode.position.x + 450, //movement to the right
-                            y: latestFreshNode.position.y + (index * spacing) - ((outputs.length - 1) * spacing) / 2 
+                            x: latestFreshNode.position.x + 450, 
+                            y: latestFreshNode.position.y + (item.originalIndex * spacing) - ((outputs.length - 1) * spacing) / 2 
                         };
                     }
+                    
                     updateNodeData(targetId, (prev: any) => {
                         const otherAssets = (prev?.assets || []).filter((a: any) => a.io !== 'output');
+                        const sourceColorMap = (latestFreshNode?.data as any)?.colorMap;
+                        const existingColorMap = prev?.colorMap || {};
                         return {
                             ...prev,
                             position: targetNode?.position,
-                            assets: [...otherAssets, { ...correspondingAsset, io: 'output' }]
+                            assets: [...otherAssets, { ...item.asset, io: 'output' }],
+                            colorMap: sourceColorMap ? { ...existingColorMap, ...sourceColorMap } : existingColorMap
                         };
                     });
-                
-                    if ((latestFreshNode?.data as any)?.colorMap) {
-                        propagateMapDownstream(nodeId, (latestFreshNode!.data as any).colorMap);
-                    }
                 }
-            }, 50);
+            });
+
+            if ((latestFreshNode?.data as any)?.colorMap) {
+                propagateMapDownstream(nodeId, (latestFreshNode!.data as any).colorMap);
+            }
+        }, 50);
+    } else {
+        const freshNode = freshNodes.find((n) => n.id === nodeId);
+        if ((freshNode?.data as any)?.colorMap) {
+            propagateMapDownstream(nodeId, (freshNode!.data as any).colorMap);
         }
-    });
+    }
 };
 
 export interface HandleMinerOutputParams {
@@ -345,6 +370,7 @@ export const handleMinerOutput = ({
     inputFileName,
 }: HandleMinerOutputParams) => {
     if (!outputAssetId || !inputFileName) return;
+    console.log(`Handling miner output for node`);
 
     const { updateNodeData, getNode } = useExploreFlowStore.getState();
     const node = getNode(nodeId);
