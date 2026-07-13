@@ -17,7 +17,6 @@ export type MinerPlaceNode = Node<{
 }>;
 export type MinerTransitionNode = Node<{ label: string; size: number; labelSize: number; silent: boolean }>;
 export type MinerArcEdge = Edge<{ color: string; curvature: number; variable: boolean }>;
-
 export const PlaceNode = ({ data }: NodeProps<MinerPlaceNode>) => {
     const isSpecial = data.initial || data.final;
     return (
@@ -56,7 +55,6 @@ export const PlaceNode = ({ data }: NodeProps<MinerPlaceNode>) => {
         </div>
     );
 };
-
 export const TransitionNode = ({ data }: NodeProps<MinerTransitionNode>) => {
     return (
         <div className="flex flex-col items-center justify-center pointer-events-none">
@@ -92,7 +90,6 @@ export const TransitionNode = ({ data }: NodeProps<MinerTransitionNode>) => {
         </div>
     );
 };
-
 export const ArcEdge = ({
     id,
     sourceX,
@@ -106,15 +103,12 @@ export const ArcEdge = ({
     const dx = targetX - sourceX;
     const dy = targetY - sourceY;
     const distance = Math.sqrt(dx * dx + dy * dy);
-
     const curvature = data?.curvature ?? 1.2;
     const dr = curvature === 0 ? 0 : distance * (1 / curvature);
-
     const edgePath =
         dr === 0
             ? `M${sourceX},${sourceY} L${targetX},${targetY}`
             : `M${sourceX},${sourceY} A${dr},${dr} 0 0,1 ${targetX},${targetY}`;
-
     return (
         <BaseEdge
             id={id}
@@ -126,7 +120,7 @@ export const ArcEdge = ({
                 // Make special arcs slightly thicker so the dots are highly visible
                 strokeWidth: data?.variable ? 2.5 : 1.5,
                 //'6 4' creates the dotted effect for special arcs
-                strokeDasharray: data?.variable ? '6 4' : 'none', 
+                strokeDasharray: data?.variable ? '6 4' : 'none',
                 strokeOpacity: 0.8,
             }}
         />
@@ -136,26 +130,20 @@ const OcpnMinerNode = memo<NodeProps<MinerNode>>((node) => {
     const queryClient = useQueryClient();
     const { id, data: nodeData } = node;
     const { assets } = nodeData;
-
     const inputAsset = useInputAsset(assets, 'ocptAsset');
     const inputFileId = inputAsset?.id ?? null;
     const fileName = inputAsset?.name ?? 'OCPN_Model';
-
     const hasMinedAsset = useMemo(() => {
         return assets.some((asset) => asset.io === 'output' && asset.origin === 'mined');
     }, [assets]);
-
     const { isLoading, isFetching, data } = useMineOcpn(id, inputFileId, !hasMinedAsset);
-
     useMinerOutput(id, data?.file_id, fileName, 'ocpnAsset', 'ocpnFileNode');
-
     const handleReset = useCallback(() => {
         if (inputFileId) {
             queryClient.cancelQueries({ queryKey: ['mineOcpn', inputFileId] });
             queryClient.removeQueries({ queryKey: ['mineOcpn', inputFileId] });
         }
     }, [inputFileId, queryClient]);
-
     return (
         <BaseMinerNode
             {...node}
@@ -171,6 +159,5 @@ const OcpnMinerNode = memo<NodeProps<MinerNode>>((node) => {
         />
     );
 });
-
 OcpnMinerNode.displayName = 'OcpnMinerNode';
 export default OcpnMinerNode;
