@@ -125,7 +125,6 @@ export const updateNodeColorAndPropagate = (nodeId: string, key: string, color: 
  * Copies a color map to all DOWNSTREAM nodes recursively.
  */
 export const propagateMapDownstream = (sourceNodeId: string, newMap: Record<string, string>) => {
-    console.log("Propagating Downstream");
     const state = useExploreFlowStore.getState();
     const { nodes, edges, updateNodeData } = state;
     console.log(`[Propagation Down] Starting from: ${sourceNodeId}`);
@@ -370,7 +369,6 @@ export const handleMinerOutput = ({
     inputFileName,
 }: HandleMinerOutputParams) => {
     if (!outputAssetId || !inputFileName) return;
-    console.log(`Handling miner output for node`);
 
     const { updateNodeData, getNode } = useExploreFlowStore.getState();
     const node = getNode(nodeId);

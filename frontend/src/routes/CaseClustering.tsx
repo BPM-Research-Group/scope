@@ -99,7 +99,7 @@ const CaseClustering: React.FC = () => {
             return;
         }
         const loadData = async () => {
-            const result = await query.refetch(); // waits to update the table until the results are in
+            const result = await query.refetch();       // waits to update the table until the results are in
             if (!query.isError && !result.isError) {
                 display(params.visMethod);
             }
@@ -222,7 +222,6 @@ const CaseClustering: React.FC = () => {
 
     const handleSubmit = () => {
         setSubmitted(true);
-        //TODO another fetch
         return;
     };
 
@@ -339,7 +338,8 @@ const CaseClustering: React.FC = () => {
                                     </Button>
                                     <Button
                                         onClick={() => {
-                                            navigate(`/data/pipeline/explore`); //macht das updaten kaput -> Anders lösen
+                                            console.log('node State: ', node);
+                                            navigate(`/data/pipeline/explore`); 
                                         }}
                                         className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md mt-3"
                                         aria-label="Load and display the result"
