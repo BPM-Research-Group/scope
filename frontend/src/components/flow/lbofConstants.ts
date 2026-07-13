@@ -20,4 +20,11 @@ export const ACTIVITY_NODE_WIDTH = 300;
 export const ACTIVITY_NODE_HEIGHT = 1500;
 
 export const NODE_X_SPACING = 400; // Horizontal space between nodes
+
+// Distance between adjacent layout columns. Must exceed ACTIVITY_NODE_WIDTH so
+// neighbouring activity columns do not visually overlap.
+export const COLUMN_WIDTH = 400;
+
+// Vertical distance between parallel/xor branch sub-lanes within one swimlane.
+export const BRANCH_LANE_H = 100;
  
