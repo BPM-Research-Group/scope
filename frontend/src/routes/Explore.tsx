@@ -17,6 +17,7 @@ import AbstractionMinerNode from '~/components/explore/miner/AbstractionMinerNod
 import ConformanceMinerNode from '~/components/explore/miner/ConformanceMinerNode';
 import CaseNotionMinerNode from '~/components/explore/miner/CaseNotionMinerNode';
 import ExtendWithIdentityNode from '~/components/explore/miner/ExtendWithIdentityNode';
+import ExtendedOcpnMinerNode from '~/components/explore/miner/ExtendedOcpnMinerNode';
 import FlowVisualizationNode from '~/components/explore/miner/FlowVisualizationNode';
 import HistogramMinerNode from '~/components/explore/miner/HistogramMinerNode';
 import OcpnMinerNode from '~/components/explore/miner/OcpnMinerNode';
@@ -38,6 +39,7 @@ const nodeTypes = {
     ocelCollectionNode: OcelCollectionNode,
     ocptMinerNode: OcptMinerNode,
     ocpnMinerNode: OcpnMinerNode,
+    extendedOcpnMinerNode: ExtendedOcpnMinerNode,
     histogramMinerNode: HistogramMinerNode,
     caseNotionMinerNode: CaseNotionMinerNode,
     identityExtendMinerNode: ExtendWithIdentityNode,

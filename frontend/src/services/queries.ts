@@ -4,7 +4,6 @@ import {
     extendOcptWithIdentity,
     getAbstraction,
     getAbstractionById,
-    getAdvancedCN,
     getCaseNotions,
     getConformanceAbstractionAbstraction,
     getConformanceExtendedOcptAbstraction,
@@ -13,18 +12,17 @@ import {
     getConformanceOcptAbstraction,
     getConformanceOcptOcel,
     getConformanceOcptOcpt,
-    getConnectedComponentsCN,
     getHistogramEventPersp,
     getHistogramObjectPersp,
     getLogGraphs,
     getOcelCollection,
     getOcelObjectTypes,
+    getExtendedOcpn,
     getOcpn,
-    getOcpnFromOcpt,
     getIdentityOcpt,
     getOcpt,
-    getTraditionalCN,
     mineIdentityOcpt,
+    mineExtendedOcpn,
     mineOcpn,
     mineOcpt,
     getActivityResource,
@@ -287,11 +285,29 @@ export const useMineOcpn = (nodeId: string, fileId: string | null, shouldFetch: 
         refetchOnWindowFocus: false,
     });
 };
+
+export const useMineExtendedOcpn = (nodeId: string, fileId: string | null, shouldFetch: boolean) => {
+    return useQuery({
+        queryKey: ['mineExtendedOcpn', nodeId, fileId],
+        queryFn: () => mineExtendedOcpn(fileId!),
+        enabled: Boolean(fileId) && shouldFetch,
+        refetchOnWindowFocus: false,
+    });
+};
+
 export const useGetOcpn = (fileId: string | null, enabled: boolean = true) => {
     return useQuery({
         queryKey: ['getOcpn', fileId],
         queryFn: () => getOcpn(fileId as string),
         // This ensures it only runs if the fileId actually exists AND the component says it's okay to run
+        enabled: !!fileId && enabled,
+    });
+};
+
+export const useGetExtendedOcpn = (fileId: string | null, enabled: boolean = true) => {
+    return useQuery({
+        queryKey: ['getExtendedOcpn', fileId],
+        queryFn: () => getExtendedOcpn(fileId as string),
         enabled: !!fileId && enabled,
     });
 };

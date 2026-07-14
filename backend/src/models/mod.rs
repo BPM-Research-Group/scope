@@ -2,6 +2,7 @@ pub mod abstraction;
 pub mod case_notion;
 pub mod clustering;
 pub mod dfg;
+pub mod extended_ocpn;
 pub mod ocel;
 pub mod ocel1;
 pub mod ocel_collection;

@@ -9,6 +9,7 @@ export const minerNodeTypes = [
     'flowVisualizationNode',
     'abstractionMinerNode',
     'ocpnMinerNode',
+    'extendedOcpnMinerNode',
     'resourceMinerNode',
     'conformanceMinerNode',
 ] as const;

@@ -7,9 +7,10 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '~/components/ui/button';
 import BaseFileNode from '~/components/explore/file/BaseFileNode';
 import { useExploreFlowStore } from '~/stores/exploreStore';
-import { useGetOcpn } from '~/services/queries';
+import { useGetExtendedOcpn, useGetOcpn } from '~/services/queries';
 import { generateColorMap } from '~/lib/colors';
 import { propagateMapDownstream, syncMatchingColorsGlobally } from '~/lib/explore/flowActions';
+import { normalizeOcpnPayload } from '~/lib/ocpn/extendedOcpnAdapter';
 import { FileNode } from '~/types/explore/nodes';
 
 const OcpnFileNode = memo<NodeProps<FileNode>>((props) => {
@@ -19,19 +20,35 @@ const OcpnFileNode = memo<NodeProps<FileNode>>((props) => {
     const updateNodeData = useExploreFlowStore((s) => s.updateNodeData);
 
     const ocpnAsset = useMemo(
-        () => assets.find((a) => a.io === 'output' && (a.type === 'ocpnFile' || a.type === 'ocpnAsset')),
+        () =>
+            assets.find(
+                (a) =>
+                    a.io === 'output' &&
+                    (a.type === 'ocpnFile' || a.type === 'ocpnAsset' || a.type === 'extendedOcpnAsset')
+            ),
         [assets]
     );
     const fileId = ocpnAsset?.id ?? null;
     const hasFile = Boolean(ocpnAsset);
+    const isExtendedOcpn = ocpnAsset?.type === 'extendedOcpnAsset';
 
-    const { data, error, isLoading } = useGetOcpn(fileId, hasFile);
+    const { data: regularData, error: regularError, isLoading: isRegularLoading } = useGetOcpn(
+        fileId,
+        hasFile && !isExtendedOcpn
+    );
+    const { data: extendedData, error: extendedError, isLoading: isExtendedLoading } = useGetExtendedOcpn(
+        fileId,
+        hasFile && isExtendedOcpn
+    );
+    const data = extendedData ?? regularData;
+    const error = extendedError ?? regularError;
+    const isLoading = isExtendedLoading || isRegularLoading;
 
     useEffect(() => {
         if (data) {
-            const graphData = data.ocpn ? data.ocpn : data;
+            const graphData = normalizeOcpnPayload(data);
 
-            if (graphData.places) {
+            if (graphData?.places) {
                 updateNodeData(id, { processedData: graphData });
             } else {
                 console.error('Data is missing `places`! It cannot be rendered.', graphData);
@@ -41,7 +58,8 @@ const OcpnFileNode = memo<NodeProps<FileNode>>((props) => {
 
     // Colors Logic
     useEffect(() => {
-        const ots = data?.ocpn?.object_types || data?.object_types;
+        const graphData = normalizeOcpnPayload(data);
+        const ots = graphData?.object_types;
         if (ots && ots.length > 0) {
             const currentColorMap = nodeData.colorMap;
             const hasValidColorMap =

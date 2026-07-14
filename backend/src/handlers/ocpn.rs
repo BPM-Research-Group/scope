@@ -1,6 +1,10 @@
+use crate::core::extended_ocpn_conversion::{
+    ConvertExtendedOcptToOcpnError, convert_extended_ocpt_to_extended_ocpn,
+};
 use crate::core::ocpn_conversion::{ConvertOcptToOcpnError, convert_ocpt_to_ocpn};
 use crate::core::struct_converters::ocpn_ocgraphconf::backend_to_ocgraphconf;
 use crate::handlers::ocpt::ensure_temp_dir;
+use crate::models::extended_ocpn::ExtendedOCPN;
 use crate::models::ocpn::OCPN;
 use crate::models::ocpt::OCPT;
 use crate::traits::import_export::{ExportableToPath, ImportableFromPath};
@@ -134,6 +138,45 @@ pub async fn get_ocpn_from_ocpt(
     Ok((StatusCode::OK, Json(payload)))
 }
 
+pub async fn get_extended_ocpn_from_extended_ocpt(
+    Path(extended_ocpt_id): Path<String>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let path = format!("./temp/extended_ocpt_{extended_ocpt_id}.json");
+    let ocpt = OCPT::from_json_file(&path).await?;
+    if !ocpt.is_valid() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Source extended OCPT is invalid".to_string(),
+        ));
+    }
+
+    let extended_ocpn =
+        convert_extended_ocpt_to_extended_ocpn(&ocpt).map_err(map_extended_convert_error)?;
+    let file_id = extended_ocpn.export_to_path().await?;
+    let payload = serde_json::json!({
+        "file_id": file_id,
+        "kind": "extended_ocpn",
+        "extended_ocpn": extended_ocpn,
+    });
+    Ok((StatusCode::OK, Json(payload)))
+}
+
+pub async fn get_extended_ocpn(Path(file_id): Path<String>) -> impl IntoResponse {
+    println!("-> GET /v1/objects/extended_ocpn/{}", file_id);
+
+    match ExtendedOCPN::import_from_path(&file_id).await {
+        Ok(extended_ocpn) => {
+            let payload = serde_json::json!({
+                "file_id": file_id,
+                "kind": "extended_ocpn",
+                "extended_ocpn": extended_ocpn,
+            });
+            (StatusCode::OK, Json(payload)).into_response()
+        }
+        Err((status, message)) => (status, message).into_response(),
+    }
+}
+
 pub async fn get_ocpn_as_ocgraphconf(
     Path(file_id): Path<String>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
@@ -177,6 +220,21 @@ fn map_convert_error(error: ConvertOcptToOcpnError) -> (StatusCode, String) {
         // These indicate the backend failed to produce a valid intermediate/result.
         ConvertOcptToOcpnError::InvalidProjectedProcessTree
         | ConvertOcptToOcpnError::InvalidGeneratedOcpn => {
+            (StatusCode::INTERNAL_SERVER_ERROR, error.to_string())
+        }
+    }
+}
+
+fn map_extended_convert_error(error: ConvertExtendedOcptToOcpnError) -> (StatusCode, String) {
+    match error {
+        ConvertExtendedOcptToOcpnError::InvalidOcpt
+        | ConvertExtendedOcptToOcpnError::IdentityNodeMustHaveOneChild
+        | ConvertExtendedOcptToOcpnError::EmptyIdentitySide
+        | ConvertExtendedOcptToOcpnError::NonDisjointIdentitySides
+        | ConvertExtendedOcptToOcpnError::SplitMergeNotLeafScoped => {
+            (StatusCode::BAD_REQUEST, error.to_string())
+        }
+        ConvertExtendedOcptToOcpnError::InvalidGeneratedExtendedOcpn => {
             (StatusCode::INTERNAL_SERVER_ERROR, error.to_string())
         }
     }

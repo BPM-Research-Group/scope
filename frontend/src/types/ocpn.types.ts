@@ -82,8 +82,10 @@ export interface RustOcpnPlace {
     id: OcpnId;
     name: string;
     object_type: string;
+    object_types?: string[];
     initial: boolean;
     final: boolean;
+    properties?: Record<string, unknown>;
 }
 
 export interface RustOcpnTransition {
@@ -91,6 +93,7 @@ export interface RustOcpnTransition {
     name: string;
     label?: string | null;
     silent: boolean;
+    properties?: Record<string, unknown>;
 }
 
 export interface RustOcpnArc {
@@ -106,5 +109,8 @@ export interface RustOcpnData {
     places: RustOcpnPlace[];
     transitions: RustOcpnTransition[];
     arcs: RustOcpnArc[];
+    object_types?: string[];
+    is_extended_ocpn?: boolean;
+    transition_functions?: Record<string, unknown>;
     nets?: Record<string, any>; // For the nested subnets if needed later
 }

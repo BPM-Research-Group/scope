@@ -50,7 +50,7 @@ export const nodeRegistry = {
     },
     ocpnFileNode: {
         category: 'file',
-        allowedAssetTypes: ['ocpnFile'],
+        allowedAssetTypes: ['ocpnFile', 'ocpnAsset', 'extendedOcpnAsset'],
         sidebar: { label: 'OCPN File', icon: 'fileTree', group: 'files' },
     },
     ocelCollectionNode: {
@@ -112,7 +112,12 @@ export const nodeRegistry = {
         category: 'miner',
         allowedAssetTypes: ['ocptFile', 'ocptAsset'],
         sidebar: { label: 'OCPN Miner', icon: 'waypoints', group: 'miners' },
-    },    
+    },
+    extendedOcpnMinerNode: {
+        category: 'miner',
+        allowedAssetTypes: ['identityOcptAsset'],
+        sidebar: { label: 'Extend Nets Identity', icon: 'network', group: 'miners' },
+    },
     resourceMinerNode: {
         category: 'miner',
         allowedAssetTypes: ['ocelFile'],

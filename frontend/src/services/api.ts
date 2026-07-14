@@ -248,6 +248,11 @@ export const mineOcpn = async (fileId: string): Promise<GetOcpnResponse> => {
     return response.data;
 };
 
+export const mineExtendedOcpn = async (fileId: string): Promise<GetExtendedOcpnResponse> => {
+    const response = await api.get(`/v1/ocpn/from_extended_ocpt/${fileId}`);
+    return response.data;
+};
+
 export const getCaseNotions = async (cnFileId: string) => {
     const response = await api.get<GetCaseNotionsResponse>(`v1/case_notion/case_ocel/${cnFileId}`);
     return response.data;
@@ -268,7 +273,18 @@ export type GetOcpnResponse = {
     ocpn: any;
 };
 
+export type GetExtendedOcpnResponse = {
+    file_id: string;
+    kind: 'extended_ocpn';
+    extended_ocpn: any;
+};
+
 export const getOcpn = async (fileId: string) => {
     const response = await api.get(`/v1/objects/ocpn/${fileId}`);
+    return response.data;
+};
+
+export const getExtendedOcpn = async (fileId: string): Promise<GetExtendedOcpnResponse> => {
+    const response = await api.get(`/v1/objects/extended_ocpn/${fileId}`);
     return response.data;
 };

@@ -32,7 +32,7 @@ export default function OcpnViewer({ nodeId: propNodeId }: { nodeId?: string }) 
     const colorMap = (nodeData?.colorMap as Record<string, string>) || {};
 
     const allObjectTypes = useMemo(
-        () => Array.from(new Set(rawData?.places?.map((p) => p.object_type) || [])),
+        () => rawData?.object_types ?? Array.from(new Set(rawData?.places?.map((p) => p.object_type) || [])),
         [rawData]
     );
 
