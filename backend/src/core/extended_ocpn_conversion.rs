@@ -52,6 +52,9 @@ struct Fragment {
 struct ExtendedOCPNBuilder {
     net: ExtendedOCPN,
     next_id: ExtendedOCPNId,
+    strict_syncs: BTreeMap<RelationSignature, StrictSyncConstruct>,
+    subset_syncs: BTreeMap<RelationSignature, SubsetSyncConstruct>,
+    implications: BTreeMap<RelationSignature, ImplicationConstruct>,
 }
 
 impl ExtendedOCPNBuilder {
@@ -63,6 +66,9 @@ impl ExtendedOCPNBuilder {
                 ..Default::default()
             },
             next_id: 0,
+            strict_syncs: BTreeMap::new(),
+            subset_syncs: BTreeMap::new(),
+            implications: BTreeMap::new(),
         }
     }
 
@@ -294,9 +300,13 @@ fn translate_node(
             ))
         }
         OCPTNode::Operator(op) => match &op.operator_type {
-            OCPTOperatorType::IdentityRelation(relation) => {
-                translate_identity_relation(relation, &op.children[0], active_id_sets, builder)
-            }
+            OCPTOperatorType::IdentityRelation(relation) => translate_identity_relation(
+                relation,
+                &op.children[0],
+                active_id_sets,
+                strict_ancestors,
+                builder,
+            ),
             OCPTOperatorType::Sequence => {
                 translate_sequence(&op.children, active_id_sets, strict_ancestors, builder)
             }
@@ -317,6 +327,7 @@ fn translate_identity_relation(
     relation: &IdentityRelation,
     child: &OCPTNode,
     active_id_sets: &[ObjectTypeSet],
+    strict_ancestors: &mut Vec<IdentitySignature>,
     builder: &mut ExtendedOCPNBuilder,
 ) -> Result<Fragment, ConvertExtendedOcptToOcpnError> {
     match &relation.kind {
@@ -327,13 +338,16 @@ fn translate_identity_relation(
             let mut next_active = remove_sets(active_id_sets, &[left.clone(), right.clone()]);
             next_active.push(combined);
 
-            add_strict_sync_construct(builder, relation);
-            translate_node(
-                child,
-                &next_active,
-                &mut vec![IdentitySignature::new(relation)],
-                builder,
-            )
+            let construct = get_or_add_strict_sync_construct(builder, relation);
+            strict_ancestors.push(IdentitySignature::new(relation));
+            let child_fragment = translate_node(child, &next_active, strict_ancestors, builder)?;
+            strict_ancestors.pop();
+            connect_strict_sync_to_child(builder, &construct, &child_fragment);
+
+            Ok(Fragment {
+                entries: vec![construct.left_in, construct.right_in],
+                exits: vec![construct.left_out, construct.right_out],
+            })
         }
         IdentityRelationKind::SubsetSync
         | IdentityRelationKind::SubsetSyncPartition
@@ -341,19 +355,41 @@ fn translate_identity_relation(
             let left = type_set_from_vec(&relation.left);
             let right = type_set_from_vec(&relation.right);
             let combined = union_sets(&left, &right);
-            let has_strict_context = active_id_sets.contains(&combined);
+            let strict_signature = IdentitySignature::new(relation);
+            let has_strict_context = active_id_sets.contains(&combined)
+                || strict_ancestors.contains(&strict_signature)
+                || builder
+                    .strict_syncs
+                    .contains_key(&RelationSignature::strict(relation));
 
             let next_active = if has_strict_context {
                 active_id_sets.to_vec()
             } else {
-                add_strict_sync_construct(builder, relation);
+                get_or_add_strict_sync_construct(builder, relation);
                 let mut next_active = remove_sets(active_id_sets, &[left, right]);
                 next_active.push(combined);
                 next_active
             };
 
-            add_subset_sync_construct(builder, relation);
-            translate_node(child, &next_active, &mut Vec::new(), builder)
+            let strict_construct = get_or_add_strict_sync_construct(builder, relation);
+            let subset_construct = get_or_add_subset_sync_construct(builder, relation);
+            connect_places(
+                builder,
+                &[strict_construct.p_sync],
+                &[subset_construct.p_sync],
+                "strict_to_subset",
+            );
+
+            strict_ancestors.push(strict_signature);
+            let child_fragment = translate_node(child, &next_active, strict_ancestors, builder)?;
+            strict_ancestors.pop();
+            connect_subset_sync_to_child(builder, &subset_construct, &child_fragment);
+            connect_child_to_strict_resolve(builder, &strict_construct, &child_fragment);
+
+            Ok(Fragment {
+                entries: vec![strict_construct.left_in, strict_construct.right_in],
+                exits: vec![strict_construct.left_out, strict_construct.right_out],
+            })
         }
         IdentityRelationKind::ImpConcurrent
         | IdentityRelationKind::ImpOrdered
@@ -364,16 +400,22 @@ fn translate_identity_relation(
             let mut next_active = remove_sets(active_id_sets, &[left.clone(), right.clone()]);
             next_active.push(combined);
 
-            add_implication_construct(builder, relation);
-            translate_node(child, &next_active, &mut Vec::new(), builder)
+            let construct = get_or_add_implication_construct(builder, relation);
+            let child_fragment = translate_node(child, &next_active, strict_ancestors, builder)?;
+            connect_implication_to_child(builder, &construct, &child_fragment);
+
+            Ok(Fragment {
+                entries: vec![construct.left_in, construct.right_in],
+                exits: vec![construct.left_out, construct.right_out],
+            })
         }
         IdentityRelationKind::ObjectSplit => {
             add_split_merge_construct(builder, relation, true);
-            translate_node(child, active_id_sets, &mut Vec::new(), builder)
+            translate_node(child, active_id_sets, strict_ancestors, builder)
         }
         IdentityRelationKind::ObjectMerge => {
             add_split_merge_construct(builder, relation, false);
-            translate_node(child, active_id_sets, &mut Vec::new(), builder)
+            translate_node(child, active_id_sets, strict_ancestors, builder)
         }
     }
 }
@@ -509,20 +551,95 @@ fn add_leaf_fragment(
     Fragment { entries, exits }
 }
 
-fn add_strict_sync_construct(builder: &mut ExtendedOCPNBuilder, relation: &IdentityRelation) {
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct RelationSignature {
+    family: &'static str,
+    left: ObjectTypeSet,
+    right: ObjectTypeSet,
+    variant: String,
+}
+
+impl RelationSignature {
+    fn strict(relation: &IdentityRelation) -> Self {
+        Self::new("strict_sync", relation, "sync")
+    }
+
+    fn subset(relation: &IdentityRelation) -> Self {
+        Self::new("subset_sync", relation, subset_variant(&relation.kind))
+    }
+
+    fn implication(relation: &IdentityRelation) -> Self {
+        Self::new("implication", relation, implication_variant(&relation.kind))
+    }
+
+    fn new(family: &'static str, relation: &IdentityRelation, variant: impl Into<String>) -> Self {
+        Self {
+            family,
+            left: type_set_from_vec(&relation.left),
+            right: type_set_from_vec(&relation.right),
+            variant: variant.into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct StrictSyncConstruct {
+    left_in: ExtendedOCPNId,
+    right_in: ExtendedOCPNId,
+    left_out: ExtendedOCPNId,
+    right_out: ExtendedOCPNId,
+    p_sync: ExtendedOCPNId,
+    resolve: ExtendedOCPNId,
+}
+
+#[derive(Debug, Clone)]
+struct SubsetSyncConstruct {
+    p_sync: ExtendedOCPNId,
+    p_sub: ExtendedOCPNId,
+    resolve: ExtendedOCPNId,
+}
+
+#[derive(Debug, Clone)]
+struct ImplicationConstruct {
+    left_in: ExtendedOCPNId,
+    right_in: ExtendedOCPNId,
+    left_out: ExtendedOCPNId,
+    right_out: ExtendedOCPNId,
+    p_imp: ExtendedOCPNId,
+    resolve: ExtendedOCPNId,
+}
+
+fn get_or_add_strict_sync_construct(
+    builder: &mut ExtendedOCPNBuilder,
+    relation: &IdentityRelation,
+) -> StrictSyncConstruct {
+    let signature = RelationSignature::strict(relation);
+    if let Some(construct) = builder.strict_syncs.get(&signature) {
+        return construct.clone();
+    }
+
     let left = type_set_from_vec(&relation.left);
     let right = type_set_from_vec(&relation.right);
     let combined = union_sets(&left, &right);
     let props = relation_props(relation, "strict_sync");
+    let suffix = relation_name_suffix(builder.strict_syncs.len());
 
-    let left_in = builder.place("p_sync_left_in", left.clone(), props.clone());
-    let right_in = builder.place("p_sync_right_in", right.clone(), props.clone());
-    let left_out = builder.place("p_sync_left_out", left, props.clone());
-    let right_out = builder.place("p_sync_right_out", right, props.clone());
-    let p_sync = builder.place("p_sync", combined, props.clone());
+    let left_in = builder.place(
+        format!("p_sync_left_in{suffix}"),
+        left.clone(),
+        props.clone(),
+    );
+    let right_in = builder.place(
+        format!("p_sync_right_in{suffix}"),
+        right.clone(),
+        props.clone(),
+    );
+    let left_out = builder.place(format!("p_sync_left_out{suffix}"), left, props.clone());
+    let right_out = builder.place(format!("p_sync_right_out{suffix}"), right, props.clone());
+    let p_sync = builder.place(format!("p_sync{suffix}"), combined, props.clone());
 
     let init = builder.transition(
-        "tau_sync_init",
+        format!("tau_sync_init{suffix}"),
         None,
         true,
         TransitionFunction::StrictSyncInit {
@@ -531,7 +648,7 @@ fn add_strict_sync_construct(builder: &mut ExtendedOCPNBuilder, relation: &Ident
         props.clone(),
     );
     let resolve = builder.transition(
-        "tau_sync_resolve",
+        format!("tau_sync_resolve{suffix}"),
         None,
         true,
         TransitionFunction::StrictSyncResolve {
@@ -541,21 +658,47 @@ fn add_strict_sync_construct(builder: &mut ExtendedOCPNBuilder, relation: &Ident
     );
 
     builder.connect_places_to_transition(&[left_in, right_in], init, false, "sync_init_input");
-    builder.connect_transition_to_places(init, &[left_out, right_out], false, "sync_transfer");
     builder.connect_transition_to_places(init, &[p_sync], true, "sync_create_combined");
-    builder.connect_places_to_transition(&[p_sync], resolve, true, "sync_resolve_combined");
     builder.connect_transition_to_places(resolve, &[left_out, right_out], false, "sync_resolve");
+
+    let construct = StrictSyncConstruct {
+        left_in,
+        right_in,
+        left_out,
+        right_out,
+        p_sync,
+        resolve,
+    };
+    builder.strict_syncs.insert(signature, construct.clone());
+    construct
 }
 
-fn add_subset_sync_construct(builder: &mut ExtendedOCPNBuilder, relation: &IdentityRelation) {
+fn get_or_add_subset_sync_construct(
+    builder: &mut ExtendedOCPNBuilder,
+    relation: &IdentityRelation,
+) -> SubsetSyncConstruct {
+    let signature = RelationSignature::subset(relation);
+    if let Some(construct) = builder.subset_syncs.get(&signature) {
+        return construct.clone();
+    }
+
     let combined = relation_union(relation);
     let mode = SubsetMode::from(&relation.kind);
     let props = relation_props(relation, "subset_sync");
-    let p_sync = builder.place("p_sync_subset_input", combined.clone(), props.clone());
-    let p_sync_prime = builder.place("p_sync_prime", combined.clone(), props.clone());
-    let p_sub = builder.place("p_sub", combined, props.clone());
+    let suffix = relation_name_suffix(builder.subset_syncs.len());
+    let p_sync = builder.place(
+        format!("p_sync_subset_input{suffix}"),
+        combined.clone(),
+        props.clone(),
+    );
+    let p_sync_prime = builder.place(
+        format!("p_sync_prime{suffix}"),
+        combined.clone(),
+        props.clone(),
+    );
+    let p_sub = builder.place(format!("p_sub{suffix}"), combined, props.clone());
     let select = builder.transition(
-        "tau_subset_select",
+        format!("tau_subset_select{suffix}"),
         None,
         true,
         TransitionFunction::SubsetSelect {
@@ -565,7 +708,7 @@ fn add_subset_sync_construct(builder: &mut ExtendedOCPNBuilder, relation: &Ident
         props.clone(),
     );
     let resolve = builder.transition(
-        "tau_subset_resolve",
+        format!("tau_subset_resolve{suffix}"),
         None,
         true,
         TransitionFunction::SubsetResolve {
@@ -583,7 +726,7 @@ fn add_subset_sync_construct(builder: &mut ExtendedOCPNBuilder, relation: &Ident
 
     if mode == SubsetMode::Overlap {
         let loop_back = builder.transition(
-            "tau_subset_overlap_loop",
+            format!("tau_subset_overlap_loop{suffix}"),
             None,
             true,
             TransitionFunction::SubsetOverlapLoop {
@@ -594,9 +737,25 @@ fn add_subset_sync_construct(builder: &mut ExtendedOCPNBuilder, relation: &Ident
         builder.connect_places_to_transition(&[p_sub], loop_back, true, "subset_overlap_input");
         builder.connect_transition_to_places(loop_back, &[p_sub], true, "subset_overlap_reuse");
     }
+
+    let construct = SubsetSyncConstruct {
+        p_sync,
+        p_sub,
+        resolve,
+    };
+    builder.subset_syncs.insert(signature, construct.clone());
+    construct
 }
 
-fn add_implication_construct(builder: &mut ExtendedOCPNBuilder, relation: &IdentityRelation) {
+fn get_or_add_implication_construct(
+    builder: &mut ExtendedOCPNBuilder,
+    relation: &IdentityRelation,
+) -> ImplicationConstruct {
+    let signature = RelationSignature::implication(relation);
+    if let Some(construct) = builder.implications.get(&signature) {
+        return construct.clone();
+    }
+
     let left = type_set_from_vec(&relation.left);
     let right = type_set_from_vec(&relation.right);
     let combined = union_sets(&left, &right);
@@ -607,16 +766,29 @@ fn add_implication_construct(builder: &mut ExtendedOCPNBuilder, relation: &Ident
         _ => None,
     };
     let left_variable = !matches!(mode, ImplicationMode::Ordered);
+    let suffix = relation_name_suffix(builder.implications.len());
 
-    let left_in = builder.place("p_imp_left_in", left.clone(), props.clone());
-    let right_in = builder.place("p_imp_right_in", right.clone(), props.clone());
-    let left_out = builder.place("p_imp_left_out", left, props.clone());
-    let right_out = builder.place("p_imp_right_out", right, props.clone());
-    let p_control = builder.place("p_control", combined.clone(), props.clone());
-    let p_imp = builder.place("p_imp", combined.clone(), props.clone());
+    let left_in = builder.place(
+        format!("p_imp_left_in{suffix}"),
+        left.clone(),
+        props.clone(),
+    );
+    let right_in = builder.place(
+        format!("p_imp_right_in{suffix}"),
+        right.clone(),
+        props.clone(),
+    );
+    let left_out = builder.place(format!("p_imp_left_out{suffix}"), left, props.clone());
+    let right_out = builder.place(format!("p_imp_right_out{suffix}"), right, props.clone());
+    let p_control = builder.place(
+        format!("p_control{suffix}"),
+        combined.clone(),
+        props.clone(),
+    );
+    let p_imp = builder.place(format!("p_imp{suffix}"), combined.clone(), props.clone());
 
     let init = builder.transition(
-        "tau_imp_init",
+        format!("tau_imp_init{suffix}"),
         None,
         true,
         TransitionFunction::ImplicationInit {
@@ -627,7 +799,7 @@ fn add_implication_construct(builder: &mut ExtendedOCPNBuilder, relation: &Ident
         props.clone(),
     );
     let resolve = builder.transition(
-        "tau_imp_resolve",
+        format!("tau_imp_resolve{suffix}"),
         None,
         true,
         TransitionFunction::ImplicationResolve {
@@ -647,13 +819,13 @@ fn add_implication_construct(builder: &mut ExtendedOCPNBuilder, relation: &Ident
 
     if let Some(k) = batch_size {
         let overflow = builder.place(
-            format!("p_batch_overflow_k{k}"),
+            format!("p_batch_overflow_k{k}{suffix}"),
             combined,
             relation_props(relation, "batch_overflow"),
         );
         builder.connect_transition_to_places(init, &[overflow], true, "batch_overflow");
         let loop_back = builder.transition(
-            "tau_batch_overflow_loop",
+            format!("tau_batch_overflow_loop{suffix}"),
             None,
             true,
             TransitionFunction::BatchOverflow {
@@ -665,6 +837,122 @@ fn add_implication_construct(builder: &mut ExtendedOCPNBuilder, relation: &Ident
         builder.connect_places_to_transition(&[overflow], loop_back, true, "batch_overflow_input");
         builder.connect_transition_to_places(loop_back, &[left_in], true, "batch_overflow_reuse");
     }
+
+    let construct = ImplicationConstruct {
+        left_in,
+        right_in,
+        left_out,
+        right_out,
+        p_imp,
+        resolve,
+    };
+    builder.implications.insert(signature, construct.clone());
+    construct
+}
+
+fn connect_strict_sync_to_child(
+    builder: &mut ExtendedOCPNBuilder,
+    construct: &StrictSyncConstruct,
+    child: &Fragment,
+) {
+    connect_places(
+        builder,
+        &[construct.p_sync],
+        &child.entries,
+        "strict_sync_enter_child",
+    );
+    connect_places_to_transition(
+        builder,
+        &child.exits,
+        construct.resolve,
+        true,
+        "strict_sync_child_exit",
+    );
+}
+
+fn connect_child_to_strict_resolve(
+    builder: &mut ExtendedOCPNBuilder,
+    construct: &StrictSyncConstruct,
+    child: &Fragment,
+) {
+    connect_places_to_transition(
+        builder,
+        &child.exits,
+        construct.resolve,
+        true,
+        "strict_sync_child_exit",
+    );
+}
+
+fn connect_subset_sync_to_child(
+    builder: &mut ExtendedOCPNBuilder,
+    construct: &SubsetSyncConstruct,
+    child: &Fragment,
+) {
+    connect_places(
+        builder,
+        &[construct.p_sub],
+        &child.entries,
+        "subset_sync_enter_child",
+    );
+    connect_places_to_transition(
+        builder,
+        &child.exits,
+        construct.resolve,
+        true,
+        "subset_sync_child_exit",
+    );
+}
+
+fn connect_implication_to_child(
+    builder: &mut ExtendedOCPNBuilder,
+    construct: &ImplicationConstruct,
+    child: &Fragment,
+) {
+    connect_places(
+        builder,
+        &[construct.p_imp],
+        &child.entries,
+        "implication_enter_child",
+    );
+    connect_places_to_transition(
+        builder,
+        &child.exits,
+        construct.resolve,
+        true,
+        "implication_child_exit",
+    );
+}
+
+fn connect_places(
+    builder: &mut ExtendedOCPNBuilder,
+    sources: &[ExtendedOCPNId],
+    targets: &[ExtendedOCPNId],
+    role: &str,
+) {
+    if sources.is_empty() || targets.is_empty() {
+        return;
+    }
+
+    let transition = builder.transition(
+        format!("tau_{role}_{}", builder.next_id + 1),
+        None,
+        true,
+        TransitionFunction::TransferByType,
+        role_props(role),
+    );
+    connect_places_to_transition(builder, sources, transition, true, &format!("{role}_input"));
+    builder.connect_transition_to_places(transition, targets, true, &format!("{role}_output"));
+}
+
+fn connect_places_to_transition(
+    builder: &mut ExtendedOCPNBuilder,
+    places: &[ExtendedOCPNId],
+    transition: ExtendedOCPNId,
+    variable: bool,
+    role: &str,
+) {
+    builder.connect_places_to_transition(places, transition, variable, role);
 }
 
 fn add_split_merge_construct(
@@ -751,6 +1039,32 @@ fn relation_union(relation: &IdentityRelation) -> ObjectTypeSet {
         .chain(relation.right.iter())
         .cloned()
         .collect()
+}
+
+fn relation_name_suffix(index: usize) -> String {
+    if index == 0 {
+        String::new()
+    } else {
+        format!("_{}", index + 1)
+    }
+}
+
+fn subset_variant(kind: &IdentityRelationKind) -> String {
+    match kind {
+        IdentityRelationKind::SubsetSync => "plain".to_string(),
+        IdentityRelationKind::SubsetSyncPartition => "partition".to_string(),
+        IdentityRelationKind::SubsetSyncOverlap => "overlap".to_string(),
+        _ => "not_subset".to_string(),
+    }
+}
+
+fn implication_variant(kind: &IdentityRelationKind) -> String {
+    match kind {
+        IdentityRelationKind::ImpConcurrent => "concurrent".to_string(),
+        IdentityRelationKind::ImpOrdered => "ordered".to_string(),
+        IdentityRelationKind::ImpBatch(k) => format!("batch_{k}"),
+        _ => "not_implication".to_string(),
+    }
 }
 
 fn remove_sets(active_id_sets: &[ObjectTypeSet], removed: &[ObjectTypeSet]) -> Vec<ObjectTypeSet> {
@@ -877,5 +1191,81 @@ mod tests {
                 .values()
                 .any(|function| { matches!(function, TransitionFunction::SubsetSelect { .. }) })
         );
+    }
+
+    #[test]
+    fn repeated_strict_sync_relation_reuses_one_construct() {
+        let relation = IdentityRelation {
+            left: vec!["order".to_string()],
+            right: vec!["item".to_string()],
+            kind: IdentityRelationKind::Sync,
+        };
+        let mut sequence = OCPTOperator::new(OCPTOperatorType::Sequence);
+        sequence
+            .children
+            .push(OCPTNode::Operator(OCPTOperator::new_identity(
+                relation.clone(),
+                leaf("pick", &["order", "item"]),
+            )));
+        sequence
+            .children
+            .push(OCPTNode::Operator(OCPTOperator::new_identity(
+                relation.clone(),
+                leaf("pack", &["order", "item"]),
+            )));
+        let ocpt = OCPT::new(OCPTNode::Operator(sequence));
+
+        let net = convert_extended_ocpt_to_extended_ocpn(&ocpt).unwrap();
+
+        let strict_inits = net
+            .transition_functions
+            .values()
+            .filter(|function| matches!(function, TransitionFunction::StrictSyncInit { .. }))
+            .count();
+        let sync_places = net
+            .places
+            .iter()
+            .filter(|place| place.name == "p_sync")
+            .count();
+
+        assert_eq!(strict_inits, 1);
+        assert_eq!(sync_places, 1);
+    }
+
+    #[test]
+    fn subset_inside_strict_sync_reuses_strict_frame() {
+        let strict = IdentityRelation {
+            left: vec!["order".to_string()],
+            right: vec!["item".to_string()],
+            kind: IdentityRelationKind::Sync,
+        };
+        let subset = IdentityRelation {
+            left: vec!["order".to_string()],
+            right: vec!["item".to_string()],
+            kind: IdentityRelationKind::SubsetSync,
+        };
+        let ocpt = OCPT::new(OCPTNode::Operator(OCPTOperator::new_identity(
+            strict,
+            OCPTNode::Operator(OCPTOperator::new_identity(
+                subset,
+                leaf("pack", &["order", "item"]),
+            )),
+        )));
+
+        let net = convert_extended_ocpt_to_extended_ocpn(&ocpt).unwrap();
+
+        let strict_inits = net
+            .transition_functions
+            .values()
+            .filter(|function| matches!(function, TransitionFunction::StrictSyncInit { .. }))
+            .count();
+        let subset_selects = net
+            .transition_functions
+            .values()
+            .filter(|function| matches!(function, TransitionFunction::SubsetSelect { .. }))
+            .count();
+
+        assert_eq!(strict_inits, 1);
+        assert_eq!(subset_selects, 1);
     }
 }

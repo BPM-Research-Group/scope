@@ -2,25 +2,32 @@ import { BaseEdge, Edge, EdgeProps, Handle, Node, NodeProps, Position, getSmooth
 
 export type OcpnPlaceNode = Node<{
     label: string;
+    rawLabel?: string;
     objectType: string;
+    objectTypes?: string[];
     color: string;
     size: number;
     labelSize: number;
     initial: boolean;
     final: boolean;
+    raw?: unknown;
 }>;
 
 export type OcpnTransitionNode = Node<{
     label: string;
+    rawLabel?: string;
     size: number;
     labelSize: number;
     silent: boolean;
+    raw?: unknown;
+    transitionFunction?: unknown;
 }>;
 
 export type OcpnArcEdge = Edge<{
     color: string;
     curvature: number;
     variable: boolean;
+    raw?: unknown;
 }>;
 
 export const PlaceNode = ({ data }: NodeProps<OcpnPlaceNode>) => {
@@ -60,7 +67,9 @@ export const PlaceNode = ({ data }: NodeProps<OcpnPlaceNode>) => {
 };
 
 export const TransitionNode = ({ data }: NodeProps<OcpnTransitionNode>) => {
-    const width = data.silent ? data.size * 1.4 : Math.max(data.size * 3.8, data.label.length * data.labelSize * 0.65);
+    const width = data.silent
+        ? data.size * 1.4
+        : Math.max(data.size * 3.8, data.label.length * data.labelSize * 0.65);
     const height = data.silent ? data.size * 1.4 : data.size * 2;
 
     return (
@@ -94,6 +103,14 @@ export const TransitionNode = ({ data }: NodeProps<OcpnTransitionNode>) => {
                     className="opacity-0 absolute inset-0 w-full h-full border-0 bg-transparent"
                 />
             </div>
+            {data.silent && data.label && (
+                <span
+                    className="mt-1 font-semibold text-slate-600 whitespace-nowrap pointer-events-none select-none"
+                    style={{ fontSize: Math.max(8, data.labelSize - 2) }}
+                >
+                    {data.label}
+                </span>
+            )}
         </div>
     );
 };

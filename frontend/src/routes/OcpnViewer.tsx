@@ -5,18 +5,74 @@ import { Button } from '~/components/ui/button';
 import { SidebarProvider } from '~/components/ui/sidebar';
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 import OCPN from '~/components/ocpn/OCPN';
-import OcpnSidebar from '~/components/ocpn/OcpnSidebar';
+import OcpnSidebar, { OcpnIdentityRelationSummary } from '~/components/ocpn/OcpnSidebar';
 import { getArcId, OcpnVizParams, toFlowId } from '~/components/ocpn/OcpnRendering';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { FileExploreNodeData } from '~/types/explore/nodeData/fileNodeData';
 import { RustOcpnData } from '~/types/ocpn.types';
+
+const property = (source: unknown, key: string): unknown => {
+    if (!source || typeof source !== 'object') return undefined;
+    return (source as Record<string, unknown>)[key];
+};
+
+const toStringArray = (value: unknown): string[] => {
+    if (!Array.isArray(value)) return [];
+    return value.map(String);
+};
+
+const identityKind = (value: unknown): string => {
+    if (typeof value === 'string') return value;
+    if (!value || typeof value !== 'object') return '';
+
+    const entries = Object.entries(value as Record<string, unknown>);
+    const [kind, payload] = entries[0] ?? [];
+    if (!kind) return '';
+    return payload === null || payload === undefined ? kind : `${kind}:${String(payload)}`;
+};
+
+const getIdentityRelation = (item: unknown): Record<string, unknown> | null => {
+    const relation = property(property(item, 'properties'), 'identity_relation');
+    return relation && typeof relation === 'object' ? (relation as Record<string, unknown>) : null;
+};
+
+const identityRelationKey = (relation: Record<string, unknown>) =>
+    JSON.stringify({
+        kind: identityKind(relation.kind),
+        left: relation.left,
+        right: relation.right,
+    });
+
+const collectIdentityRelations = (data: RustOcpnData | null): OcpnIdentityRelationSummary[] => {
+    if (!data) return [];
+
+    const relations = new Map<string, OcpnIdentityRelationSummary>();
+    const items: unknown[] = [...(data.places ?? []), ...(data.transitions ?? []), ...(data.arcs ?? [])];
+
+    for (const item of items) {
+        const relation = getIdentityRelation(item);
+        if (!relation) continue;
+
+        const id = identityRelationKey(relation);
+        if (relations.has(id)) continue;
+
+        relations.set(id, {
+            id,
+            kind: identityKind(relation.kind),
+            left: toStringArray(relation.left),
+            right: toStringArray(relation.right),
+        });
+    }
+
+    return Array.from(relations.values()).sort((a, b) => a.kind.localeCompare(b.kind));
+};
 
 export default function OcpnViewer({ nodeId: propNodeId }: { nodeId?: string }) {
     const navigate = useNavigate();
     const params = useParams<{ nodeId: string }>();
     const nodeId = propNodeId || params.nodeId;
     const [isExiting, setIsExiting] = useState(false);
-    const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['objects', 'styling']));
+    const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['objects', 'identity', 'styling']));
     const [visibleObjectTypes, setVisibleObjectTypes] = useState<Set<string>>(new Set());
     const [vizParams, setVizParams] = useState<OcpnVizParams>({
         hSpacing: 80,
@@ -35,6 +91,7 @@ export default function OcpnViewer({ nodeId: propNodeId }: { nodeId?: string }) 
         () => rawData?.object_types ?? Array.from(new Set(rawData?.places?.map((p) => p.object_type) || [])),
         [rawData]
     );
+    const identityRelations = useMemo(() => collectIdentityRelations(rawData), [rawData]);
 
     useEffect(() => {
         if (allObjectTypes.length > 0 && visibleObjectTypes.size === 0) {
@@ -112,24 +169,25 @@ export default function OcpnViewer({ nodeId: propNodeId }: { nodeId?: string }) 
 
     return (
         <SidebarProvider>
-            <div className="flex flex-col h-screen w-screen bg-white text-slate-900 font-sans overflow-hidden">
+            <div className="flex min-h-svh flex-1 flex-col bg-white text-slate-900 font-sans overflow-hidden">
                 <BreadcrumbNav />
                 <div className="flex flex-1 min-h-0 w-full overflow-hidden">
-                    <OcpnSidebar
-                        objectTypes={allObjectTypes}
-                        colorMap={colorMap}
-                        visibleObjectTypes={visibleObjectTypes}
-                        expandedSections={expandedSections}
-                        params={vizParams}
-                        isExiting={isExiting}
-                        onToggleSection={toggleSection}
-                        onToggleObjectType={toggleObjectType}
-                        onParamsChange={setVizParams}
-                        onBackToPipeline={handleBackToPipeline}
-                    />
                     <OCPN data={filteredData!} params={vizParams} colorMap={colorMap} isExiting={isExiting} />
                 </div>
             </div>
+            <OcpnSidebar
+                objectTypes={allObjectTypes}
+                colorMap={colorMap}
+                visibleObjectTypes={visibleObjectTypes}
+                expandedSections={expandedSections}
+                params={vizParams}
+                identityRelations={identityRelations}
+                isExiting={isExiting}
+                onToggleSection={toggleSection}
+                onToggleObjectType={toggleObjectType}
+                onParamsChange={setVizParams}
+                onBackToPipeline={handleBackToPipeline}
+            />
         </SidebarProvider>
     );
 }

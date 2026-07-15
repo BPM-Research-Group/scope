@@ -102,6 +102,7 @@ export interface RustOcpnArc {
     target: OcpnArcEndpoint;
     variable: boolean;
     weight: number;
+    properties?: Record<string, unknown>;
 }
 
 export interface RustOcpnData {
