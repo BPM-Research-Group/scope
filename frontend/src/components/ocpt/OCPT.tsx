@@ -11,7 +11,6 @@ import { RenderTree } from '~/components/ocpt/OcptRendering';
 import NodeTooltip from '~/components/ocpt/ui/NodeTooltip';
 import ZoomButtons from '~/components/ocpt/ui/ZoomButtons';
 import { isExtendedProcessTreeOperatorNode, isIdentityOperatorApi } from '~/lib/ocpt/ocptGuards';
-import { VisualizationNode } from '~/types/explore/nodes';
 import { type Node } from '~/types/ocpt/ocpt.types';
 
 // Cast needed due to @visx/zoom + @types/react@18 incompatibility
@@ -24,8 +23,7 @@ export type OCPTProps = {
     margin?: { top: number; right: number; bottom: number; left: number };
     treeData: Node | null;
     colorScale: ScaleOrdinal<string, string, never>;
-    node?: VisualizationNode;
-    filteredObjectTypes?: string[];
+    filteredObjectTypes: string[];
     showDetails?: boolean;
     isIdentityOcpt?: boolean;
     onExportReady?: (exportFn: () => void) => void;
@@ -44,8 +42,7 @@ const OCPTContent: React.FC<OCPTContentProps> = ({
     margin = defaultMargin,
     treeData,
     colorScale,
-    node,
-    filteredObjectTypes: filteredObjectTypesProp,
+    filteredObjectTypes,
     showDetails,
     isIdentityOcpt,
     onExportReady,
@@ -54,8 +51,6 @@ const OCPTContent: React.FC<OCPTContentProps> = ({
     const [clickedNode, setClickedNode] = useState<HierarchyPointNode<Node> | null>(null);
     const [tree, setTree] = useState<HierarchyNode<Node> | null>(null);
     const treeGroupRef = useRef<SVGGElement>(null);
-    const viewState = node?.data.viewState;
-    const filteredObjectTypes = filteredObjectTypesProp ?? viewState?.filteredObjectTypes ?? [];
 
     const identityData = useMemo(() => {
         if (!clickedNode) return null;

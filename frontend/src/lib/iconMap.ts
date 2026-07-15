@@ -22,6 +22,7 @@ import {
     Waves,
     Waypoints,
     Workflow,
+    Zap,
 } from 'lucide-react';
 import type { AssetType } from '~/types/files.types';
 
@@ -47,6 +48,7 @@ export const iconMap: Record<string, ComponentType<LucideProps>> = {
     radar: Radar,
     scanEye: ScanEye,
     shieldCheck: ShieldCheck,
+    zap: Zap,
 };
 
 export const getIconComponent = (iconName: string): ComponentType<LucideProps> => {
@@ -114,5 +116,10 @@ export const ASSET_TYPE_VISUALS: Record<AssetType, AssetTypeVisual> = {
         icon: Radar,
         color: 'text-blue-500',
         label: 'Conformance',
+    },
+    flowAsset: {
+        icon: Zap,
+        color: 'text-yellow-500',
+        label: 'Flow',
     },
 };

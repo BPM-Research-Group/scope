@@ -6,7 +6,7 @@ import AssetTypeList from '~/components/explore/AssetTypeList';
 import BaseExploreNode from '~/components/explore/BaseExploreNode';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { pullUpstreamData } from '~/lib/explore/flowActions';
-import { nodeRegistry, type NodeInputGroup } from '~/lib/explore/nodeRegistry';
+import { type NodeInputGroup, nodeRegistry } from '~/lib/explore/nodeRegistry';
 import { ASSET_TYPE_VISUALS } from '~/lib/iconMap';
 import {
     BaseExploreNodeAsset,
@@ -33,14 +33,15 @@ interface MinerNodeProps {
     handleOptions: BaseExploreNodeHandleOption[];
     dropdownOptions: BaseExploreNodeDropdownOption[];
     secondaryHandles?: SecondaryHandleConfig[];
+    primaryInputLabel?: string;
     isLoading?: boolean;
     onDropdownAction?: (action: BaseExploreNodeDropdownActionType) => void;
     onReset?: () => void;
     customActions?: ReactNode;
     settings?: ReactNode;
+    customContent?: ReactNode;
     children?: ReactNode;
 }
-
 
 const AllowedInputsHint = ({
     allowedAssetTypes,
@@ -52,10 +53,10 @@ const AllowedInputsHint = ({
     if (inputs) {
         // Only the primary (first) group is shown in the body.
         // Secondary groups are shown inline at their respective handles.
+        // The label itself is rendered by the parent (primaryInputLabel).
         const primary = inputs[0];
         return (
             <div className="flex flex-col gap-1 py-1">
-                <p className="text-xs font-semibold text-gray-500 mb-1">{primary.label}</p>
                 <AssetTypeList types={primary.types} />
             </div>
         );
@@ -86,11 +87,13 @@ const BaseMinerNode = memo<MinerNodeProps>((props) => {
         handleOptions,
         dropdownOptions,
         secondaryHandles,
+        primaryInputLabel = 'Input',
         isLoading,
         onDropdownAction,
         onReset,
         customActions,
         settings,
+        customContent,
         children,
     } = props;
     const { assets, isStale } = data;
@@ -141,6 +144,8 @@ const BaseMinerNode = memo<MinerNodeProps>((props) => {
     }, [isStale, id, onReset, updateNodeData, assets]);
 
     const renderFileContent = () => {
+        if (customContent) return customContent;
+
         if (isWaitingForInput) {
             return (
                 <div className="flex flex-col items-center justify-center py-2 gap-2 px-2">
@@ -199,23 +204,29 @@ const BaseMinerNode = memo<MinerNodeProps>((props) => {
         }
 
         const outputAssets = assets.filter((a) => a.io === 'output');
-        const primaryInputAssets = assets.filter((a) => a.io === 'input' && (!a.inputHandle || a.inputHandle === 'target'));
+        const primaryInputAssets = assets.filter(
+            (a) => a.io === 'input' && (!a.inputHandle || a.inputHandle === 'target')
+        );
 
         return (
             <div className="flex flex-col gap-2">
                 {outputAssets.length > 0 ? (
                     <div>
                         <p className="text-xs font-semibold text-gray-500 mb-2">Output</p>
-                        {outputAssets.map((asset) => <AssetBadge key={asset.id} asset={asset} />)}
+                        {outputAssets.map((asset) => (
+                            <AssetBadge key={asset.id} asset={asset} />
+                        ))}
                     </div>
                 ) : primaryInputAssets.length > 0 ? (
                     <div>
-                        <p className="text-xs font-semibold text-gray-500 mb-2">Input</p>
-                        {primaryInputAssets.map((asset) => <AssetBadge key={asset.id} asset={asset} />)}
+                        <p className="text-xs font-semibold text-gray-500 mb-2">{primaryInputLabel}</p>
+                        {primaryInputAssets.map((asset) => (
+                            <AssetBadge key={asset.id} asset={asset} />
+                        ))}
                     </div>
                 ) : (
                     <div>
-                        <p className="text-xs font-semibold text-gray-500 mb-2">Input</p>
+                        <p className="text-xs font-semibold text-gray-500 mb-2">{primaryInputLabel}</p>
                         <AllowedInputsHint
                             allowedAssetTypes={data.allowedAssetTypes}
                             inputs={nodeRegistry[data.nodeType as keyof typeof nodeRegistry]?.inputs}
@@ -240,23 +251,18 @@ const BaseMinerNode = memo<MinerNodeProps>((props) => {
             customActions={customActions}
         >
             {secondaryHandles?.map((handle) => {
-                const connectedAsset = assets.find(
-                    (a) => a.io === 'input' && a.inputHandle === handle.id
-                );
+                const connectedAsset = assets.find((a) => a.io === 'input' && a.inputHandle === handle.id);
                 return (
                     <div key={handle.id} className="relative">
-                        <Handle
-                            id={handle.id}
-                            type="target"
-                            position={Position.Left}
-                            style={{ left: '-0.75rem' }}
-                        />
+                        <Handle id={handle.id} type="target" position={Position.Left} style={{ left: '-0.75rem' }} />
                         {!isLoading && (
                             <div className="mt-2 border-t pt-2">
                                 <p className="text-xs font-semibold text-gray-500 mb-2">{handle.label}</p>
-                                {connectedAsset
-                                    ? <AssetBadge asset={connectedAsset} />
-                                    : <AssetTypeList types={handle.hintTypes} />}
+                                {connectedAsset ? (
+                                    <AssetBadge asset={connectedAsset} />
+                                ) : (
+                                    <AssetTypeList types={handle.hintTypes} />
+                                )}
                             </div>
                         )}
                     </div>

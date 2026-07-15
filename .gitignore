@@ -29,10 +29,16 @@ relations2.json
 # Local assistant context files
 AGENTS.md
 backend/BACKEND_CONTEXT.md
+backend/summaries/
 
 # Local conformance compare helper scripts
 backend/tools/conformance_compare/compare_original_vs_backend.py
 backend/tools/conformance_compare/debug_control_precision_diff.py
+
+# Local comparison artifacts and helper scripts
+comparison_inputs/
+comparison_outputs/
+scripts/
 
 # Local comparison artifacts and helper scripts
 comparison_inputs/

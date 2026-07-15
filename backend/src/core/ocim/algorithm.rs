@@ -126,7 +126,7 @@ mod tests {
     use super::*;
     use crate::core::ocim::common_data::{GlobalData, LocalData};
     use crate::models::ocel::OCEL;
-    use crate::models::ocpt::{OCPTNode, OCPTOperatorType, OCPTPretty};
+    use crate::models::ocpt::OCPTPretty;
     use std::path::Path;
 
     #[test]

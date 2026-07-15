@@ -68,6 +68,16 @@ export const nodeRegistry = {
         allowedAssetTypes: ['conformanceAsset'],
         sidebar: null,
     },
+    eventStreamNode: {
+        category: 'file',
+        allowedAssetTypes: ['ocelFile'],
+        sidebar: { label: 'Event Stream', icon: 'activity', group: 'files' },
+    },
+    flowFileNode: {
+        category: 'file',
+        allowedAssetTypes: ['flowAsset'],
+        sidebar: null,
+    },
 
     // ── Miner nodes ────────────────────────────────────────────────────────────
     ocptMinerNode: {
@@ -94,12 +104,12 @@ export const nodeRegistry = {
         ],
         sidebar: { label: 'Extend Identity', icon: 'scanEye', group: 'miners' },
     },
-    flowVisualizationNode: {
+    flowMinerNode: {
         category: 'miner',
-        allowedAssetTypes: ['ocptAsset', 'ocptFile', 'identityOcptAsset'],
+        allowedAssetTypes: ['ocptAsset', 'ocptFile', 'identityOcptAsset', 'ocelAsset', 'ocelFile'],
         inputs: [
-            { label: 'OCPT', types: ['ocptAsset', 'ocptFile', 'identityOcptAsset'] },
-            { label: 'OCEL', types: ['ocelAsset', 'ocelFile'] },
+            { label: 'Model', types: ['ocptAsset', 'ocptFile', 'identityOcptAsset'] },
+            { label: 'Log', types: ['ocelAsset', 'ocelFile'] },
         ],
         sidebar: { label: 'Flow Visualization', icon: 'zap', group: 'miners' },
     },
@@ -122,7 +132,7 @@ export const nodeRegistry = {
         category: 'miner',
         allowedAssetTypes: ['ocelFile'],
         sidebar: { label: 'Resource Miner', icon: 'waves', group: 'miners' },
-        },
+    },
     conformanceMinerNode: {
         category: 'miner',
         allowedAssetTypes: ['ocptAsset', 'ocptFile', 'identityOcptAsset', 'ocelFile', 'ocelAsset', 'abstractionAsset'],
@@ -137,5 +147,15 @@ export const nodeRegistry = {
             },
         ],
         sidebar: { label: 'Conformance', icon: 'radar', group: 'miners' },
+    },
+    df2StreamMinerNode: {
+        category: 'miner',
+        allowedAssetTypes: ['ocelFile'],
+        sidebar: { label: 'DF2 Stream Miner', icon: 'network', group: 'miners' },
+    },
+    ocptStreamMinerNode: {
+        category: 'miner',
+        allowedAssetTypes: ['ocelFile'],
+        sidebar: { label: 'OCPT Stream Miner', icon: 'treePine', group: 'miners' },
     },
 } satisfies Record<RegistrableNodeType, NodeRegistryEntry>;

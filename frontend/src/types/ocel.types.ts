@@ -20,6 +20,8 @@ export interface ObjectFlowAtEdge extends BaseObjectFlow {
     timestampMs: number;
     activity?: string;
     edgeId?: string;
+    groupedIds?: string[];
+    renderKey?: string;
     executionDurationMs: number;
     realTimeExecutionDuration: number;
     fromActivity: string;

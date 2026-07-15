@@ -156,38 +156,6 @@ const ProcessTreeOperatorNode: React.FC<ProcessTreeNodeProps> = ({
                         return <circle r={15} fill="none" stroke="black" strokeWidth={2} opacity={opacity} />;
                 }
             })()}
-            {identityKinds?.map((kind, i) => {
-                const iconSize = 14;
-                const baseX = -width / 2 - 2;
-                const baseY = height / 2 - iconSize + 2;
-                const offsetY = i * (iconSize + 2);
-                const symbol = kind === 'sync' ? '=' : kind === 'impConcurrent' ? '⇒‖' : '⇒→';
-                const rectWidth = kind === 'sync' ? iconSize : iconSize + 10;
-                return (
-                    <g key={kind} transform={`translate(${baseX}, ${baseY - offsetY})`}>
-                        <rect
-                            width={rectWidth}
-                            height={iconSize}
-                            rx={3}
-                            ry={3}
-                            fill="white"
-                            stroke="#6366f1"
-                            strokeWidth={1.5}
-                        />
-                        <text
-                            x={rectWidth / 2}
-                            y={iconSize / 2}
-                            textAnchor="middle"
-                            dominantBaseline="central"
-                            fontSize={9}
-                            fill="#6366f1"
-                            fontFamily="sans-serif"
-                        >
-                            {symbol}
-                        </text>
-                    </g>
-                );
-            })}
         </Group>
     );
 };

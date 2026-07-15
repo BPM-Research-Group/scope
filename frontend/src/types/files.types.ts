@@ -9,6 +9,7 @@ export const otherTypes = [
     'abstractionAsset',
     'conformanceAsset',
 ] as const;
+export const otherTypes = ['ocptAsset', 'ocelAsset', 'ocpnAsset', 'identityOcptAsset', 'abstractionAsset', 'conformanceAsset', 'flowAsset'] as const;
 
 export type OtherType = (typeof otherTypes)[number];
 

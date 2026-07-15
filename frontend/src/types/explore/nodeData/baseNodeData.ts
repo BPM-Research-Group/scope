@@ -10,7 +10,14 @@ export type BaseExploreNodeDropdownActionType =
     | 'setCustomColor'
     | 'exportPm4pyOcpt';
 
-export type HandleId = 'target' | 'source' | 'conformanceTarget' | 'ocptTarget' | 'ocelTarget' | 'conformanceTargetSecondary';
+export type HandleId =
+    | 'target'
+    | 'source'
+    | 'conformanceTarget'
+    | 'ocptTarget'
+    | 'ocelTarget'
+    | 'conformanceTargetSecondary'
+    | 'flowTargetSecondary';
 
 export interface BaseExploreNodeHandleOption {
     id: HandleId;

@@ -73,9 +73,9 @@ pub async fn apply_extended_ocpt(
             "noise_threshold must be a finite number between 0.0 and 1.0".to_string(),
         ));
     }
-    // External semantics:
-    // - noise_threshold=1.0 => no noise allowed (strict)
-    // - noise_threshold=0.0 => all noise allowed
+    // External semantics follow the paper's adherence/support threshold:
+    // - noise_threshold=1.0 => no violations allowed (strict)
+    // - noise_threshold=0.0 => all violations allowed
     let violation_threshold = 1.0 - noise_threshold;
 
     let ocel_id = query.ocel_id.ok_or((
