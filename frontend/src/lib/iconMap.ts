@@ -95,7 +95,7 @@ export const ASSET_TYPE_VISUALS: Record<AssetType, AssetTypeVisual> = {
     ocelCollectionFile: {
         icon: FileStack,
         color: 'text-green-500',
-        label: 'OCEL Collection',
+        label: 'Case Collection',
     },
     identityOcptAsset: {
         icon: FileText,
