@@ -39,8 +39,8 @@ export interface VizParams {
 const nodeTypes = { place: PlaceNode, transition: TransitionNode };
 const edgeTypes = { arc: ArcEdge };
 
-// Helper to safely extract IDs
-const getArcId = (endpoint: any) => (typeof endpoint === 'object' && endpoint !== null ? endpoint.id : endpoint);
+// React Flow requires string IDs, while backend OCPNs use numeric graph IDs.
+const getArcId = (endpoint: any) => String(typeof endpoint === 'object' && endpoint !== null ? endpoint.id : endpoint);
 
 const ViewerCore = ({ data, params, colorMap }: { data: RustOcpnData; params: VizParams; colorMap: Record<string, string> }) => {
     const { fitView } = useReactFlow();
@@ -54,8 +54,8 @@ const ViewerCore = ({ data, params, colorMap }: { data: RustOcpnData; params: Vi
 
     const runBfsLayout = useCallback((currentData: RustOcpnData, currentParams: VizParams) => {
         const nodesList = [
-            ...currentData.places.map((p) => ({ ...p, type: 'place' })),
-            ...(currentData.transitions || []).map((t) => ({ ...t, type: 'transition' })),
+            ...currentData.places.map((p) => ({ ...p, id: String(p.id), type: 'place' })),
+            ...(currentData.transitions || []).map((t) => ({ ...t, id: String(t.id), type: 'transition' })),
         ];
 
         const adj: Record<string, string[]> = {};
@@ -147,11 +147,11 @@ const ViewerCore = ({ data, params, colorMap }: { data: RustOcpnData; params: Vi
         const flowEdges = validArcs.map((arc) => {
             const src = getArcId(arc.source);
             const tgt = getArcId(arc.target);
-            const connectedPlace = currentData.places.find((p) => p.id === src || p.id === tgt);
+            const connectedPlace = currentData.places.find((p) => String(p.id) === src || String(p.id) === tgt);
             const objType = connectedPlace ? connectedPlace.object_type : 'default';
             
             return {
-                id: arc.id,
+                id: String(arc.id),
                 source: src,
                 target: tgt,
                 type: 'arc',
@@ -177,7 +177,15 @@ const ViewerCore = ({ data, params, colorMap }: { data: RustOcpnData; params: Vi
         const { flowNodes, flowEdges } = runBfsLayout(data, params);
         setNodes(flowNodes);
         setEdges(flowEdges);
-    }, [params, data, setNodes, setEdges, runBfsLayout]);
+        requestAnimationFrame(() => fitView({ padding: 0.2, duration: 200 }));
+    }, [params, data, setNodes, setEdges, runBfsLayout, fitView]);
+
+    useEffect(() => {
+        (window as any).fitToScreen = () => fitView({ padding: 0.2, duration: 300 });
+        return () => {
+            delete (window as any).fitToScreen;
+        };
+    }, [fitView]);
 
     return (
         <ReactFlow nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} nodeTypes={nodeTypes} edgeTypes={edgeTypes} fitViewOptions={{ padding: 0.2 }}>
@@ -225,7 +233,7 @@ export default function OcpnViewer({ nodeId: propNodeId }: { nodeId?: string }) 
         if (!rawData || !rawData.places) return null;
         
         const places = rawData.places.filter((p) => visibleObjectTypes.has(p.object_type));
-        const placeIds = new Set(places.map((p) => p.id));
+        const placeIds = new Set(places.map((p) => String(p.id)));
         
         const rawArcs = rawData.arcs || [];
         const candidateArcs = rawArcs.filter((a) => {
@@ -240,8 +248,8 @@ export default function OcpnViewer({ nodeId: propNodeId }: { nodeId?: string }) 
             connectedNodeIds.add(getArcId(a.target)); 
         });
         
-        const transitions = (rawData.transitions || []).filter((t) => connectedNodeIds.has(t.id));
-        const transitionIds = new Set(transitions.map((t) => t.id));
+        const transitions = (rawData.transitions || []).filter((t) => connectedNodeIds.has(String(t.id)));
+        const transitionIds = new Set(transitions.map((t) => String(t.id)));
 
         const finalValidNodeIds = new Set([...placeIds, ...transitionIds]);
         const arcs = candidateArcs.filter((a) => {
