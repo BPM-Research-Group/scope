@@ -31,6 +31,7 @@ import {
     postSpecialActivities,
     mineKpi,
     attributeStats,
+    caseStats,
 } from '~/services/api';
 import { getOcel } from '~/services/api';
 import { CaseNotionApiResponse } from '~/types/case_notion.types';
@@ -166,6 +167,33 @@ export const useAttributeStats = (
         queryFn: () => attributeStats(fileId!, params),
 
         enabled: Boolean(fileId) && Boolean(params),
+
+        refetchOnWindowFocus: false,
+
+        ...options,
+    });
+};
+
+export const useCaseStats = (
+    fileId: string | null,
+    params: any,
+    caseType: string,
+    options = {}
+) => {
+    console.log('fucjhh');
+    console.log(params);
+    console.log(caseType);
+    console.log('fucjhh');
+    
+    return useQuery({
+        queryKey: ['caseStats', fileId,   params, caseType],
+
+        queryFn: () => {
+        console.log("queryFn is running");
+        return caseStats(fileId!, params, caseType);
+    },
+
+        enabled: Boolean(fileId) && Boolean(params) && Boolean(caseType),
 
         refetchOnWindowFocus: false,
 

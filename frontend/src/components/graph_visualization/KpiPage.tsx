@@ -7,7 +7,7 @@ import axios from 'axios';
 import { useLocation } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import { useMineCaseNotionMutation } from '~/services/mutation';
-import { useAttributeStats, useMineKpi } from '~/services/queries';
+import { useAttributeStats, useCaseStats, useMineKpi } from '~/services/queries';
 import { HistogramChart } from '../HistogramChart';
 import { HistChart } from './HistChart';
 
@@ -36,14 +36,19 @@ type Attribute = {
 };
 
 type AttributeStatsPrams = {
-    left_attribute: string;
+    left_attribute?: string;
     left_object_type?: string;
     left_event_type?: string;
     left_intra_case_agg?: 'sum' | 'mean' | 'min' | 'max' | 'max' | 'count';
-    right_attribute: string;
+    right_attribute?: string;
     right_object_type?: string;
     right_event_type?: string;
     right_intra_case_agg?: 'sum' | 'mean' | 'min' | 'max' | 'max' | 'count';
+    event_type?: string;
+    object_type?: string;
+    attribute?: string;
+    intra_case_agg?: 'sum' | 'mean' | 'min' | 'max' | 'max' | 'count';
+    operation?: 'add' | 'subtract' | 'multiply' | 'divide';
 };
 
 type Props = {
@@ -65,10 +70,14 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
     const [selectedRightObjectType, setSelectedRightObjectType] = useState('');
     const [selectedLeftEventType, setSelectedLeftEventType] = useState('');
     const [selectedRightEventType, setSelectedRightEventType] = useState('');
+    const [selectedEventType, setSelectedEventType] = useState('');
     const [selectedObjectType, setSelectedObjectType] = useState('');
+    const [selectedObjectTypeCN, setSelectedObjectTypeCN] = useState('');
     const [selectedLeftAttribute, setSelectedLeftAttribute] = useState('');
     const [selectedRightAttribute, setSelectedRightAttribute] = useState('');
-    const [selectedOperation, setSelectedOperation] = useState<'add' | 'subtract' | 'multiply' | 'divide' | ''>('');
+    const [selectedObjectAttribute, setSelectedObjectAttribute] = useState('');
+    const [selectedEventAttribute, setSelectedEventAttribute] = useState('');
+    const [selectedOperation, setSelectedOperation] = useState<'add' | 'subtract' | 'multiply' | 'divide' | ''>('add');
     const [currentCnFileId, setCurrentCnFileId] = useState<string>('');
     const [selectedHistogramOption, setSelectedHistogramOption] = useState<boolean>(true);
     const [showHistogram, setShowHistogram] = useState<boolean>(false);
@@ -77,8 +86,9 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
     const [isApplyingFilter, setIsApplyingFilter] = useState(false);
     const [isApplyingActivityFilter, setIsApplyingActivityFilter] = useState(false);
     const [activityHistogramData, setActivityHistogramData] = useState<HistogramItem[]>([]);
-const [showActivityHistogram, setShowActivityHistogram] = useState(false);
-const [selectedActivityBins, setSelectedActivityBins] = useState<number[]>([]);
+    const [showActivityHistogram, setShowActivityHistogram] = useState(false);
+    const [selectedActivityBins, setSelectedActivityBins] = useState<number[]>([]);
+    const [selectedCaseType, setSelectedCaseType] = useState('case_attribute_object_type');
 
     const [hasUnminedChanges, setHasUnminedChanges] = useState(false);
 
@@ -97,9 +107,9 @@ const [selectedActivityBins, setSelectedActivityBins] = useState<number[]>([]);
     const [isLoadingTimeKpi, setIsLoadingTimeKpi] = useState(false);
     const [successors, setSuccessors] = useState<Record<string, string[]>>({});
     const [isLoadingSuccessors, setIsLoadingSuccessors] = useState(false);
-    const [leftIntraCaseAgg, setLeftIntraCaseAgg] = useState<'sum' | 'mean' | 'min' | 'max' | 'count' | ''>('sum');
-    const [rightIntraCaseAgg, setRightIntraCaseAgg] = useState<'sum' | 'mean' | 'min' | 'max' | 'count' | ''>('sum');
-    const [intraCaseAgg, setIntraCaseAgg] = useState<'sum' | 'mean' | 'min' | 'max' | 'count' >('sum');
+    const [leftIntraCaseAgg, setLeftIntraCaseAgg] = useState<'sum' | 'mean' | 'min' | 'max' | 'count' | ''>('');
+    const [rightIntraCaseAgg, setRightIntraCaseAgg] = useState<'sum' | 'mean' | 'min' | 'max' | 'count' | ''>('');
+    const [intraCaseAgg, setIntraCaseAgg] = useState<'sum' | 'mean' | 'min' | 'max' | 'count' | ''>('sum');
     const [showStatsChart, setShowStatsChart] = useState(false);
 
     const {
@@ -156,103 +166,61 @@ const [selectedActivityBins, setSelectedActivityBins] = useState<number[]>([]);
         }
     };
     const activityBins = useMemo(
-    () =>
-        activityHistogramData.map(item => ({
-            x: item.bin_midpoint,
-            y: item.frequency,
-            bin_start: item.bin_start,
-            bin_end: item.bin_end,
-        })),
-    [activityHistogramData]
-);
+        () =>
+            activityHistogramData.map((item) => ({
+                x: item.bin_midpoint,
+                y: item.frequency,
+                bin_start: item.bin_start,
+                bin_end: item.bin_end,
+            })),
+        [activityHistogramData]
+    );
 
-const hasActivityHistogram = activityHistogramData.length > 0;
-useEffect(() => {
-    if (activityBins.length > 0) {
-        setSelectedActivityBins(
-            activityBins.map((_, index) => index)
-        );
-    }
-}, [activityBins]);
+    const hasActivityHistogram = activityHistogramData.length > 0;
+    useEffect(() => {
+        if (activityBins.length > 0) {
+            setSelectedActivityBins(activityBins.map((_, index) => index));
+        }
+    }, [activityBins]);
 
     const applyHistogramFilter = async () => {
-    if (!currentCnFileId || selectedBins.length === 0) return;
+        if (!currentCnFileId || selectedBins.length === 0) return;
 
-    const histogramFilter = {
-        type: "attribute_combination",
+        const histogramFilter = {
+            type: 'attribute_combination',
 
-        left_attribute: selectedLeftAttribute,
-        left_object_type: selectedLeftObjectType,
-        left_intra_case_agg: leftIntraCaseAgg,
+            left_attribute: selectedLeftAttribute,
+            left_object_type: selectedLeftObjectType,
+            left_intra_case_agg: leftIntraCaseAgg,
 
-        right_attribute: selectedRightAttribute,
-        right_object_type: selectedRightObjectType,
-        right_intra_case_agg: rightIntraCaseAgg,
+            right_attribute: selectedRightAttribute,
+            right_object_type: selectedRightObjectType,
+            right_intra_case_agg: rightIntraCaseAgg,
 
-        operation: selectedOperation,
+            operation: selectedOperation,
+        };
+
+        const valueRanges = selectedBins.map((index) => [bins[index].bin_start, bins[index].bin_end]);
+
+        const payload = {
+            kpi_filter: histogramFilter,
+            value_ranges: valueRanges,
+        };
+
+        try {
+            setIsApplyingFilter(true);
+            const res = await axios.post(`http://localhost:3000/v1/kpi/histogram_filter/${currentCnFileId}`, payload);
+            // setCurrentCnFileId(res.data.case_notion_file_id);
+
+            console.log(res.data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setIsApplyingFilter(false);
+        }
     };
 
-    const valueRanges = selectedBins.map(index => [
-        bins[index].bin_start,
-        bins[index].bin_end,
-    ]);
-
-    const payload = {
-        kpi_filter: histogramFilter,
-        value_ranges: valueRanges,
-    };
-
-    try {
-         setIsApplyingFilter(true);
-        const res = await axios.post(
-            `http://localhost:3000/v1/kpi/histogram_filter/${currentCnFileId}`,
-            payload
-        );
-        // setCurrentCnFileId(res.data.case_notion_file_id);
-
-        console.log(res.data);
-    } catch (err) {
-        console.error(err);
-    } finally {
-        setIsApplyingFilter(false);
-    }
-};
-
-
-
-
-
-// const applyActivityHistogramFilter = async () => {
-//     const valueRanges = selectedActivityBins.map(index => [
-//         activityBins[index].bin_start,
-//         activityBins[index].bin_end,
-//     ]);
-
-//     const payload = {
-//         kpi_filter: {
-//             type: "case_time",
-//             // object_type: selectedObjectType,
-//             // from_activity: fromActivity,
-//             // to_activity: toActivity,
-//             // intra_case_agg: intraCaseAgg,
-//         },
-//         value_ranges: valueRanges,
-//     };
-//  try {
-//          setIsApplyingActivityFilter(true);
-//         const res = await axios.post(
-//             `http://localhost:3000/v1/kpi/histogram_filter/${currentCnFileId}`,
-//             payload
-//         );
-
-//         console.log(res.data);
-//     } catch (err) {
-//         console.error(err);
-//     } finally {
-//         setIsApplyingActivityFilter(false);
-//     }
-// };
-
+    
 
     const formatDuration = (seconds: number) => {
         const days = seconds / 86400;
@@ -271,26 +239,23 @@ useEffect(() => {
     const loadActivitySuccessors = async (cnId: string) => {
         try {
             setIsLoadingSuccessors(true);
-            console.log(`http://localhost:3000/v1/kpi/activity_successors/${cnId}`);
-           const res = await axios.get(
-    `http://localhost:3000/v1/kpi/activity_successors/${cnId}?object_type=${selectedObjectType}`
-);
-             console.error(res);
+            console.log(`http://localhost:3000/v1/kpi/activity_successors/${cnId}?object_type=${selectedObjectTypeCN}`);
+            const res = await axios.get(
+                `http://localhost:3000/v1/kpi/activity_successors/${cnId}?object_type=${selectedObjectTypeCN}`
+            );
+            console.error(res);
 
             setSuccessors(res.data.successors ?? {});
         } catch (err: any) {
             console.error('Activity Successors Error');
-
-            // console.error('Status:', err?.response?.status);
-            // console.error('Data:', err?.response?.data);
-            // console.error('URL:', err?.config?.url);
+;
         } finally {
             setIsLoadingSuccessors(false);
         }
     };
 
     const handleMine = () => {
-        if (!fileId || !selectedObjectType) return;
+        if (!fileId) return;
 
         const newCnId = uuidv4();
 
@@ -302,7 +267,7 @@ useEffect(() => {
             {
                 fileId,
                 algorithm,
-                objectType: selectedObjectType,
+                objectType: selectedObjectTypeCN,
                 newFileId: newCnId,
                 payload: genericPayload,
             },
@@ -313,6 +278,9 @@ useEffect(() => {
                     console.log('cn data response');
                     console.log(data);
                     await loadActivitySuccessors(newCnId);
+                },
+                onSettled: () => {
+                    // resetKpiBuilder(); // Called for both success and error
                 },
             }
         );
@@ -332,15 +300,37 @@ useEffect(() => {
         return successors[fromActivity] ?? [];
     }, [successors, fromActivity]);
 
+  
+
     const params: AttributeStatsPrams | null = useMemo(() => {
-        if (!selectedLeftAttribute && !selectedRightAttribute) return null;
+        // if (!selectedLeftAttribute && !selectedRightAttribute) return null;
 
         return {
-            left_attribute: selectedLeftAttribute,
-            right_attribute: selectedRightAttribute,
-            operation: selectedOperation,
             histogram: selectedHistogramOption,
-            intra_case_agg: intraCaseAgg,
+            ...(selectedEventType && {
+                event_type: selectedEventType,
+            }),
+            ...(selectedObjectType && {
+                object_type: selectedObjectType,
+            }),
+            ...(selectedEventAttribute && {
+                attribute: selectedEventAttribute,
+            }),
+            ...(selectedObjectAttribute && {
+                attribute: selectedObjectAttribute,
+            }),
+            ...(selectedLeftAttribute && {
+                left_attribute: selectedLeftAttribute,
+            }),
+            ...(selectedRightAttribute && {
+                right_attribute: selectedRightAttribute,
+            }),
+            ...(selectedOperation && {
+                operation: selectedOperation,
+            }),
+            ...(intraCaseAgg && {
+                intra_case_agg: intraCaseAgg,
+            }),
             ...(selectedLeftObjectType && {
                 left_object_type: selectedLeftObjectType,
             }),
@@ -359,8 +349,22 @@ useEffect(() => {
             ...(rightIntraCaseAgg && {
                 right_intra_case_agg: rightIntraCaseAgg,
             }),
+            ...(fromActivity && {
+                from_activity: fromActivity,
+            }),
+            ...(toActivity && {
+                to_activity: toActivity,
+            }),
+            ...((selectedCaseType === 'activity_time' || selectedCaseType === 'case_duration') &&
+                selectedObjectTypeCN && {
+                    object_type: selectedObjectTypeCN,
+                }),
         };
     }, [
+        selectedEventType,
+        selectedObjectType,
+        selectedEventAttribute,
+        selectedObjectAttribute,
         intraCaseAgg,
         selectedLeftAttribute,
         selectedRightAttribute,
@@ -372,40 +376,56 @@ useEffect(() => {
         rightIntraCaseAgg,
         selectedOperation,
         selectedHistogramOption,
+        fromActivity,
+        toActivity,
+        selectedObjectTypeCN,
     ]);
     console.log(params);
     console.log('params');
 
-    const histogramFilter = useMemo(() => ({
-    type: "attribute_combination",
+    const histogramFilter = useMemo(
+        () => ({
+            type: 'attribute_combination',
 
-    left_attribute: selectedLeftAttribute,
-    left_object_type: selectedLeftObjectType,
-    left_intra_case_agg: leftIntraCaseAgg,
+            left_attribute: selectedLeftAttribute,
+            left_object_type: selectedLeftObjectType,
+            left_intra_case_agg: leftIntraCaseAgg,
 
-    right_attribute: selectedRightAttribute,
-    right_object_type: selectedRightObjectType,
-    right_intra_case_agg: rightIntraCaseAgg,
+            right_attribute: selectedRightAttribute,
+            right_object_type: selectedRightObjectType,
+            right_intra_case_agg: rightIntraCaseAgg,
 
-    operation: selectedOperation,
-}), [
-    selectedLeftAttribute,
-    selectedLeftObjectType,
-    leftIntraCaseAgg,
-    selectedRightAttribute,
-    selectedRightObjectType,
-    rightIntraCaseAgg,
-    selectedOperation,
-]);
+            operation: selectedOperation,
+        }),
+        [
+            selectedLeftAttribute,
+            selectedLeftObjectType,
+            leftIntraCaseAgg,
+            selectedRightAttribute,
+            selectedRightObjectType,
+            rightIntraCaseAgg,
+            selectedOperation,
+        ]
+    );
+   
     const {
         data: attributeStatsData,
         isLoading: attributeStatsLoading,
         error: attributeStatsError,
-    } = useAttributeStats(currentCnFileId, params, {
-        enabled: shouldFetchStats && !!currentCnFileId && !!selectedLeftAttribute && !!selectedRightAttribute,
+    } = useCaseStats(currentCnFileId, params, selectedCaseType, {
+        // enabled: shouldFetchStats && !!currentCnFileId && !!selectedLeftAttribute && !!selectedRightAttribute,
+        enabled: shouldFetchStats && !!currentCnFileId,
+    });
+    console.log({
+        fileId,
+        params,
+
+        shouldFetchStats,
     });
 
     const stats: Stats | null = attributeStatsData?.stats ?? null;
+    console.log('statsssssss');
+    console.log(stats);
     const histData = attributeStatsData?.histogram ?? null;
     useEffect(() => {
         if (histData) {
@@ -447,13 +467,50 @@ useEffect(() => {
         );
     }, [histogramData]);
     useEffect(() => {
-    if (bins.length > 0) {
-        setSelectedBins(bins.map((_, index) => index));
-    }
-}, [bins]);
+        if (bins.length > 0) {
+            setSelectedBins(bins.map((_, index) => index));
+        }
+    }, [bins]);
+
+    useEffect(() => {
+        // Event KPI
+        setSelectedEventType('');
+        setSelectedEventAttribute('');
+
+        // Object KPI
+        setSelectedObjectType('');
+        setSelectedObjectAttribute('');
+
+        // Combination KPI
+        setSelectedLeftObjectType('');
+        setSelectedLeftAttribute('');
+        setSelectedRightObjectType('');
+        setSelectedRightAttribute('');
+        setSelectedOperation('');
+
+        setLeftIntraCaseAgg('');
+        setRightIntraCaseAgg('');
+
+        setFromActivity('');
+        setToActivity('');
+
+        setShouldFetchStats(false);
+    }, [selectedCaseType]);
+
+    // const objectTypeOptions = useMemo(() => {
+    //     return metadata?.object_types ?? [];
+    // }, [metadata]);
 
     const objectTypeOptions = useMemo(() => {
-        return metadata?.object_types ?? [];
+        return (
+            metadata?.object_types.filter((objectType: any) =>
+                objectType.attributes?.some((attr: any) => attr.numeric)
+            ) ?? []
+        );
+    }, [metadata]);
+
+    const eventTypeOptions = useMemo(() => {
+        return metadata?.event_types ?? [];
     }, [metadata]);
 
     const numericAttributes = useMemo(() => {
@@ -471,6 +528,12 @@ useEffect(() => {
 
         return objectType?.attributes.filter((attr: any) => attr.numeric) ?? [];
     }, [metadata, selectedRightObjectType]);
+
+    const numericAttributesObject = useMemo(() => {
+        const objectType = metadata?.object_types.find((item: any) => item.name === selectedObjectType);
+
+        return objectType?.attributes?.filter((attr: any) => attr.numeric) ?? [];
+    }, [metadata, selectedObjectType]);
 
     if (metadataLoading) {
         return <div className="p-6 text-lg font-medium">Loading KPI Dashboard...</div>;
@@ -566,14 +629,12 @@ useEffect(() => {
                             </label>
 
                             <select
-                                value={selectedObjectType}
+                                value={selectedObjectTypeCN}
                                 onChange={(e) => {
                                     const value = e.target.value;
 
-                                    setSelectedObjectType(value);
+                                    setSelectedObjectTypeCN(value);
                                     setShouldFetchStats(false);
-
-                                  
                                 }}
                                 className="
                     w-full
@@ -626,7 +687,628 @@ useEffect(() => {
                             </select>
                         </div>
 
-                         <div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Select type:</label>
+
+                            <select
+                                value={selectedCaseType}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+
+                                    setSelectedCaseType(value);
+                                    setShouldFetchStats(false);
+                                }}
+                                className="
+                    w-full
+                    border
+                    border-slate-300
+                    rounded-xl
+                    px-4
+                    py-3
+                    bg-white
+                    focus:ring-2
+                    focus:ring-blue-500
+                    focus:border-blue-500
+                    outline-none
+                "
+                            >
+                                <option value="case_attribute_event_type">Case Attribute(event type)</option>
+                                <option value="case_attribute_object_type">Case Attribute(object type)</option>
+                                <option value="attribute_combination">Attribute Combination</option>
+                                <option value="case_duration">Case Duration KPI</option>
+                                <option value="activity_time">Activity Time KPI</option>
+                            </select>
+                        </div>
+
+                        {selectedCaseType === 'case_attribute_event_type' && (
+                            <div className="md:col-span-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Event Type</label>
+
+                                    <select
+                                        value={selectedEventType}
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+
+                                            setSelectedEventType(value);
+                                            setShouldFetchStats(false);
+                                        }}
+                                        className="
+                    w-full
+                    border
+                    border-slate-300
+                    rounded-xl
+                    px-4
+                    py-3
+                    bg-white
+                    focus:ring-2
+                    focus:ring-blue-500
+                    focus:border-blue-500
+                    outline-none
+                "
+                                    >
+                                        {eventTypeOptions.map((item: any) => (
+                                            <option key={item.name} value={item.name}>
+                                                {item.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Attribute</label>
+
+                                    <select
+                                        value={selectedEventAttribute}
+                                        onChange={(e) => {
+                                            setSelectedEventAttribute(e.target.value);
+                                            setShouldFetchStats(false);
+                                        }}
+                                        className="
+                    w-full
+                    border
+                    border-slate-300
+                    rounded-xl
+                    px-4
+                    py-3
+                    bg-white
+                    focus:ring-2
+                    focus:ring-blue-500
+                    focus:border-blue-500
+                    outline-none
+                "
+                                    >
+                                        {numericAttributesRight.map((item: any) => (
+                                            <option key={item.name} value={item.name}>
+                                                {item.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        )}
+
+                        {selectedCaseType === 'case_attribute_object_type' && (
+                            <div className="md:col-span-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Object Type</label>
+
+                                    <select
+                                        value={selectedObjectType}
+                                        onChange={(e) => {
+                                            const value1 = e.target.value;
+                                            const value = e.target.value;
+
+                                            setSelectedObjectType(value);
+                                            setShouldFetchStats(false);
+                                            const ObjectType = metadata?.object_types.find(
+                                                (item: any) => item.name === value1
+                                            );
+
+                                            const firstAttribute = ObjectType?.attributes.find(
+                                                (attr: any) => attr.numeric
+                                            );
+
+                                            setSelectedObjectAttribute(firstAttribute?.name ?? '');
+                                        }}
+                                        className="
+                    w-full
+                    border
+                    border-slate-300
+                    rounded-xl
+                    px-4
+                    py-3
+                    bg-white
+                    focus:ring-2
+                    focus:ring-blue-500
+                    focus:border-blue-500
+                    outline-none
+                "
+                                    >
+                                        {objectTypeOptions.map((item: any) => (
+                                            <option key={item.name} value={item.name}>
+                                                {item.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Attribute</label>
+
+                                    <select
+                                        value={selectedObjectAttribute}
+                                        onChange={(e) => {
+                                            const value1 = e.target.value;
+                                            setSelectedObjectAttribute(value1);
+                                            setShouldFetchStats(false);
+                                        }}
+                                        className="
+                    w-full
+                    border
+                    border-slate-300
+                    rounded-xl
+                    px-4
+                    py-3
+                    bg-white
+                    focus:ring-2
+                    focus:ring-blue-500
+                    focus:border-blue-500
+                    outline-none
+                "
+                                    >
+                                        {numericAttributesObject.map((item: any) => (
+                                            <option key={item.name} value={item.name}>
+                                                {item.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        )}
+
+                        {selectedCaseType === 'attribute_combination' && (
+                            <div className="md:col-span-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Left Object Type
+                                    </label>
+
+                                    <select
+                                        value={selectedLeftObjectType}
+                                        onChange={(e) => {
+                                            const value1 = e.target.value;
+
+                                            setSelectedLeftObjectType(value1);
+                                            setShouldFetchStats(false);
+
+                                            const leftObjectType = metadata?.object_types.find(
+                                                (item: any) => item.name === value1
+                                            );
+
+                                            const firstAttribute = leftObjectType?.attributes.find(
+                                                (attr: any) => attr.numeric
+                                            );
+
+                                            setSelectedLeftAttribute(firstAttribute?.name ?? '');
+                                            setLeftIntraCaseAgg('sum');
+                                        }}
+                                        className="
+                    w-full
+                    border
+                    border-slate-300
+                    rounded-xl
+                    px-4
+                    py-3
+                    bg-white
+                    focus:ring-2
+                    focus:ring-blue-500
+                    focus:border-blue-500
+                    outline-none
+                "
+                                    >
+                                        {objectTypeOptions.map((item: any) => (
+                                            <option key={item.name} value={item.name}>
+                                                {item.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Left Attribute
+                                    </label>
+
+                                    <select
+                                        value={selectedLeftAttribute}
+                                        onChange={(e) => {
+                                            const value2 = e.target.value;
+                                            setSelectedLeftAttribute(value2);
+                                            setShouldFetchStats(false);
+                                        }}
+                                        className="
+                    w-full
+                    border
+                    border-slate-300
+                    rounded-xl
+                    px-4
+                    py-3
+                    bg-white
+                    focus:ring-2
+                    focus:ring-blue-500
+                    focus:border-blue-500
+                    outline-none
+                "
+                                    >
+                                        {numericAttributesLeft.map((item: any) => (
+                                            <option key={item.name} value={item.name}>
+                                                {item.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Left Intra-Case Aggregation
+                                    </label>
+
+                                    <select
+                                        value={leftIntraCaseAgg}
+                                        onChange={(e) => {
+                                            setLeftIntraCaseAgg(e.target.value as any);
+                                            setShouldFetchStats(false);
+                                        }}
+                                        className="
+            w-full
+            border
+            border-slate-300
+            rounded-xl
+            px-4
+            py-3
+            bg-white
+            focus:ring-2
+            focus:ring-blue-500
+            focus:border-blue-500
+            outline-none
+        "
+                                    >
+                                        {/* <option value="">None (Default)</option> */}
+                                        <option value="sum">Sum per Case</option>
+                                        <option value="mean">Mean per Case</option>
+                                        <option value="min">Min per Case</option>
+                                        <option value="max">Max per Case</option>
+                                        <option value="count">Count per Case</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Right Object Type
+                                    </label>
+
+                                    <select
+                                        value={selectedRightObjectType}
+                                        onChange={(e) => {
+                                            const value2 = e.target.value;
+
+                                            setSelectedRightObjectType(value2);
+                                            setShouldFetchStats(false);
+
+                                            const rightObjectType = metadata?.object_types.find(
+                                                (item: any) => item.name === value2
+                                            );
+
+                                            const firstAttribute = rightObjectType?.attributes.find(
+                                                (attr: any) => attr.numeric
+                                            );
+
+                                            setSelectedRightAttribute(firstAttribute?.name ?? '');
+                                            setRightIntraCaseAgg('sum');
+                                        }}
+                                        className="
+                    w-full
+                    border
+                    border-slate-300
+                    rounded-xl
+                    px-4
+                    py-3
+                    bg-white
+                    focus:ring-2
+                    focus:ring-blue-500
+                    focus:border-blue-500
+                    outline-none
+                "
+                                    >
+                                        {objectTypeOptions.map((item: any) => (
+                                            <option key={item.name} value={item.name}>
+                                                {item.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Right Attribute
+                                    </label>
+
+                                    <select
+                                        value={selectedRightAttribute}
+                                        onChange={(e) => {
+                                            setSelectedRightAttribute(e.target.value);
+                                            setShouldFetchStats(false);
+                                        }}
+                                        className="
+                    w-full
+                    border
+                    border-slate-300
+                    rounded-xl
+                    px-4
+                    py-3
+                    bg-white
+                    focus:ring-2
+                    focus:ring-blue-500
+                    focus:border-blue-500
+                    outline-none
+                "
+                                    >
+                                        {numericAttributesRight.map((item: any) => (
+                                            <option key={item.name} value={item.name}>
+                                                {item.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Right Intra-Case Aggregation
+                                    </label>
+
+                                    <select
+                                        value={rightIntraCaseAgg}
+                                        onChange={(e) => {
+                                            setRightIntraCaseAgg(e.target.value as any);
+                                            setShouldFetchStats(false);
+                                        }}
+                                        className="
+            w-full
+            border
+            border-slate-300
+            rounded-xl
+            px-4
+            py-3
+            bg-white
+            focus:ring-2
+            focus:ring-blue-500
+            focus:border-blue-500
+            outline-none
+        "
+                                    >
+                                        {/* <option value="">None (Default)</option> */}
+                                        <option value="sum">Sum per Case</option>
+                                        <option value="mean">Mean per Case</option>
+                                        <option value="min">Min per Case</option>
+                                        <option value="max">Max per Case</option>
+                                        <option value="count">Count per Case</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Operation</label>
+
+                                    <select
+                                        value={selectedOperation}
+                                        onChange={(e) => {
+                                            setSelectedOperation(e.target.value as any);
+                                            // onChange={(e) => setAggregation(e.target.value as keyof Stats)}
+                                            setShouldFetchStats(false);
+                                        }}
+                                        className="
+            w-full
+            border
+            border-slate-300
+            rounded-xl
+            px-4
+            py-3
+            bg-white
+            focus:ring-2
+            focus:ring-blue-500
+            focus:border-blue-500
+            outline-none
+        "
+                                    >
+                                        <option>Select operation</option>
+                                        <option value="add">Add</option>
+                                        <option value="subtract">Subtract</option>
+                                        <option value="multiply">Multiply</option>
+                                        <option value="divide">Divide</option>
+                                    </select>
+                                </div>
+                            </div>
+                        )}
+
+                        {selectedCaseType === 'case_attribute_event_type' && (
+                            <div className="md:col-span-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Event Type</label>
+
+                                    <select
+                                        value={selectedEventType}
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+
+                                            setSelectedEventType(value);
+                                            setShouldFetchStats(false);
+                                        }}
+                                        className="
+                    w-full
+                    border
+                    border-slate-300
+                    rounded-xl
+                    px-4
+                    py-3
+                    bg-white
+                    focus:ring-2
+                    focus:ring-blue-500
+                    focus:border-blue-500
+                    outline-none
+                "
+                                    >
+                                        {eventTypeOptions.map((item: any) => (
+                                            <option key={item.name} value={item.name}>
+                                                {item.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Attribute</label>
+
+                                    <select
+                                        value={selectedEventAttribute}
+                                        onChange={(e) => {
+                                            setSelectedEventAttribute(e.target.value);
+                                            setShouldFetchStats(false);
+                                        }}
+                                        className="
+                    w-full
+                    border
+                    border-slate-300
+                    rounded-xl
+                    px-4
+                    py-3
+                    bg-white
+                    focus:ring-2
+                    focus:ring-blue-500
+                    focus:border-blue-500
+                    outline-none
+                "
+                                    >
+                                        {numericAttributesRight.map((item: any) => (
+                                            <option key={item.name} value={item.name}>
+                                                {item.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        )}
+
+                        {selectedCaseType === 'case_duration' && (
+                            <div className="md:col-span-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                        )}
+
+                        {selectedCaseType === 'case_attribute_event_type' && (
+                            <div className="md:col-span-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Event Type</label>
+
+                                    <select
+                                        value={selectedEventType}
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+
+                                            setSelectedEventType(value);
+                                            setShouldFetchStats(false);
+                                        }}
+                                        className="
+                    w-full
+                    border
+                    border-slate-300
+                    rounded-xl
+                    px-4
+                    py-3
+                    bg-white
+                    focus:ring-2
+                    focus:ring-blue-500
+                    focus:border-blue-500
+                    outline-none
+                "
+                                    >
+                                        {eventTypeOptions.map((item: any) => (
+                                            <option key={item.name} value={item.name}>
+                                                {item.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Attribute</label>
+
+                                    <select
+                                        value={selectedEventAttribute}
+                                        onChange={(e) => {
+                                            setSelectedEventAttribute(e.target.value);
+                                            setShouldFetchStats(false);
+                                        }}
+                                        className="
+                    w-full
+                    border
+                    border-slate-300
+                    rounded-xl
+                    px-4
+                    py-3
+                    bg-white
+                    focus:ring-2
+                    focus:ring-blue-500
+                    focus:border-blue-500
+                    outline-none
+                "
+                                    >
+                                        {numericAttributesRight.map((item: any) => (
+                                            <option key={item.name} value={item.name}>
+                                                {item.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        )}
+
+                        {selectedCaseType === 'activity_time' && (
+                            <div className="md:col-span-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">From Activity</label>
+
+                                    <select
+                                        value={fromActivity}
+                                        onChange={(e) => setFromActivity(e.target.value)}
+                                        className="w-full border rounded-xl px-3 py-2"
+                                    >
+                                        <option value="">Select Activity</option>
+
+                                        {fromActivityOptions.map((activity) => (
+                                            <option key={activity} value={activity}>
+                                                {activity}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">To Activity</label>
+
+                                    <select
+                                        value={toActivity}
+                                        onChange={(e) => setToActivity(e.target.value)}
+                                        disabled={!fromActivity}
+                                        className="w-full border rounded-xl px-3 py-2"
+                                    >
+                                        <option value="">Select Activity</option>
+
+                                        {toActivityOptions.map((activity) => (
+                                            <option key={activity} value={activity}>
+                                                {activity}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        )}
+
+                        <div>
                             <label className="block text-sm font-medium text-slate-700 mb-2">
                                 Intra-Case Aggregation
                             </label>
@@ -657,251 +1339,6 @@ useEffect(() => {
                                 <option value="min">Min per Case</option>
                                 <option value="max">Max per Case</option>
                                 <option value="count">Count per Case</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">Left Object Type</label>
-
-                            <select
-                                value={selectedLeftObjectType}
-                                onChange={(e) => {
-                                    const value1 = e.target.value;
-
-                                    setSelectedLeftObjectType(value1);
-                                    setShouldFetchStats(false);
-
-                                    const leftObjectType = metadata?.object_types.find(
-                                        (item: any) => item.name === value1
-                                    );
-
-                                    const firstAttribute = leftObjectType?.attributes.find((attr: any) => attr.numeric);
-
-                                    setSelectedLeftAttribute(firstAttribute?.name ?? '');
-                                }}
-                                className="
-                    w-full
-                    border
-                    border-slate-300
-                    rounded-xl
-                    px-4
-                    py-3
-                    bg-white
-                    focus:ring-2
-                    focus:ring-blue-500
-                    focus:border-blue-500
-                    outline-none
-                "
-                            >
-                                {objectTypeOptions.map((item: any) => (
-                                    <option key={item.name} value={item.name}>
-                                        {item.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">Left Attribute</label>
-
-                            <select
-                                value={selectedLeftAttribute}
-                                onChange={(e) => {
-                                    setSelectedLeftAttribute(e.target.value);
-                                    setShouldFetchStats(false);
-                                }}
-                                className="
-                    w-full
-                    border
-                    border-slate-300
-                    rounded-xl
-                    px-4
-                    py-3
-                    bg-white
-                    focus:ring-2
-                    focus:ring-blue-500
-                    focus:border-blue-500
-                    outline-none
-                "
-                            >
-                                {numericAttributesLeft.map((item: any) => (
-                                    <option key={item.name} value={item.name}>
-                                        {item.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">
-                                Left Intra-Case Aggregation
-                            </label>
-
-                            <select
-                                value={leftIntraCaseAgg}
-                                onChange={(e) => {
-                                    setLeftIntraCaseAgg(e.target.value as any);
-                                    setShouldFetchStats(false);
-                                }}
-                                className="
-            w-full
-            border
-            border-slate-300
-            rounded-xl
-            px-4
-            py-3
-            bg-white
-            focus:ring-2
-            focus:ring-blue-500
-            focus:border-blue-500
-            outline-none
-        "
-                            >
-                                {/* <option value="">None (Default)</option> */}
-                                <option value="sum">Sum per Case</option>
-                                <option value="mean">Mean per Case</option>
-                                <option value="min">Min per Case</option>
-                                <option value="max">Max per Case</option>
-                                <option value="count">Count per Case</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">Right Object Type</label>
-
-                            <select
-                                value={selectedRightObjectType}
-                                onChange={(e) => {
-                                    const value2 = e.target.value;
-
-                                    setSelectedRightObjectType(value2);
-                                    setShouldFetchStats(false);
-
-                                    const rightObjectType = metadata?.object_types.find(
-                                        (item: any) => item.name === value2
-                                    );
-
-                                    const firstAttribute = rightObjectType?.attributes.find(
-                                        (attr: any) => attr.numeric
-                                    );
-
-                                    setSelectedRightAttribute(firstAttribute?.name ?? '');
-                                }}
-                                className="
-                    w-full
-                    border
-                    border-slate-300
-                    rounded-xl
-                    px-4
-                    py-3
-                    bg-white
-                    focus:ring-2
-                    focus:ring-blue-500
-                    focus:border-blue-500
-                    outline-none
-                "
-                            >
-                                {objectTypeOptions.map((item: any) => (
-                                    <option key={item.name} value={item.name}>
-                                        {item.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">Right Attribute</label>
-
-                            <select
-                                value={selectedRightAttribute}
-                                onChange={(e) => {
-                                    setSelectedRightAttribute(e.target.value);
-                                    setShouldFetchStats(false);
-                                }}
-                                className="
-                    w-full
-                    border
-                    border-slate-300
-                    rounded-xl
-                    px-4
-                    py-3
-                    bg-white
-                    focus:ring-2
-                    focus:ring-blue-500
-                    focus:border-blue-500
-                    outline-none
-                "
-                            >
-                                {numericAttributesRight.map((item: any) => (
-                                    <option key={item.name} value={item.name}>
-                                        {item.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">
-                                Right Intra-Case Aggregation
-                            </label>
-
-                            <select
-                                value={rightIntraCaseAgg}
-                                onChange={(e) => {
-                                    setRightIntraCaseAgg(e.target.value as any);
-                                    setShouldFetchStats(false);
-                                }}
-                                className="
-            w-full
-            border
-            border-slate-300
-            rounded-xl
-            px-4
-            py-3
-            bg-white
-            focus:ring-2
-            focus:ring-blue-500
-            focus:border-blue-500
-            outline-none
-        "
-                            >
-                                {/* <option value="">None (Default)</option> */}
-                                <option value="sum">Sum per Case</option>
-                                <option value="mean">Mean per Case</option>
-                                <option value="min">Min per Case</option>
-                                <option value="max">Max per Case</option>
-                                <option value="count">Count per Case</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">Operation</label>
-
-                            <select
-                                value={selectedOperation}
-                                onChange={(e) => {
-                                    setSelectedOperation(e.target.value as keyof Op);
-                                    // onChange={(e) => setAggregation(e.target.value as keyof Stats)}
-                                    setShouldFetchStats(false);
-                                }}
-                                className="
-            w-full
-            border
-            border-slate-300
-            rounded-xl
-            px-4
-            py-3
-            bg-white
-            focus:ring-2
-            focus:ring-blue-500
-            focus:border-blue-500
-            outline-none
-        "
-                            >
-                                <option value="add">Add</option>
-                                <option value="subtract">Subtract</option>
-                                <option value="multiply">Multiply</option>
-                                <option value="divide">Divide</option>
                             </select>
                         </div>
 
@@ -987,7 +1424,7 @@ useEffect(() => {
                     </div>
                 </div>
 
-                <div className="bg-white rounded-3xl shadow-lg border border-slate-200 p-6 space-y-6">
+                {/* <div className="bg-white rounded-3xl shadow-lg border border-slate-200 p-6 space-y-6">
                     <div className="flex items-center justify-between">
                         <div>
                             <h2 className="text-2xl font-bold text-slate-800">Time KPI Analytics</h2>
@@ -1109,7 +1546,7 @@ useEffect(() => {
                             <KpiCard title="Sum" value={formatDuration(timeStats.sum)} />
                         </div>
                     )}
-                </div>
+                </div> */}
             </div>
 
             {showStatsChart && stats && (
@@ -1170,7 +1607,7 @@ useEffect(() => {
                 // <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
                 //     <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl p-6 mx-4">
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-    <div className="bg-white rounded-2xl shadow-xl w-[95vw] h-[90vh] overflow-auto p-6">
+                    <div className="bg-white rounded-2xl shadow-xl w-[95vw] h-[90vh] overflow-auto p-6">
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-xl font-bold">Histogram Visualization</h2>
 
@@ -1194,51 +1631,45 @@ useEffect(() => {
                                 height={500}
                             />
                             <div className="mt-4 flex justify-end">
-        <button
-            onClick={applyHistogramFilter}
-            disabled={isApplyingFilter}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl"
-        >
-           {isApplyingFilter ? "Filtering..." : "Apply Filter"}
-        </button>
-    </div>
+                                <button
+                                    onClick={applyHistogramFilter}
+                                    disabled={isApplyingFilter}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl"
+                                >
+                                    {isApplyingFilter ? 'Filtering...' : 'Apply Filter'}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             )}
 
-{showActivityHistogram && hasActivityHistogram && (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-        <div className="bg-white rounded-2xl shadow-xl w-[95vw] h-[90vh] overflow-auto p-6">
+            {showActivityHistogram && hasActivityHistogram && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                    <div className="bg-white rounded-2xl shadow-xl w-[95vw] h-[90vh] overflow-auto p-6">
+                        <div className="flex justify-between mb-6">
+                            <h2 className="text-xl font-bold">Activity Time Histogram</h2>
 
-            <div className="flex justify-between mb-6">
-                <h2 className="text-xl font-bold">
-                    Activity Time Histogram
-                </h2>
+                            <button onClick={() => setShowActivityHistogram(false)} className="text-2xl">
+                                ×
+                            </button>
+                        </div>
 
-                <button
-                    onClick={() => setShowActivityHistogram(false)}
-                    className="text-2xl"
-                >
-                    ×
-                </button>
-            </div>
-
-            <div className="border rounded-xl p-4">
-                <HistChart
-                    id="activity-time-histogram"
-                    fileId={currentCnFileId}
-                    bins={activityBins}
-                    selectedIdx={selectedActivityBins}
-                    onSelect={setSelectedActivityBins}
-                    disabled={false}
-                    color="blue"
-                    event_type="KPI"
-                    object_type={selectedObjectType}
-                    width={950}
-                    height={500}
-                />
-                {/* <div className="mt-4 flex justify-end">
+                        <div className="border rounded-xl p-4">
+                            <HistChart
+                                id="activity-time-histogram"
+                                fileId={currentCnFileId}
+                                bins={activityBins}
+                                selectedIdx={selectedActivityBins}
+                                onSelect={setSelectedActivityBins}
+                                disabled={false}
+                                color="blue"
+                                event_type="KPI"
+                                object_type={selectedObjectType}
+                                width={950}
+                                height={500}
+                            />
+                            {/* <div className="mt-4 flex justify-end">
         <button
             onClick={applyActivityHistogramFilter}
             disabled={isApplyingActivityFilter}
@@ -1247,15 +1678,10 @@ useEffect(() => {
            {isApplyingActivityFilter ? "Filtering..." : "Apply Filter"}
         </button>
     </div> */}
-            </div>
-        </div>
-    </div>
-)}
-
-
-
-
-
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
