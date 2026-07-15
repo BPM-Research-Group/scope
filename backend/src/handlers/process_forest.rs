@@ -5,7 +5,7 @@ use crate::core::process_forest::{
 use crate::core::struct_converters::ocpt_frontend_backend::backend_to_frontend;
 use crate::models::ocel::OCEL;
 use crate::models::ocel_collection::OCELCollection;
-use crate::models::process_forest::ProcessForest;
+use crate::models::process_forest::{ProcessForest, ProcessForestFrontend};
 use crate::traits::import_export::{ExportableToPath, ImportableFromPath};
 use axum::{
     Json,
@@ -70,6 +70,17 @@ pub async fn get_process_forest(Path(file_id): Path<String>) -> impl IntoRespons
         }
         Err((status, message)) => (status, message).into_response(),
     }
+}
+
+pub async fn get_process_forest_frontend(
+    Path(file_id): Path<String>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let process_forest = ProcessForest::import_from_path(&file_id).await?;
+    let payload = json!({
+        "file_id": file_id,
+        "process_forest": ProcessForestFrontend::from(&process_forest),
+    });
+    Ok(Json(payload))
 }
 
 pub async fn delete_process_forest(Path(file_id): Path<String>) -> impl IntoResponse {
