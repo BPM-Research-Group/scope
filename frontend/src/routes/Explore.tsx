@@ -5,28 +5,29 @@ import { SidebarInset, SidebarProvider } from '~/components/ui/sidebar';
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 import { DnDProvider, useDnD } from '~/components/explore/DndContext';
 import ExploreSidebar from '~/components/explore/ExploreSidebar';
+import AbstractionFileNode from '~/components/explore/file/AbstractionFileNode';
+import ConformanceFileNode from '~/components/explore/file/ConformanceFileNode';
 import EventStreamNode from '~/components/explore/file/EventStreamNode';
+import FlowFileNode from '~/components/explore/file/FlowFileNode';
 import OcelCollectionNode from '~/components/explore/file/OcelCollectionNode';
 import OcelFileNode from '~/components/explore/file/OcelFileNode';
 import OcpnFileNode from '~/components/explore/file/OcpnFileNode';
 import OcptFileNode from '~/components/explore/file/OcptFileNode';
 import FileSelectionDialog from '~/components/explore/file/ui/FileSelectionDialog';
-
-import AbstractionFileNode from '~/components/explore/file/AbstractionFileNode';
-import ConformanceFileNode from '~/components/explore/file/ConformanceFileNode';
 import AbstractionMinerNode from '~/components/explore/miner/AbstractionMinerNode';
-import ConformanceMinerNode from '~/components/explore/miner/ConformanceMinerNode';
 import CaseNotionMinerNode from '~/components/explore/miner/CaseNotionMinerNode';
-import ExtendWithIdentityNode from '~/components/explore/miner/ExtendWithIdentityNode';
-import FlowVisualizationNode from '~/components/explore/miner/FlowVisualizationNode';
+import ConformanceMinerNode from '~/components/explore/miner/ConformanceMinerNode';
 import Df2StreamMinerNode from '~/components/explore/miner/Df2StreamMinerNode';
+import ExtendWithIdentityNode from '~/components/explore/miner/ExtendWithIdentityNode';
+import FlowMinerNode from '~/components/explore/miner/FlowMinerNode';
+import FlowVisualizationNode from '~/components/explore/miner/FlowVisualizationNode';
 import HistogramMinerNode from '~/components/explore/miner/HistogramMinerNode';
 import OcpnMinerNode from '~/components/explore/miner/OcpnMinerNode';
 import ResourceMinerNode from '~/components/explore/miner/ResourceMinerNode';
 import KpiBuilderNode from '~/components/explore/miner/KpiBuilderNode';
 import OcptMinerNode from '~/components/explore/miner/OcptMinerNode';
-import { RefocusProgressPanel } from '~/components/explore/RefocusProgressPanel';
 import OcptStreamMinerNode from '~/components/explore/miner/OcptStreamMinerNode';
+import { RefocusProgressPanel } from '~/components/explore/RefocusProgressPanel';
 import { useConnections } from '~/hooks/explore/useConnections';
 import { useDragDrop } from '~/hooks/explore/useDragDrop';
 import { useNodeOperations } from '~/hooks/explore/useNodeOperations';
@@ -45,7 +46,7 @@ const nodeTypes = {
     histogramMinerNode: HistogramMinerNode,
     caseNotionMinerNode: CaseNotionMinerNode,
     identityExtendMinerNode: ExtendWithIdentityNode,
-    flowVisualizationNode: FlowVisualizationNode,
+    flowMinerNode: FlowMinerNode,
     abstractionMinerNode: AbstractionMinerNode,
     conformanceMinerNode: ConformanceMinerNode,
     abstractionFileNode: AbstractionFileNode,
@@ -55,6 +56,7 @@ const nodeTypes = {
     eventStreamNode: EventStreamNode,
     df2StreamMinerNode: Df2StreamMinerNode,
     ocptStreamMinerNode: OcptStreamMinerNode,
+    flowFileNode: FlowFileNode,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } satisfies Record<keyof typeof nodeRegistry, React.ComponentType<NodeProps<any>>>;
 
@@ -69,7 +71,7 @@ const Explore: React.FC = () => {
 
     const handleDrop = useCallback((event: DragEvent<HTMLElement>) => onDrop(event, type), [onDrop, type]);
 
-    logger.debug('nodes updated', nodes);
+    logger.debug('nodes Updated', nodes);
 
     return (
         <>

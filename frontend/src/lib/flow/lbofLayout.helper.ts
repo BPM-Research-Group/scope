@@ -92,6 +92,16 @@ export const addDecisionAndEdgeNodesForActivities = (
 };
 
 export const createEdge = (object: AltFlowNode, nextObjectId: string, currOt: string, branchIndex?: number) => {
+    const isLoopReturn = nextObjectId.endsWith('#loop');
+    if (isLoopReturn) {
+        nextObjectId = nextObjectId.slice(0, -'#loop'.length);
+    }
+    const redoTagIndex = nextObjectId.indexOf('#redo#');
+    const isRedoBranch = redoTagIndex !== -1;
+    if (isRedoBranch) {
+        nextObjectId = nextObjectId.slice(0, redoTagIndex);
+    }
+
     let sourceNodeId = object.id;
     let targetNodeId = nextObjectId;
     let sourceHandle = `${sourceNodeId}-out`;
@@ -104,12 +114,8 @@ export const createEdge = (object: AltFlowNode, nextObjectId: string, currOt: st
     if (nextObjectId.includes('activity')) {
         targetNodeId = `${currOt}-${targetNodeId}-connector-in`;
         targetHandle = `${targetNodeId}-in`;
-    } else if (nextObjectId.toLowerCase().includes('join') && object.branchInfo) {
-        targetHandle = `${targetNodeId}-in-${object.branchInfo.branchId}`;
-    }
-    // This case occurs e.g. directly parallelSplit -> parallelJoin
-    else if (nextObjectId.toLowerCase().includes('join') && !object.branchInfo) {
-        targetHandle = `${targetNodeId}-in-${branchIndex}`;
+    } else if (nextObjectId.toLowerCase().includes('join')) {
+        targetHandle = `${targetNodeId}-in-${object.branchInfo?.branchId ?? branchIndex ?? 0}`;
     }
 
     // 2. Current Object Specific behavior
@@ -119,15 +125,31 @@ export const createEdge = (object: AltFlowNode, nextObjectId: string, currOt: st
     } else if (object.id.toLowerCase().includes('split') && Array.isArray(object.next)) {
         sourceHandle = `${sourceNodeId}-out-${branchIndex}`;
     }
-    // If the branchIndex is equal to 1 then it means it goes back to the original divLoopStart
+    // If the branchIndex is equal to 1 then it means it takes the loop-back path:
+    // either directly to the divLoopStart or into a redo body first.
     else if (object.id.includes('divLoopEnd') && branchIndex === 1) {
         sourceHandle = `${sourceNodeId}-out-loop`;
-        targetHandle = `${targetNodeId}-in-loop`;
         data = {
             ot: currOt,
             isDivLoopEntry: true,
         };
+        if (targetNodeId.includes('divLoopStart')) {
+            targetHandle = `${targetNodeId}-in-loop`;
+        }
     }
+
+    if (isLoopReturn && targetNodeId.toLowerCase().includes('join')) {
+        targetHandle = `${targetNodeId}-in-1`;
+        data = {
+            ...data,
+            isDivLoopEntry: true,
+        };
+    }
+
+    if (isLoopReturn || isRedoBranch || (object.id.includes('divLoopEnd') && branchIndex === 1)) {
+        data = { ...data, isReturnArc: true };
+    }
+
     return {
         id: `e-${sourceNodeId}-${targetNodeId}`,
         source: sourceNodeId,

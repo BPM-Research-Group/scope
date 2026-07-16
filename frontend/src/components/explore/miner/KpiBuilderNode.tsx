@@ -13,13 +13,18 @@ import { MinerNode } from '~/types/explore/nodes';
 const KpiBuilderNode = memo<NodeProps<MinerNode>>((node) => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+    console.log('nod');
+    console.log(node);
     const hasMinedAsset = useMemo(() => {
         return node.data.assets.some((asset) => asset.io === 'output');
     }, [node.data.assets]);
     const { id, data: nodeData } = node;
     const { assets } = nodeData;
     const { clearKpiState } = useExploreFlowStore();
-    const inputAsset = useInputAsset(assets, 'ocelFile');
+    const inputAsset = useInputAsset(assets, 'ocelCollectionFile');
+    const inputAssetNew = useInputAsset(assets, 'ocelFile');
+    console.log('input asset');
+    console.log(inputAsset);
     const inputFileId = inputAsset?.id ?? null;
     const fileId = inputAsset?.id ?? '';
     const openMinerInterface = () => {

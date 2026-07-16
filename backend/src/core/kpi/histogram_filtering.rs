@@ -1,51 +1,57 @@
 use crate::core::kpi::case_kpis::{
     collect_per_case_attribute_combination_values, collect_per_case_attribute_kpi_values,
-    collect_per_case_duration_values, collect_per_case_time_values, CaseEntry,
+    collect_per_case_duration_values, collect_per_case_time_values,
 };
 use crate::core::kpi::validation::{validate_attribute_source, validate_intra_case_agg};
 use crate::models::kpi::{KpiFilterSpec, KpiHistogramFilterPayload};
-use crate::models::ocel::{OCELEvent, OCELObject};
-use rustc_hash::FxHashMap;
+use crate::models::ocel::OCEL;
 
-fn value_in_ranges(value: f64, ranges: &[[f64; 2]]) -> bool {
-    ranges
-        .iter()
-        .any(|range| value >= range[0] && value <= range[1])
+fn value_in_ranges(value: f64, ranges: &[[f64; 2]], max_value: f64) -> bool {
+    ranges.iter().any(|&[start, end]| {
+        value >= start && if end == max_value {
+            value <= end
+        } else {
+            value < end
+        }
+    })
 }
 
-fn filter_cases_by_per_case_values(
-    cases: &[CaseEntry],
+fn kept_case_indices_by_per_case_values(
+    total_cases: usize,
     per_case_values: &[Option<f64>],
     value_ranges: &[[f64; 2]],
-) -> Result<Vec<CaseEntry>, String> {
+) -> Result<Vec<usize>, String> {
     if value_ranges.is_empty() {
         return Err("At least one value range is required".to_string());
     }
-    if per_case_values.len() != cases.len() {
-        return Err("Per-case KPI values do not align with case notion entries".to_string());
+    if per_case_values.len() != total_cases {
+        return Err("Per-case KPI values do not align with case OCEL entries".to_string());
     }
 
-    let filtered = cases
+    let max_value = per_case_values
         .iter()
-        .zip(per_case_values.iter())
-        .filter_map(|(case_entry, value)| {
+        .filter_map(|v| *v)
+        .fold(f64::NEG_INFINITY, f64::max);
+
+    let kept = per_case_values
+        .iter()
+        .enumerate()
+        .filter_map(|(index, value)| {
             value
-                .filter(|v| value_in_ranges(*v, value_ranges))
-                .map(|_| case_entry.clone())
+                .filter(|v| value_in_ranges(*v, value_ranges, max_value))
+                .map(|_| index)
         })
         .collect();
 
-    Ok(filtered)
+    Ok(kept)
 }
 
 fn collect_per_case_values_for_filter(
-    cases: &[CaseEntry],
-    event_lookup: &FxHashMap<String, &OCELEvent>,
-    object_lookup: &FxHashMap<String, &OCELObject>,
+    cases: &[OCEL],
     filter: &KpiFilterSpec,
 ) -> Result<Vec<Option<f64>>, String> {
     match filter {
-        KpiFilterSpec::CaseDuration => Ok(collect_per_case_duration_values(cases, event_lookup)),
+        KpiFilterSpec::CaseDuration => Ok(collect_per_case_duration_values(cases)),
         KpiFilterSpec::CaseAttribute {
             attribute,
             object_type,
@@ -56,8 +62,6 @@ fn collect_per_case_values_for_filter(
             validate_intra_case_agg(intra_case_agg, "intra_case_agg")?;
             Ok(collect_per_case_attribute_kpi_values(
                 cases,
-                event_lookup,
-                object_lookup,
                 attribute,
                 object_type.as_deref(),
                 event_type.as_deref(),
@@ -81,8 +85,6 @@ fn collect_per_case_values_for_filter(
             validate_intra_case_agg(right_intra_case_agg, "right_intra_case_agg")?;
             Ok(collect_per_case_attribute_combination_values(
                 cases,
-                event_lookup,
-                object_lookup,
                 left_attribute,
                 left_object_type.as_deref(),
                 left_event_type.as_deref(),
@@ -103,8 +105,6 @@ fn collect_per_case_values_for_filter(
             validate_intra_case_agg(intra_case_agg, "intra_case_agg")?;
             Ok(collect_per_case_time_values(
                 cases,
-                event_lookup,
-                object_lookup,
                 object_type,
                 from_activity,
                 to_activity,
@@ -114,27 +114,23 @@ fn collect_per_case_values_for_filter(
     }
 }
 
-/// Applies a KPI histogram filter and returns matching case notion entries.
-pub fn filter_case_notion_by_kpi_histogram(
-    cases: &[CaseEntry],
-    event_lookup: &FxHashMap<String, &OCELEvent>,
-    object_lookup: &FxHashMap<String, &OCELObject>,
+/// Applies a KPI histogram filter and returns the indices of the case OCELs that
+/// fall within the selected value ranges (indices align with the input `cases`).
+pub fn filter_case_indices_by_kpi_histogram(
+    cases: &[OCEL],
     payload: &KpiHistogramFilterPayload,
-) -> Result<Vec<CaseEntry>, String> {
-    let per_case_values = collect_per_case_values_for_filter(
-        cases,
-        event_lookup,
-        object_lookup,
-        &payload.kpi_filter,
-    )?;
+) -> Result<Vec<usize>, String> {
+    let per_case_values = collect_per_case_values_for_filter(cases, &payload.kpi_filter)?;
 
-    let filtered = filter_cases_by_per_case_values(cases, &per_case_values, &payload.value_ranges)?;
+    let kept =
+        kept_case_indices_by_per_case_values(cases.len(), &per_case_values, &payload.value_ranges)?;
 
-    if filtered.is_empty() {
+    if kept.is_empty() {
         return Err(
-            "Filter produced an empty case notion; widen the selected histogram bins".to_string(),
+            "Filter produced an empty case OCEL collection; widen the selected histogram bins"
+                .to_string(),
         );
     }
 
-    Ok(filtered)
+    Ok(kept)
 }
