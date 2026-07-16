@@ -22,10 +22,10 @@ pub struct EventTypeMetadata {
     pub attributes: Vec<AttributeMetadata>,
 }
 
-/// `GET /v1/kpi/ocel_metadata/{file_id}` — object/event types with their attributes.
+/// `GET /v1/kpi/ocel_metadata/{ocel_file_id}` — object/event types with their attributes.
 #[derive(Serialize, Deserialize)]
 pub struct OcelMetadataResponse {
-    pub file_id: String,
+    pub ocel_file_id: String,
     pub total_events: usize,
     pub total_objects: usize,
     pub object_types: Vec<ObjectTypeMetadata>,

@@ -75,8 +75,8 @@ async fn load_kpi_context(
 }
 
 /// Dropdown metadata from the original OCEL.
-pub async fn get_ocel_metadata(Path(file_id): Path<String>) -> impl IntoResponse {
-    let ocel = match OCEL::import_from_path(&file_id).await {
+pub async fn get_ocel_metadata(Path(ocel_file_id): Path<String>) -> impl IntoResponse {
+    let ocel = match OCEL::import_from_path(&ocel_file_id).await {
         Ok(ocel) => ocel,
         Err((status, message)) => return (status, message).into_response(),
     };
@@ -85,7 +85,7 @@ pub async fn get_ocel_metadata(Path(file_id): Path<String>) -> impl IntoResponse
     (
         StatusCode::OK,
         Json(OcelMetadataResponse {
-            file_id,
+            ocel_file_id,
             total_events: meta.total_events,
             total_objects: meta.total_objects,
             object_types: meta.object_types,

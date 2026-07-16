@@ -9,7 +9,7 @@ use axum::{
 
 pub fn router() -> Router {
     Router::new()
-        .route("/ocel_metadata/{file_id}", get(get_ocel_metadata))
+        .route("/ocel_metadata/{ocel_file_id}", get(get_ocel_metadata))
         .route(
             "/case_ocel_metadata/{case_ocels_file_id}",
             get(get_case_ocel_metadata),
