@@ -22,17 +22,27 @@ pub struct EventTypeMetadata {
     pub attributes: Vec<AttributeMetadata>,
 }
 
-/// `GET /v1/kpi/ocel_metadata/{file_id}` — object/event types with their attributes.
+/// `GET /v1/kpi/ocel_metadata/{ocel_file_id}` — object/event types with their attributes.
 #[derive(Serialize, Deserialize)]
 pub struct OcelMetadataResponse {
-    pub file_id: String,
+    pub ocel_file_id: String,
     pub total_events: usize,
     pub total_objects: usize,
     pub object_types: Vec<ObjectTypeMetadata>,
     pub event_types: Vec<EventTypeMetadata>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+/// `GET /v1/kpi/case_ocel_metadata/{case_ocels_file_id}` — types from the case collection only.
+#[derive(Serialize, Deserialize)]
+pub struct CaseOcelMetadataResponse {
+    pub case_ocels_file_id: String,
+    pub total_events: usize,
+    pub total_objects: usize,
+    pub object_types: Vec<ObjectTypeMetadata>,
+    pub event_types: Vec<EventTypeMetadata>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct NumericStats {
     pub count: usize,
     pub min: f64,
@@ -55,7 +65,7 @@ pub struct CaseAttributeQuery {
 
 #[derive(Serialize, Deserialize)]
 pub struct CaseAttributeStatsResponse {
-    pub case_notion_file_id: String,
+    pub case_ocels_file_id: String,
     pub origin_file_id_ocel: String,
     pub case_notion_type: String,
     pub attribute: String,
@@ -79,7 +89,7 @@ pub enum CombinationOperator {
     Divide,
 }
 
-/// `POST /v1/kpi/attribute_combination/{case_notion_file_id}`
+/// `POST /v1/kpi/attribute_combination/{case_ocels_file_id}`
 /// `left_intra_case_agg` and `right_intra_case_agg` are required.
 #[derive(Deserialize)]
 pub struct CaseAttributeCombinationRequest {
@@ -97,7 +107,7 @@ pub struct CaseAttributeCombinationRequest {
 
 #[derive(Serialize, Deserialize)]
 pub struct CaseAttributeCombinationStatsResponse {
-    pub case_notion_file_id: String,
+    pub case_ocels_file_id: String,
     pub origin_file_id_ocel: String,
     pub case_notion_type: String,
     pub operation: CombinationOperator,
@@ -124,7 +134,7 @@ pub struct KpiHistogramBin {
     pub bin_end: f64,
 }
 
-/// `POST /v1/kpi/histogram_filter/{case_notion_file_id}`
+/// `POST /v1/kpi/histogram_filter/{case_ocels_file_id}`
 #[derive(Deserialize, Debug)]
 pub struct KpiHistogramFilterPayload {
     pub kpi_filter: KpiFilterSpec,
@@ -160,7 +170,7 @@ pub enum KpiFilterSpec {
     },
 }
 
-/// `GET /v1/kpi/case_time_stats/{case_notion_file_id}`
+/// `GET /v1/kpi/case_time_stats/{case_ocels_file_id}`
 #[derive(Deserialize)]
 pub struct CaseTimeQuery {
     pub object_type: String,
@@ -172,7 +182,7 @@ pub struct CaseTimeQuery {
 
 #[derive(Serialize, Deserialize)]
 pub struct CaseTimeStatsResponse {
-    pub case_notion_file_id: String,
+    pub case_ocels_file_id: String,
     pub origin_file_id_ocel: String,
     pub case_notion_type: String,
     pub object_type: String,
@@ -189,7 +199,7 @@ pub struct CaseTimeStatsResponse {
     pub histogram: Option<Vec<KpiHistogramBin>>,
 }
 
-/// `GET /v1/kpi/activity_successors/{case_notion_file_id}`
+/// `GET /v1/kpi/activity_successors/{case_ocels_file_id}`
 /// `object_type` is required — returns only successors within that object type's timelines.
 #[derive(Deserialize)]
 pub struct ActivitySuccessorsQuery {
@@ -198,12 +208,12 @@ pub struct ActivitySuccessorsQuery {
 
 #[derive(Serialize, Deserialize)]
 pub struct ActivitySuccessorsResponse {
-    pub case_notion_file_id: String,
+    pub case_ocels_file_id: String,
     pub case_notion_type: String,
     pub successors: HashMap<String, Vec<String>>,
 }
 
-/// `GET /v1/kpi/case_duration/{case_notion_file_id}`
+/// `GET /v1/kpi/case_duration/{case_ocels_file_id}`
 #[derive(Deserialize)]
 pub struct CaseDurationQuery {
     pub histogram: Option<bool>,
@@ -211,7 +221,7 @@ pub struct CaseDurationQuery {
 
 #[derive(Serialize, Deserialize)]
 pub struct CaseDurationResponse {
-    pub case_notion_file_id: String,
+    pub case_ocels_file_id: String,
     pub origin_file_id_ocel: String,
     pub case_notion_type: String,
     pub cases_with_duration: usize,
