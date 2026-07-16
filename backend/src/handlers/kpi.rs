@@ -1,19 +1,20 @@
 use crate::core::kpi::histogram_filtering::filter_case_indices_by_kpi_histogram;
 use crate::core::kpi::attribute_stats::compute_numeric_stats;
 use crate::core::kpi::histogram::{build_range_histogram, default_bin_count};
+use crate::core::kpi::metadata::{types_from_cases, types_from_ocel};
 use crate::core::kpi::validation::{validate_attribute_source, validate_intra_case_agg};
 use crate::core::kpi::case_kpis::{
     collect_case_attribute_combination_values, collect_case_attribute_kpi_values,
     collect_case_duration_values, collect_case_time_values, compute_activity_successors,
 };
 use crate::models::kpi::{
-    ActivitySuccessorsQuery, ActivitySuccessorsResponse, AttributeMetadata,
+    ActivitySuccessorsQuery, ActivitySuccessorsResponse,
     CaseAttributeCombinationRequest, CaseAttributeCombinationStatsResponse, CaseAttributeQuery,
-    CaseAttributeStatsResponse, CaseDurationQuery, CaseDurationResponse,
-    CaseTimeQuery, CaseTimeStatsResponse, EventTypeMetadata,
-    KpiHistogramBin, KpiHistogramFilterPayload, ObjectTypeMetadata, OcelMetadataResponse,
+    CaseAttributeStatsResponse, CaseDurationQuery, CaseDurationResponse, CaseOcelMetadataResponse,
+    CaseTimeQuery, CaseTimeStatsResponse, KpiHistogramBin, KpiHistogramFilterPayload,
+    OcelMetadataResponse,
 };
-use crate::models::ocel::{OCEL, OCELType};
+use crate::models::ocel::OCEL;
 use crate::models::ocel_collection::OCELCollection;
 use crate::traits::import_export::ImportableFromPath;
 use axum::{
@@ -73,58 +74,48 @@ async fn load_kpi_context(
     })
 }
 
-// Builds attribute metadata for a single OCELType.
-fn build_attribute_metadata(ocel_type: &OCELType) -> Vec<AttributeMetadata> {
-    let mut attrs: Vec<AttributeMetadata> = ocel_type
-        .attributes
-        .iter()
-        .map(|a| AttributeMetadata {
-            name: a.name.clone(),
-            value_type: a.value_type.clone(),
-            numeric: a.value_type == "integer" || a.value_type == "float",
-        })
-        .collect();
-    attrs.sort_by(|a, b| a.name.cmp(&b.name));
-    attrs
-}
-
-/// Returns all object/event types with their attributes.
-/// Use this to build UI dropdowns before calling KPI endpoints.
+/// Dropdown metadata from the original OCEL.
 pub async fn get_ocel_metadata(Path(file_id): Path<String>) -> impl IntoResponse {
     let ocel = match OCEL::import_from_path(&file_id).await {
         Ok(ocel) => ocel,
         Err((status, message)) => return (status, message).into_response(),
     };
 
-    let mut object_types: Vec<ObjectTypeMetadata> = ocel
-        .object_types
-        .iter()
-        .map(|ot| ObjectTypeMetadata {
-            name: ot.name.clone(),
-            attributes: build_attribute_metadata(ot),
-        })
-        .collect();
-    object_types.sort_by(|a, b| a.name.cmp(&b.name));
+    let meta = types_from_ocel(&ocel);
+    (
+        StatusCode::OK,
+        Json(OcelMetadataResponse {
+            file_id,
+            total_events: meta.total_events,
+            total_objects: meta.total_objects,
+            object_types: meta.object_types,
+            event_types: meta.event_types,
+        }),
+    )
+        .into_response()
+}
 
-    let mut event_types: Vec<EventTypeMetadata> = ocel
-        .event_types
-        .iter()
-        .map(|et| EventTypeMetadata {
-            name: et.name.clone(),
-            attributes: build_attribute_metadata(et),
-        })
-        .collect();
-    event_types.sort_by(|a, b| a.name.cmp(&b.name));
-
-    let response = OcelMetadataResponse {
-        file_id,
-        total_events: ocel.events.len(),
-        total_objects: ocel.objects.len(),
-        object_types,
-        event_types,
+/// Dropdown metadata from the case ocel collection.
+pub async fn get_case_ocel_metadata(
+    Path(case_ocels_file_id): Path<String>,
+) -> impl IntoResponse {
+    let ctx = match load_kpi_context(&case_ocels_file_id).await {
+        Ok(ctx) => ctx,
+        Err(response) => return response,
     };
 
-    (StatusCode::OK, Json(response)).into_response()
+    let meta = types_from_cases(&ctx.collection.ocels);
+    (
+        StatusCode::OK,
+        Json(CaseOcelMetadataResponse {
+            case_ocels_file_id,
+            total_events: meta.total_events,
+            total_objects: meta.total_objects,
+            object_types: meta.object_types,
+            event_types: meta.event_types,
+        }),
+    )
+        .into_response()
 }
 
 /// Returns histogram data when `histogram=true`; bin count is automatic.

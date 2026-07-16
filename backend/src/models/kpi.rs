@@ -32,6 +32,16 @@ pub struct OcelMetadataResponse {
     pub event_types: Vec<EventTypeMetadata>,
 }
 
+/// `GET /v1/kpi/case_ocel_metadata/{case_ocels_file_id}` — types from the case collection only.
+#[derive(Serialize, Deserialize)]
+pub struct CaseOcelMetadataResponse {
+    pub case_ocels_file_id: String,
+    pub total_events: usize,
+    pub total_objects: usize,
+    pub object_types: Vec<ObjectTypeMetadata>,
+    pub event_types: Vec<EventTypeMetadata>,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct NumericStats {
     pub count: usize,
