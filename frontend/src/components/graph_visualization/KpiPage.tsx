@@ -10,6 +10,7 @@ import { useMineCaseNotionMutation } from '~/services/mutation';
 import { useAttributeStats, useCaseStats, useMineKpi } from '~/services/queries';
 import { HistogramChart } from '../HistogramChart';
 import { HistChart } from './HistChart';
+import { FileVideo2 } from 'lucide-react';
 
 type Stats = {
     count: number;
@@ -184,7 +185,7 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
     }, [activityBins]);
 
     const applyHistogramFilter = async () => {
-        if (!currentCnFileId || selectedBins.length === 0) return;
+        if ( selectedBins.length === 0) return;
 
         const histogramFilter = {
             type: 'attribute_combination',
@@ -209,7 +210,7 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
 
         try {
             setIsApplyingFilter(true);
-            const res = await axios.post(`http://localhost:3000/v1/kpi/histogram_filter/${currentCnFileId}`, payload);
+            const res = await axios.post(`http://localhost:3000/v1/kpi/histogram_filter/${fileId}`, payload);
             // setCurrentCnFileId(res.data.case_notion_file_id);
 
             console.log(res.data);
@@ -255,35 +256,37 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
     };
 
     const handleMine = () => {
-        if (!fileId) return;
+        // if (!fileId) return;
+          setHasUnminedChanges(false);
+                     setShouldFetchStats(true);
 
-        const newCnId = uuidv4();
+        // const newCnId = uuidv4();
 
-        setCurrentCnFileId(newCnId);
-        console.log('newCnId');
-        console.log(newCnId);
-        console.log(selectedObjectType);
-        mutate(
-            {
-                fileId,
-                algorithm,
-                objectType: selectedObjectTypeCN,
-                newFileId: newCnId,
-                payload: genericPayload,
-            },
-            {
-                onSuccess: async (data) => {
-                    setHasUnminedChanges(false);
-                    setShouldFetchStats(true);
-                    console.log('cn data response');
-                    console.log(data);
-                    await loadActivitySuccessors(newCnId);
-                },
-                onSettled: () => {
-                    // resetKpiBuilder(); // Called for both success and error
-                },
-            }
-        );
+        // setCurrentCnFileId(newCnId);
+        // console.log('newCnId');
+        // console.log(newCnId);
+        // console.log(selectedObjectType);
+        // mutate(
+        //     {
+        //         fileId,
+        //         algorithm,
+        //         objectType: selectedObjectTypeCN,
+        //         newFileId: newCnId,
+        //         payload: genericPayload,
+        //     },
+        //     {
+        //         onSuccess: async (data) => {
+        //             setHasUnminedChanges(false);
+        //             setShouldFetchStats(true);
+        //             console.log('cn data response');
+        //             console.log(data);
+        //             await loadActivitySuccessors(newCnId);
+        //         },
+        //         onSettled: () => {
+        //             // resetKpiBuilder(); // Called for both success and error
+        //         },
+        //     }
+        // );
     };
 
     useEffect(() => {
@@ -379,6 +382,8 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
         fromActivity,
         toActivity,
         selectedObjectTypeCN,
+        leftIntraCaseAgg,
+        rightIntraCaseAgg
     ]);
     console.log(params);
     console.log('params');
@@ -412,9 +417,9 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
         data: attributeStatsData,
         isLoading: attributeStatsLoading,
         error: attributeStatsError,
-    } = useCaseStats(currentCnFileId, params, selectedCaseType, {
+    } = useCaseStats(fileId, params, selectedCaseType, {
         // enabled: shouldFetchStats && !!currentCnFileId && !!selectedLeftAttribute && !!selectedRightAttribute,
-        enabled: shouldFetchStats && !!currentCnFileId,
+        enabled: shouldFetchStats && !!fileId,
     });
     console.log({
         fileId,
@@ -500,6 +505,39 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
     // const objectTypeOptions = useMemo(() => {
     //     return metadata?.object_types ?? [];
     // }, [metadata]);
+
+
+  useEffect(() => {
+    if (!metadata?.object_types?.length) return;
+
+    const firstObject = metadata.object_types[0];
+    const firstAttribute = firstObject.attributes.find(a => a.numeric);
+
+    if (!selectedObjectType && selectedCaseType==='case_attribute_object_type') {
+        setSelectedObjectType(firstObject.name);
+        setSelectedObjectAttribute(firstAttribute?.name ?? "");
+    }
+
+    if (!selectedLeftObjectType && selectedCaseType==='attribute_combination') {
+        setSelectedLeftObjectType(firstObject.name);
+        setSelectedLeftAttribute(firstAttribute?.name ?? "");
+        setLeftIntraCaseAgg('sum');
+        setSelectedOperation('add');
+    }
+
+    if (!selectedRightObjectType && selectedCaseType==='attribute_combination') {
+        setSelectedRightObjectType(firstObject.name);
+        setSelectedRightAttribute(firstAttribute?.name ?? "");
+        setRightIntraCaseAgg('sum');
+        setSelectedOperation('add');
+    }
+}, [
+    metadata,
+    selectedObjectType,
+    selectedLeftObjectType,
+    selectedRightObjectType,
+]);
+
 
     const objectTypeOptions = useMemo(() => {
         return (
@@ -622,8 +660,8 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-                        <div>
+                     <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+                     {/*   <div>
                             <label className="block text-sm font-medium text-slate-700 mb-2">
                                 Object Type(Case Notion)
                             </label>
@@ -685,7 +723,7 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
                                 <option value="advanced">Advanced</option>
                                 <option value="connected_components">Connected Components</option>
                             </select>
-                        </div>
+                        </div> */}
 
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-2">Select type:</label>
@@ -1119,7 +1157,7 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
             outline-none
         "
                                     >
-                                        <option>Select operation</option>
+                                        
                                         <option value="add">Add</option>
                                         <option value="subtract">Subtract</option>
                                         <option value="multiply">Multiply</option>

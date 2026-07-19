@@ -8,6 +8,7 @@ pub mod identity_relations;
 pub mod ocgraphconf_case_compare;
 pub mod ocgraphconf_model_case_conformance;
 pub mod ocim;
+pub mod ocpf_conversion;
 pub mod ocpn_conversion;
 pub mod process_forest;
 pub mod resource_miner;

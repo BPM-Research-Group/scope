@@ -246,7 +246,7 @@ export const mineOcpt = async (fileId: string, algorithm: string = 'DF2'): Promi
 };
 
 export const mineKpi = async (fileId: string) => {
-    const response = await api.get(`/v1/kpi/ocel_metadata/${fileId}`); 
+    const response = await api.get(`/v1/kpi/case_ocel_metadata/${fileId}`); 
     console.log('kpi');
     console.log(response.data);
     return response.data;

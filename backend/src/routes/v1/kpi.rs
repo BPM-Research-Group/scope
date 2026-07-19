@@ -1,6 +1,6 @@
 use crate::handlers::kpi::{
-    get_activity_successors, get_case_attribute_stats, get_case_duration, get_case_time_stats,
-    get_ocel_metadata, post_attribute_combination, post_kpi_histogram_filter,
+    get_activity_successors, get_case_attribute_stats, get_case_duration, get_case_ocel_metadata,
+    get_case_time_stats, get_ocel_metadata, post_attribute_combination, post_kpi_histogram_filter,
 };
 use axum::{
     Router,
@@ -9,7 +9,11 @@ use axum::{
 
 pub fn router() -> Router {
     Router::new()
-        .route("/ocel_metadata/{file_id}", get(get_ocel_metadata))
+        .route("/ocel_metadata/{ocel_file_id}", get(get_ocel_metadata))
+        .route(
+            "/case_ocel_metadata/{case_ocels_file_id}",
+            get(get_case_ocel_metadata),
+        )
         .route(
             "/case_attribute_stats/{case_ocels_file_id}",
             get(get_case_attribute_stats),
