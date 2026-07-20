@@ -46,7 +46,6 @@ const CaseNotionMinerNode = memo<NodeProps<MinerNode>>((node) => {
 
     useEffect(() => {
         if (makeFinalFetch && exportData) {
-            console.log('exportData: ', exportData);
             setPendingOutputId(exportData.case_ocels_file_id);
             setIsDialogOpen(false);
             setMakeFinalFetch(false);
