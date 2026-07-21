@@ -63,6 +63,7 @@ const KpiViewer: React.FC = () => {
                     <KpiPage
                         fileId={fileId}
                         sourceType={sourceType}
+                        Id={nodeId!}
                     />
                 </div>
             </div>

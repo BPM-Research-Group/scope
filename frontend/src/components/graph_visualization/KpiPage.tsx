@@ -4,13 +4,16 @@ import { Group } from '@visx/group';
 import { scaleBand, scaleLinear, scaleOrdinal } from '@visx/scale';
 import { Bar, Pie } from '@visx/shape';
 import axios from 'axios';
-import { useLocation } from 'react-router-dom';
+import { FileVideo2 } from 'lucide-react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
+import { useExploreFlowStore } from '~/stores/exploreStore';
 import { useMineCaseNotionMutation } from '~/services/mutation';
 import { useAttributeStats, useCaseStats, useMineKpi } from '~/services/queries';
+import { createNode } from '~/lib/explore/createNode';
+import { handleConnect } from '~/lib/explore/flowActions';
 import { HistogramChart } from '../HistogramChart';
 import { HistChart } from './HistChart';
-import { FileVideo2 } from 'lucide-react';
 
 type Stats = {
     count: number;
@@ -55,6 +58,7 @@ type AttributeStatsPrams = {
 type Props = {
     fileId: string | null;
     sourceType: string;
+    Id: string;
 };
 
 interface HistogramItem {
@@ -66,14 +70,14 @@ interface HistogramItem {
 
 const COLORS = ['#2563eb', '#9333ea', '#14b8a6', '#f97316'];
 
-const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
+const AnalyticsDashboard: React.FC<Props> = ({ fileId, Id, sourceType }) => {
     const [selectedLeftObjectType, setSelectedLeftObjectType] = useState('');
     const [selectedRightObjectType, setSelectedRightObjectType] = useState('');
     const [selectedLeftEventType, setSelectedLeftEventType] = useState('');
     const [selectedRightEventType, setSelectedRightEventType] = useState('');
     const [selectedEventType, setSelectedEventType] = useState('');
     const [selectedObjectType, setSelectedObjectType] = useState('');
-    const [selectedObjectTypeCN, setSelectedObjectTypeCN] = useState('');
+    const [selectedObjectTypeActivity, setSelectedObjectTypeActivity] = useState('');
     const [selectedLeftAttribute, setSelectedLeftAttribute] = useState('');
     const [selectedRightAttribute, setSelectedRightAttribute] = useState('');
     const [selectedObjectAttribute, setSelectedObjectAttribute] = useState('');
@@ -85,7 +89,7 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
     const [histogramData, setHistogramData] = useState<HistogramItem[]>([]);
     const [selectedBins, setSelectedBins] = useState<number[]>([]);
     const [isApplyingFilter, setIsApplyingFilter] = useState(false);
-    const [isApplyingActivityFilter, setIsApplyingActivityFilter] = useState(false);
+    const [isMiningKPI, setIsMiningKPI] = useState(false);
     const [activityHistogramData, setActivityHistogramData] = useState<HistogramItem[]>([]);
     const [showActivityHistogram, setShowActivityHistogram] = useState(false);
     const [selectedActivityBins, setSelectedActivityBins] = useState<number[]>([]);
@@ -112,6 +116,12 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
     const [rightIntraCaseAgg, setRightIntraCaseAgg] = useState<'sum' | 'mean' | 'min' | 'max' | 'count' | ''>('');
     const [intraCaseAgg, setIntraCaseAgg] = useState<'sum' | 'mean' | 'min' | 'max' | 'count' | ''>('sum');
     const [showStatsChart, setShowStatsChart] = useState(false);
+    const { id: nodeId } = useParams();
+    const [filteredCaseFileId, setFilteredCaseFileId] = useState<string | null>(null);
+    const navigate = useNavigate();
+    const { addNode, updateNodeData, getNode } = useExploreFlowStore();
+    console.log('noddddddddddddddddddddddddde d');
+    console.log(Id);
 
     const {
         mutate,
@@ -124,12 +134,12 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
     const [aggregation, setAggregation] = useState<keyof Stats>('mean');
 
     const runCaseDurationKpi = async () => {
-        if (!currentCnFileId) return;
+        if (!fileId) return;
 
         try {
             setIsLoadingTimeKpi(true);
 
-            const res = await axios.get(`http://localhost:3000/v1/kpi/case_duration/${currentCnFileId}`);
+            const res = await axios.get(`http://localhost:3000/v1/kpi/case_duration/${fileId}`);
             console.log(res.data);
             setTimeStats(res.data.stats);
         } catch (err) {
@@ -140,14 +150,14 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
     };
 
     const runActivityTimeKpi = async () => {
-        if (!currentCnFileId || !fromActivity || !toActivity) {
+        if (!fileId || !fromActivity || !toActivity) {
             return;
         }
 
         try {
             setIsLoadingTimeKpi(true);
 
-            const res = await axios.get(`http://localhost:3000/v1/kpi/case_time_stats/${currentCnFileId}`, {
+            const res = await axios.get(`http://localhost:3000/v1/kpi/case_time_stats/${fileId}`, {
                 params: {
                     object_type: selectedObjectType,
                     from_activity: fromActivity,
@@ -185,21 +195,51 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
     }, [activityBins]);
 
     const applyHistogramFilter = async () => {
-        if ( selectedBins.length === 0) return;
+        if (selectedBins.length === 0) return;
 
-        const histogramFilter = {
-            type: 'attribute_combination',
+        let histogramFilter: any;
 
-            left_attribute: selectedLeftAttribute,
-            left_object_type: selectedLeftObjectType,
-            left_intra_case_agg: leftIntraCaseAgg,
-
-            right_attribute: selectedRightAttribute,
-            right_object_type: selectedRightObjectType,
-            right_intra_case_agg: rightIntraCaseAgg,
-
-            operation: selectedOperation,
-        };
+        if (selectedCaseType === 'attribute_combination') {
+            histogramFilter = {
+                type: 'attribute_combination',
+                left_attribute: selectedLeftAttribute,
+                left_object_type: selectedLeftObjectType,
+                left_intra_case_agg: leftIntraCaseAgg,
+                right_attribute: selectedRightAttribute,
+                right_object_type: selectedRightObjectType,
+                right_intra_case_agg: rightIntraCaseAgg,
+                operation: selectedOperation,
+            };
+        } else if (selectedCaseType === 'case_attribute_event_type') {
+            histogramFilter = {
+                type: 'case_attribute',
+                event_type: selectedEventType,
+                attribute: selectedEventAttribute,
+                intra_case_agg: intraCaseAgg,
+            };
+        } else if (selectedCaseType === 'case_attribute_object_type') {
+            histogramFilter = {
+                type: 'case_attribute',
+                object_type: selectedObjectType,
+                attribute: selectedObjectAttribute,
+                intra_case_agg: intraCaseAgg,
+            };
+        } else if (selectedCaseType === 'case_duration') {
+            histogramFilter = {
+                type: 'case_duration',
+            };
+        } else if (selectedCaseType === 'activity_time') {
+            histogramFilter = {
+                type: 'case_time_stats',
+                object_type: selectedObjectTypeActivity,
+                from_activity: fromActivity,
+                to_activity: toActivity,
+                intra_case_agg: intraCaseAgg,
+            };
+        } else {
+            console.error('Unknown KPI type:', selectedCaseType);
+            return;
+        }
 
         const valueRanges = selectedBins.map((index) => [bins[index].bin_start, bins[index].bin_end]);
 
@@ -210,18 +250,65 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
 
         try {
             setIsApplyingFilter(true);
-            const res = await axios.post(`http://localhost:3000/v1/kpi/histogram_filter/${fileId}`, payload);
-            // setCurrentCnFileId(res.data.case_notion_file_id);
 
-            console.log(res.data);
+            const res = await axios.post(`http://localhost:3000/v1/kpi/histogram_filter/${fileId}`, payload);
+
+            console.log('Histogram filter response:', res.data);
+
+            setFilteredCaseFileId(res.data);
         } catch (err) {
             console.error(err);
         } finally {
+            setHasUnminedChanges(false);
             setIsApplyingFilter(false);
         }
     };
 
-    
+    const handleExportNode = () => {
+        console.log('filteredCaseFileId');
+        console.log(filteredCaseFileId);
+        console.log(Id);
+        if (!filteredCaseFileId || !Id) return;
+        console.log('filteredCaseFileId');
+        console.log(filteredCaseFileId);
+        console.log(Id);
+
+        const sourceNode = getNode(Id);
+        console.log('sourceNode');
+
+        console.log(sourceNode);
+        if (!sourceNode) return;
+
+        const newNode = createNode(
+            {
+                x: sourceNode.position.x + 420,
+                y: sourceNode.position.y,
+            },
+            'ocelCollectionNode',
+            true
+        );
+
+        newNode.data.assets = [
+            {
+                id: filteredCaseFileId,
+                io: 'output',
+                origin: 'mined',
+                type: 'ocelCollectionFile',
+                name: 'Filtered Case OCEL',
+            },
+        ];
+
+        addNode(newNode);
+
+        handleConnect({
+            source: Id,
+            target: newNode.id,
+            sourceHandle: 'source',
+            targetHandle: 'target',
+        });
+
+        navigate('/data/pipeline/explore');
+    };
 
     const formatDuration = (seconds: number) => {
         const days = seconds / 86400;
@@ -237,28 +324,22 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
         return `${minutes.toFixed(2)} min`;
     };
 
-    const loadActivitySuccessors = async (cnId: string) => {
-        try {
-            setIsLoadingSuccessors(true);
-            console.log(`http://localhost:3000/v1/kpi/activity_successors/${cnId}?object_type=${selectedObjectTypeCN}`);
-            const res = await axios.get(
-                `http://localhost:3000/v1/kpi/activity_successors/${cnId}?object_type=${selectedObjectTypeCN}`
-            );
-            console.error(res);
+    const loadActivitySuccessors = async (fileId: string, objectType: string) => {
+        const res = await axios.get(`http://localhost:3000/v1/kpi/activity_successors/${fileId}`, {
+            params: {
+                object_type: objectType,
+            },
+        });
 
-            setSuccessors(res.data.successors ?? {});
-        } catch (err: any) {
-            console.error('Activity Successors Error');
-;
-        } finally {
-            setIsLoadingSuccessors(false);
-        }
+        setSuccessors(res.data.successors ?? {});
     };
 
     const handleMine = () => {
         // if (!fileId) return;
-          setHasUnminedChanges(false);
-                     setShouldFetchStats(true);
+      
+        setHasUnminedChanges(false);
+        setShouldFetchStats(true);
+      
 
         // const newCnId = uuidv4();
 
@@ -302,8 +383,6 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
 
         return successors[fromActivity] ?? [];
     }, [successors, fromActivity]);
-
-  
 
     const params: AttributeStatsPrams | null = useMemo(() => {
         // if (!selectedLeftAttribute && !selectedRightAttribute) return null;
@@ -352,16 +431,17 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
             ...(rightIntraCaseAgg && {
                 right_intra_case_agg: rightIntraCaseAgg,
             }),
+
+            ...(selectedCaseType === 'activity_time' &&
+                selectedObjectTypeActivity && {
+                    object_type: selectedObjectTypeActivity,
+                }),
             ...(fromActivity && {
                 from_activity: fromActivity,
             }),
             ...(toActivity && {
                 to_activity: toActivity,
             }),
-            ...((selectedCaseType === 'activity_time' || selectedCaseType === 'case_duration') &&
-                selectedObjectTypeCN && {
-                    object_type: selectedObjectTypeCN,
-                }),
         };
     }, [
         selectedEventType,
@@ -381,9 +461,9 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
         selectedHistogramOption,
         fromActivity,
         toActivity,
-        selectedObjectTypeCN,
+        selectedObjectTypeActivity,
         leftIntraCaseAgg,
-        rightIntraCaseAgg
+        rightIntraCaseAgg,
     ]);
     console.log(params);
     console.log('params');
@@ -412,7 +492,7 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
             selectedOperation,
         ]
     );
-   
+
     const {
         data: attributeStatsData,
         isLoading: attributeStatsLoading,
@@ -498,6 +578,7 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
 
         setFromActivity('');
         setToActivity('');
+        setSelectedObjectTypeActivity('');
 
         setShouldFetchStats(false);
     }, [selectedCaseType]);
@@ -506,38 +587,40 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
     //     return metadata?.object_types ?? [];
     // }, [metadata]);
 
+    useEffect(() => {
+        if (!metadata?.object_types?.length) return;
 
-  useEffect(() => {
-    if (!metadata?.object_types?.length) return;
+        const firstObject = metadata.object_types[0];
+        const firstAttribute = firstObject.attributes.find((a) => a.numeric);
 
-    const firstObject = metadata.object_types[0];
-    const firstAttribute = firstObject.attributes.find(a => a.numeric);
+        if (!selectedObjectType && selectedCaseType === 'case_attribute_object_type') {
+            setSelectedObjectType(firstObject.name);
+            setSelectedObjectAttribute(firstAttribute?.name ?? '');
+        }
 
-    if (!selectedObjectType && selectedCaseType==='case_attribute_object_type') {
-        setSelectedObjectType(firstObject.name);
-        setSelectedObjectAttribute(firstAttribute?.name ?? "");
-    }
+        if (!selectedLeftObjectType && selectedCaseType === 'attribute_combination') {
+            setSelectedLeftObjectType(firstObject.name);
+            setSelectedLeftAttribute(firstAttribute?.name ?? '');
+            setLeftIntraCaseAgg('sum');
+            setSelectedOperation('add');
+        }
 
-    if (!selectedLeftObjectType && selectedCaseType==='attribute_combination') {
-        setSelectedLeftObjectType(firstObject.name);
-        setSelectedLeftAttribute(firstAttribute?.name ?? "");
-        setLeftIntraCaseAgg('sum');
-        setSelectedOperation('add');
-    }
+        if (!selectedRightObjectType && selectedCaseType === 'attribute_combination') {
+            setSelectedRightObjectType(firstObject.name);
+            setSelectedRightAttribute(firstAttribute?.name ?? '');
+            setRightIntraCaseAgg('sum');
+            setSelectedOperation('add');
+        }
+        if (
+            !selectedObjectTypeActivity ||
+            (selectedObjectTypeActivity === '' && selectedCaseType === 'activity_time')
+        ) {
+            const objectType = firstObject.name;
 
-    if (!selectedRightObjectType && selectedCaseType==='attribute_combination') {
-        setSelectedRightObjectType(firstObject.name);
-        setSelectedRightAttribute(firstAttribute?.name ?? "");
-        setRightIntraCaseAgg('sum');
-        setSelectedOperation('add');
-    }
-}, [
-    metadata,
-    selectedObjectType,
-    selectedLeftObjectType,
-    selectedRightObjectType,
-]);
-
+            setSelectedObjectTypeActivity(objectType);
+            loadActivitySuccessors(fileId!, objectType);
+        }
+    }, [metadata, selectedObjectType, selectedLeftObjectType, selectedRightObjectType, selectedObjectTypeActivity]);
 
     const objectTypeOptions = useMemo(() => {
         return (
@@ -604,29 +687,6 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
                             <h2 className="text-2xl font-bold text-slate-800">KPI Builder</h2>
                         </div>
                         <div className="flex items-center gap-3">
-                            {stats && (
-                                <div>
-                                    <button
-                                        onClick={() => setShowStatsChart(true)}
-                                        className="
-                bg-blue-600
-                hover:bg-blue-700
-                transition-colors
-                text-white
-                px-5
-                py-2.5
-                rounded-xl
-                font-medium
-                shadow-sm
-                disabled:opacity-50
-                disabled:cursor-not-allowed
-            "
-                                    >
-                                        Visualize
-                                    </button>
-                                </div>
-                            )}
-
                             {stats && hasHistogram && (
                                 <div>
                                     <button
@@ -640,7 +700,7 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
 
                             <button
                                 onClick={handleMine}
-                                disabled={isMiningCaseNotion}
+                                disabled={isMiningKPI}
                                 className="
                 bg-blue-600
                 hover:bg-blue-700
@@ -655,78 +715,14 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
                 disabled:cursor-not-allowed
             "
                             >
-                                {isMiningCaseNotion ? 'Running...' : 'Run KPI'}
+                                {attributeStatsLoading ? 'Running...' : 'Run KPI'}
                             </button>
                         </div>
                     </div>
 
-                     <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-                     {/*   <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">
-                                Object Type(Case Notion)
-                            </label>
-
-                            <select
-                                value={selectedObjectTypeCN}
-                                onChange={(e) => {
-                                    const value = e.target.value;
-
-                                    setSelectedObjectTypeCN(value);
-                                    setShouldFetchStats(false);
-                                }}
-                                className="
-                    w-full
-                    border
-                    border-slate-300
-                    rounded-xl
-                    px-4
-                    py-3
-                    bg-white
-                    focus:ring-2
-                    focus:ring-blue-500
-                    focus:border-blue-500
-                    outline-none
-                "
-                            >
-                                {objectTypeOptions.map((item: any) => (
-                                    <option key={item.name} value={item.name}>
-                                        {item.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">Case Notion Type</label>
-
-                            <select
-                                value={algorithm}
-                                onChange={(e) => {
-                                    setAlgorithm(e.target.value as any);
-                                    setShouldFetchStats(false);
-                                }}
-                                className="
-            w-full
-            border
-            border-slate-300
-            rounded-xl
-            px-4
-            py-3
-            bg-white
-            focus:ring-2
-            focus:ring-blue-500
-            focus:border-blue-500
-            outline-none
-        "
-                            >
-                                <option value="traditional">Traditional</option>
-                                <option value="advanced">Advanced</option>
-                                <option value="connected_components">Connected Components</option>
-                            </select>
-                        </div> */}
-
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">Select type:</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">KPI</label>
 
                             <select
                                 value={selectedCaseType}
@@ -750,11 +746,11 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
                     outline-none
                 "
                             >
-                                <option value="case_attribute_event_type">Case Attribute(event type)</option>
-                                <option value="case_attribute_object_type">Case Attribute(object type)</option>
-                                <option value="attribute_combination">Attribute Combination</option>
-                                <option value="case_duration">Case Duration KPI</option>
-                                <option value="activity_time">Activity Time KPI</option>
+                                <option value="case_attribute_event_type">Case Attribute (Event Type)</option>
+                                <option value="case_attribute_object_type">Case Attribute (Object Type)</option>
+                                <option value="attribute_combination">Combine Attributes</option>
+                                <option value="case_duration">Case Duration</option>
+                                <option value="activity_time">Duration between Activities</option>
                             </select>
                         </div>
 
@@ -793,7 +789,9 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Attribute</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Event Attribute
+                                    </label>
 
                                     <select
                                         value={selectedEventAttribute}
@@ -820,6 +818,39 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
                                                 {item.name}
                                             </option>
                                         ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Intra-Case Aggregation
+                                    </label>
+
+                                    <select
+                                        value={intraCaseAgg}
+                                        onChange={(e) => {
+                                            setIntraCaseAgg(e.target.value as any);
+                                            setShouldFetchStats(false);
+                                        }}
+                                        className="
+            w-full
+            border
+            border-slate-300
+            rounded-xl
+            px-4
+            py-3
+            bg-white
+            focus:ring-2
+            focus:ring-blue-500
+            focus:border-blue-500
+            outline-none
+        "
+                                    >
+                                        {/* <option value="">None (Default)</option> */}
+                                        <option value="sum">Sum per Case</option>
+                                        <option value="mean">Mean per Case</option>
+                                        <option value="min">Min per Case</option>
+                                        <option value="max">Max per Case</option>
+                                        <option value="count">Count per Case</option>
                                     </select>
                                 </div>
                             </div>
@@ -871,7 +902,9 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Attribute</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Object Attribute
+                                    </label>
 
                                     <select
                                         value={selectedObjectAttribute}
@@ -901,6 +934,39 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
                                         ))}
                                     </select>
                                 </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Intra-Case Aggregation
+                                    </label>
+
+                                    <select
+                                        value={intraCaseAgg}
+                                        onChange={(e) => {
+                                            setIntraCaseAgg(e.target.value as any);
+                                            setShouldFetchStats(false);
+                                        }}
+                                        className="
+            w-full
+            border
+            border-slate-300
+            rounded-xl
+            px-4
+            py-3
+            bg-white
+            focus:ring-2
+            focus:ring-blue-500
+            focus:border-blue-500
+            outline-none
+        "
+                                    >
+                                        {/* <option value="">None (Default)</option> */}
+                                        <option value="sum">Sum per Case</option>
+                                        <option value="mean">Mean per Case</option>
+                                        <option value="min">Min per Case</option>
+                                        <option value="max">Max per Case</option>
+                                        <option value="count">Count per Case</option>
+                                    </select>
+                                </div>
                             </div>
                         )}
 
@@ -908,7 +974,7 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
                             <div className="md:col-span-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 mb-2">
-                                        Left Object Type
+                                        First Object Type
                                     </label>
 
                                     <select
@@ -954,7 +1020,7 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
 
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 mb-2">
-                                        Left Attribute
+                                        First Attribute
                                     </label>
 
                                     <select
@@ -988,126 +1054,13 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
 
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 mb-2">
-                                        Left Intra-Case Aggregation
+                                        First Intra-Case Aggregation
                                     </label>
 
                                     <select
                                         value={leftIntraCaseAgg}
                                         onChange={(e) => {
                                             setLeftIntraCaseAgg(e.target.value as any);
-                                            setShouldFetchStats(false);
-                                        }}
-                                        className="
-            w-full
-            border
-            border-slate-300
-            rounded-xl
-            px-4
-            py-3
-            bg-white
-            focus:ring-2
-            focus:ring-blue-500
-            focus:border-blue-500
-            outline-none
-        "
-                                    >
-                                        {/* <option value="">None (Default)</option> */}
-                                        <option value="sum">Sum per Case</option>
-                                        <option value="mean">Mean per Case</option>
-                                        <option value="min">Min per Case</option>
-                                        <option value="max">Max per Case</option>
-                                        <option value="count">Count per Case</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                                        Right Object Type
-                                    </label>
-
-                                    <select
-                                        value={selectedRightObjectType}
-                                        onChange={(e) => {
-                                            const value2 = e.target.value;
-
-                                            setSelectedRightObjectType(value2);
-                                            setShouldFetchStats(false);
-
-                                            const rightObjectType = metadata?.object_types.find(
-                                                (item: any) => item.name === value2
-                                            );
-
-                                            const firstAttribute = rightObjectType?.attributes.find(
-                                                (attr: any) => attr.numeric
-                                            );
-
-                                            setSelectedRightAttribute(firstAttribute?.name ?? '');
-                                            setRightIntraCaseAgg('sum');
-                                        }}
-                                        className="
-                    w-full
-                    border
-                    border-slate-300
-                    rounded-xl
-                    px-4
-                    py-3
-                    bg-white
-                    focus:ring-2
-                    focus:ring-blue-500
-                    focus:border-blue-500
-                    outline-none
-                "
-                                    >
-                                        {objectTypeOptions.map((item: any) => (
-                                            <option key={item.name} value={item.name}>
-                                                {item.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                                        Right Attribute
-                                    </label>
-
-                                    <select
-                                        value={selectedRightAttribute}
-                                        onChange={(e) => {
-                                            setSelectedRightAttribute(e.target.value);
-                                            setShouldFetchStats(false);
-                                        }}
-                                        className="
-                    w-full
-                    border
-                    border-slate-300
-                    rounded-xl
-                    px-4
-                    py-3
-                    bg-white
-                    focus:ring-2
-                    focus:ring-blue-500
-                    focus:border-blue-500
-                    outline-none
-                "
-                                    >
-                                        {numericAttributesRight.map((item: any) => (
-                                            <option key={item.name} value={item.name}>
-                                                {item.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                                        Right Intra-Case Aggregation
-                                    </label>
-
-                                    <select
-                                        value={rightIntraCaseAgg}
-                                        onChange={(e) => {
-                                            setRightIntraCaseAgg(e.target.value as any);
                                             setShouldFetchStats(false);
                                         }}
                                         className="
@@ -1157,28 +1110,36 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
             outline-none
         "
                                     >
-                                        
                                         <option value="add">Add</option>
                                         <option value="subtract">Subtract</option>
                                         <option value="multiply">Multiply</option>
                                         <option value="divide">Divide</option>
                                     </select>
                                 </div>
-                            </div>
-                        )}
 
-                        {selectedCaseType === 'case_attribute_event_type' && (
-                            <div className="md:col-span-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Event Type</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Second Object Type
+                                    </label>
 
                                     <select
-                                        value={selectedEventType}
+                                        value={selectedRightObjectType}
                                         onChange={(e) => {
-                                            const value = e.target.value;
+                                            const value2 = e.target.value;
 
-                                            setSelectedEventType(value);
+                                            setSelectedRightObjectType(value2);
                                             setShouldFetchStats(false);
+
+                                            const rightObjectType = metadata?.object_types.find(
+                                                (item: any) => item.name === value2
+                                            );
+
+                                            const firstAttribute = rightObjectType?.attributes.find(
+                                                (attr: any) => attr.numeric
+                                            );
+
+                                            setSelectedRightAttribute(firstAttribute?.name ?? '');
+                                            setRightIntraCaseAgg('sum');
                                         }}
                                         className="
                     w-full
@@ -1194,20 +1155,23 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
                     outline-none
                 "
                                     >
-                                        {eventTypeOptions.map((item: any) => (
+                                        {objectTypeOptions.map((item: any) => (
                                             <option key={item.name} value={item.name}>
                                                 {item.name}
                                             </option>
                                         ))}
                                     </select>
                                 </div>
+
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Attribute</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Second Attribute
+                                    </label>
 
                                     <select
-                                        value={selectedEventAttribute}
+                                        value={selectedRightAttribute}
                                         onChange={(e) => {
-                                            setSelectedEventAttribute(e.target.value);
+                                            setSelectedRightAttribute(e.target.value);
                                             setShouldFetchStats(false);
                                         }}
                                         className="
@@ -1229,6 +1193,40 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
                                                 {item.name}
                                             </option>
                                         ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Second Intra-Case Aggregation
+                                    </label>
+
+                                    <select
+                                        value={rightIntraCaseAgg}
+                                        onChange={(e) => {
+                                            setRightIntraCaseAgg(e.target.value as any);
+                                            setShouldFetchStats(false);
+                                        }}
+                                        className="
+            w-full
+            border
+            border-slate-300
+            rounded-xl
+            px-4
+            py-3
+            bg-white
+            focus:ring-2
+            focus:ring-blue-500
+            focus:border-blue-500
+            outline-none
+        "
+                                    >
+                                        {/* <option value="">None (Default)</option> */}
+                                        <option value="sum">Sum per Case</option>
+                                        <option value="mean">Mean per Case</option>
+                                        <option value="min">Min per Case</option>
+                                        <option value="max">Max per Case</option>
+                                        <option value="count">Count per Case</option>
                                     </select>
                                 </div>
                             </div>
@@ -1302,13 +1300,86 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
                                         ))}
                                     </select>
                                 </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Intra-Case Aggregation
+                                    </label>
+
+                                    <select
+                                        value={intraCaseAgg}
+                                        onChange={(e) => {
+                                            setIntraCaseAgg(e.target.value as any);
+                                            setShouldFetchStats(false);
+                                        }}
+                                        className="
+            w-full
+            border
+            border-slate-300
+            rounded-xl
+            px-4
+            py-3
+            bg-white
+            focus:ring-2
+            focus:ring-blue-500
+            focus:border-blue-500
+            outline-none
+        "
+                                    >
+                                        {/* <option value="">None (Default)</option> */}
+                                        <option value="sum">Sum per Case</option>
+                                        <option value="mean">Mean per Case</option>
+                                        <option value="min">Min per Case</option>
+                                        <option value="max">Max per Case</option>
+                                        <option value="count">Count per Case</option>
+                                    </select>
+                                </div>
                             </div>
                         )}
 
                         {selectedCaseType === 'activity_time' && (
                             <div className="md:col-span-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium mb-2">From Activity</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Object Type</label>
+
+                                    <select
+                                        value={selectedObjectTypeActivity}
+                                        onChange={(e) => {
+                                            const value1 = e.target.value;
+                                            const value = e.target.value;
+
+                                            setSelectedObjectTypeActivity(value);
+                                            setShouldFetchStats(false);
+                                            const ObjectType = metadata?.object_types.find(
+                                                (item: any) => item.name === value1
+                                            );
+
+                                            //  setSelectedObjectTypeActivity(ObjectType);
+                                            loadActivitySuccessors(fileId!, selectedObjectTypeActivity);
+                                        }}
+                                        className="
+                    w-full
+                    border
+                    border-slate-300
+                    rounded-xl
+                    px-4
+                    py-3
+                    bg-white
+                    focus:ring-2
+                    focus:ring-blue-500
+                    focus:border-blue-500
+                    outline-none
+                "
+                                    >
+                                        {objectTypeOptions.map((item: any) => (
+                                            <option key={item.name} value={item.name}>
+                                                {item.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">From</label>
 
                                     <select
                                         value={fromActivity}
@@ -1326,7 +1397,7 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium mb-2">To Activity</label>
+                                    <label className="block text-sm font-medium mb-2">To</label>
 
                                     <select
                                         value={toActivity}
@@ -1343,21 +1414,18 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
                                         ))}
                                     </select>
                                 </div>
-                            </div>
-                        )}
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Intra-Case Aggregation
+                                    </label>
 
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">
-                                Intra-Case Aggregation
-                            </label>
-
-                            <select
-                                value={intraCaseAgg}
-                                onChange={(e) => {
-                                    setIntraCaseAgg(e.target.value as any);
-                                    setShouldFetchStats(false);
-                                }}
-                                className="
+                                    <select
+                                        value={intraCaseAgg}
+                                        onChange={(e) => {
+                                            setIntraCaseAgg(e.target.value as any);
+                                            setShouldFetchStats(false);
+                                        }}
+                                        className="
             w-full
             border
             border-slate-300
@@ -1370,15 +1438,17 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
             focus:border-blue-500
             outline-none
         "
-                            >
-                                {/* <option value="">None (Default)</option> */}
-                                <option value="sum">Sum per Case</option>
-                                <option value="mean">Mean per Case</option>
-                                <option value="min">Min per Case</option>
-                                <option value="max">Max per Case</option>
-                                <option value="count">Count per Case</option>
-                            </select>
-                        </div>
+                                    >
+                                        {/* <option value="">None (Default)</option> */}
+                                        <option value="sum">Sum per Case</option>
+                                        <option value="mean">Mean per Case</option>
+                                        <option value="min">Min per Case</option>
+                                        <option value="max">Max per Case</option>
+                                        <option value="count">Count per Case</option>
+                                    </select>
+                                </div>
+                            </div>
+                        )}
 
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-2">Display Histogram</label>
@@ -1410,7 +1480,7 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">Aggregation</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Statistics</label>
 
                             <select
                                 value={aggregation}
@@ -1439,7 +1509,7 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">KPI Value</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Result</label>
 
                             <div
                                 className="
@@ -1663,19 +1733,30 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId }) => {
                                 onSelect={setSelectedBins}
                                 disabled={false}
                                 color="blue"
-                                event_type="KPI"
-                                object_type={selectedObjectType}
+                                // event_type=""
+                                // object_type={selectedObjectType}
                                 width={950}
                                 height={500}
                             />
-                            <div className="mt-4 flex justify-end">
-                                <button
-                                    onClick={applyHistogramFilter}
-                                    disabled={isApplyingFilter}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl"
-                                >
-                                    {isApplyingFilter ? 'Filtering...' : 'Apply Filter'}
-                                </button>
+                            <div className="flex items-center gap-3">
+                                <div className="mt-4 flex justify-end">
+                                    <button
+                                        onClick={applyHistogramFilter}
+                                        disabled={isApplyingFilter}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl"
+                                    >
+                                        {isApplyingFilter ? 'Filtering...' : 'Apply Filter'}
+                                    </button>
+                                </div>
+                                <div className="mt-4 flex justify-end">
+                                    <button
+                                        disabled={!filteredCaseFileId}
+                                        onClick={handleExportNode}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl"
+                                    >
+                                        Export As Node
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -19,8 +19,8 @@ interface Props {
     bins?: Bin[];
     selectedIdx: number[];
     onSelect: (idx: number[]) => void;
-    event_type?: string;
-    object_type?: string;
+    // event_type?: string;
+    // object_type?: string;
     disabled?: boolean;
     color: string;
 }
@@ -33,8 +33,8 @@ export const HistChart: React.FC<Props> = ({
     bins = [],
     selectedIdx,
     onSelect,
-    event_type,
-    object_type = 'unknown',
+    // event_type,
+    // object_type = 'unknown',
     disabled = false,
     color, // Use passed color
 }) => {
@@ -296,9 +296,9 @@ export const HistChart: React.FC<Props> = ({
     return (
         <div className="hv-card">
             <div className="hv-card-head">
-                <strong>
+                {/* <strong>
                     {event_type} — {object_type}
-                </strong>
+                </strong> */}
                 <button className="hv-btn-ghost" onClick={toggleExpand}>
                     ⤢
                 </button>
@@ -308,7 +308,7 @@ export const HistChart: React.FC<Props> = ({
                     {Chart}
                     {SelectionDisplay}
                     <button className="hv-btn-ghost" onClick={clearAll} disabled={disabled} style={{ marginTop: 6 }}>
-                        Clear All
+                        Clear Selection
                     </button>
                 </>
             )}
@@ -317,9 +317,9 @@ export const HistChart: React.FC<Props> = ({
                     <div className="hv-modal">
                         <div className="hv-modal-inner hv-modal-large">
                             <div className="hv-modal-head">
-                                <strong>
+                                {/* <strong>
                                     {event_type} — {object_type}
-                                </strong>
+                                </strong> */}
                                 <button
                                     className="hv-btn-ghost"
                                     onClick={toggleExpand}
