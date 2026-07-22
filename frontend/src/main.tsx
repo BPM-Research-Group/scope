@@ -18,6 +18,7 @@ import OcptViewer from '~/routes/OcptViewer';
 import Pipeline from '~/routes/Pipeline';
 import Upload from '~/routes/Upload';
 import OcpnViewer from './routes/OcpnViewer';
+import CaseClustering from './routes/CaseClustering';
 
 // Create a client
 const queryClient = new QueryClient();
@@ -104,6 +105,14 @@ const router = createBrowserRouter([
         element: (
              <RedirectErrorBoundary>
                 <ResourceViewer />
+            </RedirectErrorBoundary>
+        ),
+    },
+    {
+        path: '/data/pipeline/explore/caseclustering/:nodeId',
+        element: (
+            <RedirectErrorBoundary>
+                <CaseClustering />
             </RedirectErrorBoundary>
         ),
     },

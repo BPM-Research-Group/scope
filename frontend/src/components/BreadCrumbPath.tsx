@@ -1,10 +1,10 @@
 import React, { useMemo } from 'react';
-import { AlignEndHorizontalIcon, Compass, Eye, File, House, Layers, Network, Radar, Route } from 'lucide-react';
+import { AlignEndHorizontalIcon, Compass, Eye, File, House, Layers, Network, Radar, Route, Ungroup } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { BreadcrumbItem, BreadcrumbPage, BreadcrumbSeparator } from '~/components/ui/breadcrumb';
 
 // Route segments that are always the last meaningful crumb (followed by a nodeId param)
-const VIEWER_ROUTES = new Set(['ocpt', 'ocel', 'abstraction', 'deviations', 'flow', 'hist-viz']);
+const VIEWER_ROUTES = new Set(['ocpt', 'ocel', 'abstraction', 'deviations', 'flow', 'hist-viz', 'caseclustering']);
 
 interface BreadCrumbPathProps {
     pathnames: string[];
@@ -39,6 +39,8 @@ const BreadCrumbPath: React.FC<BreadCrumbPathProps> = ({ pathnames }) => {
                 return <Layers className={className} />;
             case 'deviations':
                 return <Radar className={className} />;
+             case 'caseclustering':
+                return <Ungroup className={className} />;
         }
     };
 

@@ -153,4 +153,9 @@ export const nodeRegistry = {
         allowedAssetTypes: ['ocelFile'],
         sidebar: { label: 'OCPT Stream Miner', icon: 'treePine', group: 'miners' },
     },
+    caseClusteringMinerNode: {
+        category: 'miner',
+        allowedAssetTypes: ['ocelCollectionFile'],
+        sidebar: { label: 'Clustering', icon: 'ungroup', group: 'miners' },
+    },
 } satisfies Record<RegistrableNodeType, NodeRegistryEntry>;
