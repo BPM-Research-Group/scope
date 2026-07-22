@@ -1,8 +1,11 @@
+use crate::core::ocpf_conversion::ConvertProcessForestToOcpnError;
+use crate::core::ocpf_conversion::convert_process_forest_to_ocpn;
 use crate::core::ocpn_conversion::{ConvertOcptToOcpnError, convert_ocpt_to_ocpn};
 use crate::core::struct_converters::ocpn_ocgraphconf::backend_to_ocgraphconf;
 use crate::handlers::ocpt::ensure_temp_dir;
 use crate::models::ocpn::OCPN;
 use crate::models::ocpt::OCPT;
+use crate::models::process_forest::ProcessForest;
 use crate::traits::import_export::{ExportableToPath, ImportableFromPath};
 use axum::{Json, extract::Path, http::StatusCode, response::IntoResponse, response::Response};
 use axum_extra::extract::Multipart;
@@ -134,6 +137,27 @@ pub async fn get_ocpn_from_ocpt(
     Ok((StatusCode::OK, Json(payload)))
 }
 
+pub async fn get_ocpn_from_process_forest(
+    Path(process_forest_id): Path<String>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let process_forest = ProcessForest::import_from_path(&process_forest_id).await?;
+    if !process_forest.is_valid() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Source Process Forest is invalid".to_string(),
+        ));
+    }
+
+    let ocpn = convert_process_forest_to_ocpn(&process_forest).map_err(map_ocpf_convert_error)?;
+    let file_id = ocpn.export_to_path().await?;
+    let payload = serde_json::json!({
+        "file_id": file_id,
+        "source_process_forest_file_id": process_forest_id,
+        "ocpn": ocpn,
+    });
+    Ok((StatusCode::OK, Json(payload)))
+}
+
 pub async fn get_ocpn_as_ocgraphconf(
     Path(file_id): Path<String>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
@@ -182,10 +206,25 @@ fn map_convert_error(error: ConvertOcptToOcpnError) -> (StatusCode, String) {
     }
 }
 
+fn map_ocpf_convert_error(error: ConvertProcessForestToOcpnError) -> (StatusCode, String) {
+    match error {
+        ConvertProcessForestToOcpnError::InvalidProcessForest
+        | ConvertProcessForestToOcpnError::DuplicateObjectType(_)
+        | ConvertProcessForestToOcpnError::InvalidLeafMetadata { .. }
+        | ConvertProcessForestToOcpnError::MissingOperator { .. } => {
+            (StatusCode::BAD_REQUEST, error.to_string())
+        }
+        ConvertProcessForestToOcpnError::InvalidGeneratedOcpn => {
+            (StatusCode::INTERNAL_SERVER_ERROR, error.to_string())
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::models::ocpn::{OCPNArc, OCPNNodeRef, OCPNPlace, OCPNProperties, OCPNTransition};
+    use crate::models::process_forest::ProcessForestNode;
     use axum::body::to_bytes;
 
     fn sample_ocpn() -> OCPN {
@@ -258,5 +297,39 @@ mod tests {
 
         let path = format!("./temp/ocpn_{file_id}.json");
         tokio::fs::remove_file(path).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn process_forest_conversion_handler_persists_generated_ocpn() {
+        let process_forest = ProcessForest {
+            object_types: vec!["order".to_string()],
+            root: ProcessForestNode::Leaf {
+                activity: Some("pay".to_string()),
+                related: vec!["order".to_string()],
+                convergent: Vec::new(),
+                deficient: Vec::new(),
+            },
+        };
+        let process_forest_id = process_forest.export_to_path().await.unwrap();
+
+        let response = get_ocpn_from_process_forest(Path(process_forest_id.clone()))
+            .await
+            .unwrap()
+            .into_response();
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let payload: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let ocpn_id = payload["file_id"].as_str().unwrap();
+        assert_eq!(
+            payload["source_process_forest_file_id"].as_str(),
+            Some(process_forest_id.as_str())
+        );
+        assert_eq!(payload["ocpn"]["name"].as_str(), Some("process_forest"));
+
+        let process_forest_path = format!("./temp/ocpf_{process_forest_id}.json");
+        let ocpn_path = format!("./temp/ocpn_{ocpn_id}.json");
+        tokio::fs::remove_file(process_forest_path).await.unwrap();
+        tokio::fs::remove_file(ocpn_path).await.unwrap();
     }
 }

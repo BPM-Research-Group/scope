@@ -18,7 +18,7 @@ const OcelCollectionNode = memo<NodeProps<FileNode>>((props) => {
     return (
         <BaseFileNode
             {...props}
-            title="OCEL Collection"
+            title="Case Collection"
             iconName="fileStack"
             handleOptions={[{ id: 'source', position: Position.Right, type: 'source' as const }]}
             dropdownOptions={[{ label: 'Open File', action: 'openFileDialog' as const, icon: 'file' }]}

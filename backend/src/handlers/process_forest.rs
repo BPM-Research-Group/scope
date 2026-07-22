@@ -5,7 +5,7 @@ use crate::core::process_forest::{
 use crate::core::struct_converters::ocpt_frontend_backend::backend_to_frontend;
 use crate::models::ocel::OCEL;
 use crate::models::ocel_collection::OCELCollection;
-use crate::models::process_forest::ProcessForest;
+use crate::models::process_forest::{ProcessForest, ProcessForestFrontend};
 use crate::traits::import_export::{ExportableToPath, ImportableFromPath};
 use axum::{
     Json,
@@ -15,6 +15,7 @@ use axum::{
 };
 use serde::Deserialize;
 use serde_json::json;
+use std::io::ErrorKind;
 use tokio::fs;
 
 #[derive(Debug, Deserialize)]
@@ -71,10 +72,31 @@ pub async fn get_process_forest(Path(file_id): Path<String>) -> impl IntoRespons
     }
 }
 
+pub async fn get_process_forest_frontend(
+    Path(file_id): Path<String>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let process_forest = ProcessForest::import_from_path(&file_id).await?;
+    let payload = json!({
+        "file_id": file_id,
+        "process_forest": ProcessForestFrontend::from(&process_forest),
+    });
+    Ok(Json(payload))
+}
+
 pub async fn delete_process_forest(Path(file_id): Path<String>) -> impl IntoResponse {
-    let path = format!("./temp/process_forest_{}.json", file_id);
+    let path = format!("./temp/ocpf_{}.json", file_id);
     match fs::remove_file(&path).await {
         Ok(_) => (StatusCode::NO_CONTENT, "Deleted file").into_response(),
+        Err(err) if err.kind() == ErrorKind::NotFound => {
+            let legacy_path = format!("./temp/process_forest_{}.json", file_id);
+            match fs::remove_file(&legacy_path).await {
+                Ok(_) => (StatusCode::NO_CONTENT, "Deleted file").into_response(),
+                Err(err) => {
+                    eprintln!("Failed to delete file {}: {}", legacy_path, err);
+                    (StatusCode::INTERNAL_SERVER_ERROR, "Failed to delete file").into_response()
+                }
+            }
+        }
         Err(err) => {
             eprintln!("Failed to delete file {}: {}", path, err);
             (StatusCode::INTERNAL_SERVER_ERROR, "Failed to delete file").into_response()

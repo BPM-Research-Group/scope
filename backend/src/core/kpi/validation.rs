@@ -1,4 +1,4 @@
-pub const VALID_INTRA_CASE_AGG: &[&str] = &["sum", "mean", "min", "max", "count"];
+const VALID_INTRA_CASE_AGG: &[&str] = &["sum", "mean", "min", "max", "count"];
 
 pub fn validate_attribute_source(
     object_type: &Option<String>,
