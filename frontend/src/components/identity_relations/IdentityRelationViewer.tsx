@@ -6,6 +6,7 @@ import { HubEdge, IdentityRelationEdge } from '~/components/identity_relations/e
 import IdentityRelationHubNode from '~/components/identity_relations/nodes/IdentityRelationHubNode';
 import IdentityRelationOtNode from '~/components/identity_relations/nodes/IdentityRelationOtNode';
 import { buildFlowGraph, type IdentityRelationItem } from '~/lib/identity_relations/buildGraph';
+import { KIND_LABELS, KIND_SYMBOLS } from '~/lib/identity_relations/kinds';
 import type { IdentityRelationKind } from '~/types/ocpt/ocpt.types';
 
 export type { IdentityRelationItem };
@@ -18,30 +19,6 @@ export interface IdentityRelationViewerProps {
     relations: IdentityRelationItem[];
     getObjectColor: (ot: string) => string;
 }
-
-const KIND_LABELS: Record<IdentityRelationKind, string> = {
-    sync: 'Synchronization',
-    subsetSync: 'Subset Synchronization',
-    subsetSyncPartition: 'Subset Sync (Partition)',
-    subsetSyncOverlap: 'Subset Sync (Overlap)',
-    impConcurrent: 'Implicit Concurrency',
-    impOrdered: 'Implicit Ordering',
-    impBatch: 'Batch Implication',
-    objectSplit: 'Object Split',
-    objectMerge: 'Object Merge',
-};
-
-const KIND_SYMBOLS: Record<IdentityRelationKind, string> = {
-    sync: '=',
-    subsetSync: '⊆',
-    subsetSyncPartition: '⊂',
-    subsetSyncOverlap: '⊆~',
-    impConcurrent: '‖',
-    impOrdered: '[→]',
-    impBatch: '×k',
-    objectSplit: '÷',
-    objectMerge: '⊕',
-};
 
 const nodeTypes = { otNode: IdentityRelationOtNode, hubNode: IdentityRelationHubNode };
 const edgeTypes = { identityRelEdge: IdentityRelationEdge, hubEdge: HubEdge };
@@ -96,7 +73,7 @@ const IdentityRelationViewer: React.FC<IdentityRelationViewerProps> = ({
                             onEdgesChange={onEdgesChange}
                             fitView
                             fitViewOptions={{ padding: 0.2 }}
-                            nodesDraggable={false}
+                            nodesDraggable
                             nodesConnectable={false}
                             elementsSelectable={false}
                         >
