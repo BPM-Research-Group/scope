@@ -122,14 +122,13 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId, Id, sourceType }) => {
     const { addNode, updateNodeData, getNode } = useExploreFlowStore();
     const [kpiFilterPayload, setKpiFilterPayload] = useState<any>(null);
 
-    const {
-        mutate,
-        isPending: isMiningCaseNotion,
-        data: caseNotionData,
-        reset: resetCaseNotionMutation,
-    } = useMineCaseNotionMutation();
-    console.log('cndata');
-    console.log(caseNotionData);
+    // const {
+    //     mutate,
+    //     isPending: isMiningCaseNotion,
+    //     data: caseNotionData,
+    //     reset: resetCaseNotionMutation,
+    // } = useMineCaseNotionMutation();
+
     const [aggregation, setAggregation] = useState<keyof Stats>('mean');
 
     const activityBins = useMemo(
@@ -193,7 +192,6 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId, Id, sourceType }) => {
                 intra_case_agg: intraCaseAgg,
             };
         } else {
-            console.error('Unknown KPI type:', selectedCaseType);
             return;
         }
 
@@ -220,14 +218,9 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId, Id, sourceType }) => {
 
     const handleExportNode = () => {
         if (!filteredCaseFileId || !Id) return;
-        console.log('filteredCaseFileId');
-        console.log(filteredCaseFileId);
-        console.log(Id);
 
         const sourceNode = getNode(Id);
-        console.log('sourceNode');
 
-        console.log(sourceNode);
         if (!sourceNode) return;
 
         const newNode = createNode(
@@ -386,8 +379,6 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId, Id, sourceType }) => {
         leftIntraCaseAgg,
         rightIntraCaseAgg,
     ]);
-    console.log(params);
-    console.log('params');
 
     const histogramFilter = useMemo(
         () => ({
@@ -422,16 +413,9 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId, Id, sourceType }) => {
         // enabled: shouldFetchStats && !!currentCnFileId && !!selectedLeftAttribute && !!selectedRightAttribute,
         enabled: shouldFetchStats && !!fileId,
     });
-    console.log({
-        fileId,
-        params,
-
-        shouldFetchStats,
-    });
 
     const stats: Stats | null = attributeStatsData?.stats ?? null;
-    console.log('statsssssss');
-    console.log(stats);
+
     const histData = attributeStatsData?.histogram ?? null;
     useEffect(() => {
         if (histData) {

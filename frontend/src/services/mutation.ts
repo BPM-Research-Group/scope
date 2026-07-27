@@ -50,7 +50,6 @@ export const useMineCaseNotionMutation = () => {
     return useMutation({
         mutationKey: ['mineCaseNotion'],
         mutationFn: (params: MineCaseNotionParams) => {
-
             return mineCaseNotion(
                 params.fileId,
                 params.algorithm,

@@ -70,9 +70,6 @@ export const HistChart: React.FC<Props> = ({
         start: null,
         end: null,
     });
-    console.log('histvdata');
-    console.log(bins);
-
 
     const xScale = useMemo(
         () =>

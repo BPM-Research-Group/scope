@@ -23,9 +23,9 @@ import FlowMinerNode from '~/components/explore/miner/FlowMinerNode';
 import FlowVisualizationNode from '~/components/explore/miner/FlowVisualizationNode';
 import HistogramMinerNode from '~/components/explore/miner/HistogramMinerNode';
 import OcpnMinerNode from '~/components/explore/miner/OcpnMinerNode';
-import ResourceMinerNode from '~/components/explore/miner/ResourceMinerNode';
 import KpiBuilderNode from '~/components/explore/miner/KpiBuilderNode';
 import OcptMinerNode from '~/components/explore/miner/OcptMinerNode';
+import ResourceMinerNode from '~/components/explore/miner/ResourceMinerNode';
 import OcptStreamMinerNode from '~/components/explore/miner/OcptStreamMinerNode';
 import { RefocusProgressPanel } from '~/components/explore/RefocusProgressPanel';
 import { useConnections } from '~/hooks/explore/useConnections';
@@ -64,11 +64,9 @@ const Explore: React.FC = () => {
     const { nodes, edges, onEdgesChange } = useExploreFlowStore();
     const [type] = useDnD();
     const { dialogNodeId } = useFileDialogStore();
-
     const { onNodesChange } = useNodeOperations();
     const { onEdgeDelete, handleConnect, isValidConnection } = useConnections();
     const { onDragOver, onDrop } = useDragDrop();
-
     const handleDrop = useCallback((event: DragEvent<HTMLElement>) => onDrop(event, type), [onDrop, type]);
 
     logger.debug('nodes Updated', nodes);

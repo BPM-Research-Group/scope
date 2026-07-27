@@ -118,7 +118,6 @@ const CaseNotionMinerNode = memo<NodeProps<MinerNode>>((node) => {
 
     const handleGenericPayloadChange = (val: any) => {
         setGenericPayload(val);
-        // setHasUnminedChanges(true);
         setHasUnminedChanges(false);
     };
 

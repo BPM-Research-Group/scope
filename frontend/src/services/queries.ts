@@ -76,18 +76,6 @@ export const useGetActivityResource = (fileId: string | null) => {
     });
 };
 
-// export const usePostSpecialActivity = (fileId: string | null, ac) => {
-//     console.log('query');
-//         console.log(fileId);
-
-//     return useQuery({
-//         queryKey: ['postSpecialActivities', fileId],
-//         queryFn: () => getActivityResource(fileId!),
-//         refetchOnWindowFocus: false,
-//         enabled: Boolean(fileId),
-//     });
-// };
-
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 export const usePostSpecialActivity = () => {
@@ -191,16 +179,9 @@ export const useCaseStats = (
     caseType: string,
     options = {}
 ) => {
-    console.log('fucjhh');
-    console.log(params);
-    console.log(caseType);
-    console.log('fucjhh');
-    
     return useQuery({
         queryKey: ['caseStats', fileId,   params, caseType],
-
         queryFn: () => {
-        console.log("queryFn is running");
         return caseStats(fileId!, params, caseType);
     },
 

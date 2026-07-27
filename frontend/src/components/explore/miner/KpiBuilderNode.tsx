@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { NodeProps } from '@xyflow/react';
 import { Position } from '@xyflow/react';
@@ -6,59 +6,42 @@ import { Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '~/components/ui/button';
 import BaseMinerNode from '~/components/explore/miner/BaseMinerNode';
-import { useMinerOutput, useInputAsset } from '~/hooks/explore/useMinerAssets';
+import { useInputAsset, useMinerOutput } from '~/hooks/explore/useMinerAssets';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { MinerNode } from '~/types/explore/nodes';
 
 const KpiBuilderNode = memo<NodeProps<MinerNode>>((node) => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    console.log('nod');
-    console.log(node);
     const hasMinedAsset = useMemo(() => {
         return node.data.assets.some((asset) => asset.io === 'output');
     }, [node.data.assets]);
-    // const { id, data: nodeData } = node;
-    // const { assets } = nodeData;
     const { clearKpiState } = useExploreFlowStore();
-    // const inputAsset = useInputAsset(assets, 'ocelCollectionFile');
-    // const inputAssetNew = useInputAsset(assets, 'ocelFile');
-    // console.log('input asset');
-    // console.log(inputAsset);
-    // const inputFileId = inputAsset?.id ?? null;
-    // const fileId = inputAsset?.id ?? '';
-const { id, data: nodeData } = node;
-const { assets } = nodeData;
+    const { id, data: nodeData } = node;
+    const { assets } = nodeData;
 
-const inputAsset = useInputAsset(assets, 'ocelCollectionFile');
-const inputFileId = inputAsset?.id ?? null;
-const fileName = inputAsset?.name ?? '';
+    const inputAsset = useInputAsset(assets, 'ocelCollectionFile');
+    const inputFileId = inputAsset?.id ?? null;
+    const fileName = inputAsset?.name ?? '';
 
-const pendingOutputId =
-    (nodeData as any).pendingOutputId ?? null;
+    const pendingOutputId = (nodeData as any).pendingOutputId ?? null;
 
-useMinerOutput(
-    id,
-    pendingOutputId,
-    fileName,
-    'ocelCollectionFile',
-    'ocelCollectionNode'
-);
+    useMinerOutput(id, pendingOutputId, fileName, 'ocelCollectionFile', 'ocelCollectionNode');
 
-const { updateNodeData } = useExploreFlowStore();
-useEffect(() => {
-    if (!pendingOutputId) return;
+    const { updateNodeData } = useExploreFlowStore();
+    useEffect(() => {
+        if (!pendingOutputId) return;
 
-    updateNodeData(id, {
-        pendingOutputId: null,
-    });
-}, [pendingOutputId, id, updateNodeData]);
+        updateNodeData(id, {
+            pendingOutputId: null,
+        });
+    }, [pendingOutputId, id, updateNodeData]);
 
     const openMinerInterface = () => {
         navigate(`/data/pipeline/explore/kpi/${id}`, {
             state: {
                 inputFileId,
-                Id: id
+                Id: id,
             },
         });
     };
