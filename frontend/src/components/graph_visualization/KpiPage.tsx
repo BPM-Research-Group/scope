@@ -1748,7 +1748,9 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId, Id, sourceType }) => {
                                         {isApplyingFilter ? 'Filtering...' : 'Apply Filter'}
                                     </button>
                                 </div>
+                                {filteredCaseFileId &&(
                                 <div className="mt-4 flex justify-end">
+                                    
                                     <button
                                         disabled={!filteredCaseFileId}
                                         onClick={handleExportNode}
@@ -1756,7 +1758,9 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId, Id, sourceType }) => {
                                     >
                                         Export As Node
                                     </button>
+                          
                                 </div>
+                                )}
                             </div>
                         </div>
                     </div>
