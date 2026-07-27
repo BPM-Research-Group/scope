@@ -253,6 +253,14 @@ export const mineKpi = async (fileId: string) => {
    
 };
 
+export const kpiHistogramFilter = async (fileId: string, params: any) => {
+    const response = await api.post(`/v1/kpi/histogram_filter/${fileId}`, params); 
+    console.log('kpi');
+    console.log(response.data);
+    return response.data;
+   
+};
+
 export const attributeStats = async (fileId: string, params: any) => { 
     console.log('stats');
        console.log("json", JSON.stringify(params, null, 2));

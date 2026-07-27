@@ -9,7 +9,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { useMineCaseNotionMutation } from '~/services/mutation';
-import { useAttributeStats, useCaseStats, useMineKpi } from '~/services/queries';
+import { useAttributeStats, useCaseStats, useKpiHistogramFilter, useMineKpi } from '~/services/queries';
 import { createNode } from '~/lib/explore/createNode';
 import { handleConnect } from '~/lib/explore/flowActions';
 import { HistogramChart } from '../HistogramChart';
@@ -120,8 +120,7 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId, Id, sourceType }) => {
     const [filteredCaseFileId, setFilteredCaseFileId] = useState<string | null>(null);
     const navigate = useNavigate();
     const { addNode, updateNodeData, getNode } = useExploreFlowStore();
-    console.log('noddddddddddddddddddddddddde d');
-    console.log(Id);
+    const [kpiFilterPayload, setKpiFilterPayload] = useState<any>(null);
 
     const {
         mutate,
@@ -133,49 +132,6 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId, Id, sourceType }) => {
     console.log(caseNotionData);
     const [aggregation, setAggregation] = useState<keyof Stats>('mean');
 
-    const runCaseDurationKpi = async () => {
-        if (!fileId) return;
-
-        try {
-            setIsLoadingTimeKpi(true);
-
-            const res = await axios.get(`http://localhost:3000/v1/kpi/case_duration/${fileId}`);
-            console.log(res.data);
-            setTimeStats(res.data.stats);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setIsLoadingTimeKpi(false);
-        }
-    };
-
-    const runActivityTimeKpi = async () => {
-        if (!fileId || !fromActivity || !toActivity) {
-            return;
-        }
-
-        try {
-            setIsLoadingTimeKpi(true);
-
-            const res = await axios.get(`http://localhost:3000/v1/kpi/case_time_stats/${fileId}`, {
-                params: {
-                    object_type: selectedObjectType,
-                    from_activity: fromActivity,
-                    to_activity: toActivity,
-                    intra_case_agg: intraCaseAgg,
-                    histogram: selectedHistogramOption,
-                },
-            });
-            console.log('time kpi res');
-            console.log(res.data);
-            setTimeStats(res.data.stats);
-            setActivityHistogramData(res.data.histogram ?? []);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setIsLoadingTimeKpi(false);
-        }
-    };
     const activityBins = useMemo(
         () =>
             activityHistogramData.map((item) => ({
@@ -247,27 +203,22 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId, Id, sourceType }) => {
             kpi_filter: histogramFilter,
             value_ranges: valueRanges,
         };
-
-        try {
-            setIsApplyingFilter(true);
-
-            const res = await axios.post(`http://localhost:3000/v1/kpi/histogram_filter/${fileId}`, payload);
-
-            console.log('Histogram filter response:', res.data);
-
-            setFilteredCaseFileId(res.data);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setHasUnminedChanges(false);
-            setIsApplyingFilter(false);
-        }
+        setKpiFilterPayload(payload);
     };
 
+    const { data: filteredData, isLoading: IsApplyingFilter } = useKpiHistogramFilter(fileId, kpiFilterPayload, {
+        enabled: Boolean(fileId && kpiFilterPayload),
+    });
+
+    useEffect(() => {
+        if (filteredData) {
+            setFilteredCaseFileId(filteredData);
+            setIsApplyingFilter(false);
+            setHasUnminedChanges(false);
+        }
+    }, [filteredData]);
+
     const handleExportNode = () => {
-        console.log('filteredCaseFileId');
-        console.log(filteredCaseFileId);
-        console.log(Id);
         if (!filteredCaseFileId || !Id) return;
         console.log('filteredCaseFileId');
         console.log(filteredCaseFileId);
@@ -336,38 +287,8 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId, Id, sourceType }) => {
 
     const handleMine = () => {
         // if (!fileId) return;
-      
         setHasUnminedChanges(false);
         setShouldFetchStats(true);
-      
-
-        // const newCnId = uuidv4();
-
-        // setCurrentCnFileId(newCnId);
-        // console.log('newCnId');
-        // console.log(newCnId);
-        // console.log(selectedObjectType);
-        // mutate(
-        //     {
-        //         fileId,
-        //         algorithm,
-        //         objectType: selectedObjectTypeCN,
-        //         newFileId: newCnId,
-        //         payload: genericPayload,
-        //     },
-        //     {
-        //         onSuccess: async (data) => {
-        //             setHasUnminedChanges(false);
-        //             setShouldFetchStats(true);
-        //             console.log('cn data response');
-        //             console.log(data);
-        //             await loadActivitySuccessors(newCnId);
-        //         },
-        //         onSettled: () => {
-        //             // resetKpiBuilder(); // Called for both success and error
-        //         },
-        //     }
-        // );
     };
 
     useEffect(() => {
@@ -1531,130 +1452,6 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId, Id, sourceType }) => {
                         </div>
                     </div>
                 </div>
-
-                {/* <div className="bg-white rounded-3xl shadow-lg border border-slate-200 p-6 space-y-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h2 className="text-2xl font-bold text-slate-800">Time KPI Analytics</h2>
-                        </div>
-
-                        <div className="flex gap-3">
-
-{hasActivityHistogram && (
-    <div className="flex justify-end mt-4">
-        <button
-            onClick={() => setShowActivityHistogram(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl"
-        >
-            Show Histogram
-        </button>
-    </div>
-)}
-
-
-                            <button
-                                onClick={() => setTimeKpiType('case_duration')}
-                                className={`px-4 py-2 rounded-xl text-sm font-medium transition ${
-                                    timeKpiType === 'case_duration'
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-slate-100 text-slate-700'
-                                }`}
-                            >
-                                Case Duration
-                            </button>
-
-                            <button
-                                onClick={() => setTimeKpiType('activity_time')}
-                                className={`px-4 py-2 rounded-xl text-sm font-medium transition ${
-                                    timeKpiType === 'activity_time'
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-slate-100 text-slate-700'
-                                }`}
-                            >
-                                Activity Time
-                            </button>
-                        </div>
-                    </div>
-
-                    {timeKpiType === 'activity_time' && (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium mb-2">From Activity</label>
-
-                                <select
-                                    value={fromActivity}
-                                    onChange={(e) => setFromActivity(e.target.value)}
-                                    className="w-full border rounded-xl px-3 py-2"
-                                >
-                                    <option value="">Select Activity</option>
-
-                                    {fromActivityOptions.map((activity) => (
-                                        <option key={activity} value={activity}>
-                                            {activity}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium mb-2">To Activity</label>
-
-                                <select
-                                    value={toActivity}
-                                    onChange={(e) => setToActivity(e.target.value)}
-                                    disabled={!fromActivity}
-                                    className="w-full border rounded-xl px-3 py-2"
-                                >
-                                    <option value="">Select Activity</option>
-
-                                    {toActivityOptions.map((activity) => (
-                                        <option key={activity} value={activity}>
-                                            {activity}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="flex items-end">
-                                <button
-                                    onClick={runActivityTimeKpi}
-                                    disabled={isLoadingTimeKpi}
-                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-2.5 font-medium transition"
-                                >
-                                    {isLoadingTimeKpi ? 'Running...' : 'Run Time KPI'}
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {timeKpiType === 'case_duration' && (
-                        <div className="flex justify-end">
-                            <button
-                                onClick={runCaseDurationKpi}
-                                disabled={isLoadingTimeKpi}
-                                className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-5 py-2.5 font-medium transition"
-                            >
-                                {isLoadingTimeKpi ? 'Running...' : 'Run Duration KPI'}
-                            </button>
-                        </div>
-                    )}
-
-                    {timeStats && (
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4">
-                            <KpiCard title="Mean" value={formatDuration(timeStats.mean)} />
-
-                            <KpiCard title="Median" value={formatDuration(timeStats.median)} />
-
-                            <KpiCard title="Min" value={formatDuration(timeStats.min)} />
-
-                            <KpiCard title="Max" value={formatDuration(timeStats.max)} />
-                            <KpiCard title="Count" value={formatDuration(timeStats.count)} />
-
-                            <KpiCard title="Std Dev" value={formatDuration(timeStats.std_dev)} />
-                            <KpiCard title="Sum" value={formatDuration(timeStats.sum)} />
-                        </div>
-                    )}
-                </div> */}
             </div>
 
             {showStatsChart && stats && (
@@ -1745,21 +1542,19 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId, Id, sourceType }) => {
                                         disabled={isApplyingFilter}
                                         className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl"
                                     >
-                                        {isApplyingFilter ? 'Filtering...' : 'Apply Filter'}
+                                        {IsApplyingFilter ? 'Filtering...' : 'Apply Filter'}
                                     </button>
                                 </div>
-                                {filteredCaseFileId &&(
-                                <div className="mt-4 flex justify-end">
-                                    
-                                    <button
-                                        disabled={!filteredCaseFileId}
-                                        onClick={handleExportNode}
-                                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl"
-                                    >
-                                        Export As Node
-                                    </button>
-                          
-                                </div>
+                                {filteredCaseFileId && (
+                                    <div className="mt-4 flex justify-end">
+                                        <button
+                                            disabled={!filteredCaseFileId}
+                                            onClick={handleExportNode}
+                                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl"
+                                        >
+                                            Export As Node
+                                        </button>
+                                    </div>
                                 )}
                             </div>
                         </div>

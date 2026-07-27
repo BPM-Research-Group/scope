@@ -32,6 +32,7 @@ import {
     mineKpi,
     attributeStats,
     caseStats,
+    kpiHistogramFilter,
 } from '~/services/api';
 import { getOcel } from '~/services/api';
 import { CaseNotionApiResponse } from '~/types/case_notion.types';
@@ -152,6 +153,16 @@ export const useMineKpi = ( fileId: string | null) => {
         queryFn: () => mineKpi(fileId!),
         enabled: Boolean(fileId) ,
         refetchOnWindowFocus: false,
+    });
+};
+
+export const useKpiHistogramFilter = ( fileId: string | null,
+    params: any, options = {}) => {
+    return useQuery({
+        queryKey: ['kpiHistogramFilter', fileId, params],
+        queryFn: () => kpiHistogramFilter(fileId!,params),
+        enabled: Boolean(fileId) ,
+        // refetchOnWindowFocus: false,
     });
 };
 
