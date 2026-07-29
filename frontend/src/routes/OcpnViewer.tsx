@@ -22,7 +22,7 @@ import { Separator } from '../components/ui/separator';
 import { Slider } from '../components/ui/slider';
 import { Switch } from '../components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip';
-import { RustOcpnData } from '../types/ocpn.types';
+import { OcpnArcEndpoint, RustOcpnData } from '../types/ocpn.types';
 
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { getDeterministicColor } from '~/lib/colors';
@@ -39,8 +39,9 @@ export interface VizParams {
 const nodeTypes = { place: PlaceNode, transition: TransitionNode };
 const edgeTypes = { arc: ArcEdge };
 
-// React Flow requires string IDs, while backend OCPNs use numeric graph IDs.
-const getArcId = (endpoint: any) => String(typeof endpoint === 'object' && endpoint !== null ? endpoint.id : endpoint);
+// Helper to safely extract IDs
+const getArcId = (endpoint: OcpnArcEndpoint | string | number) =>
+    String(typeof endpoint === 'object' && endpoint !== null ? endpoint.id : endpoint);
 
 const ViewerCore = ({ data, params, colorMap }: { data: RustOcpnData; params: VizParams; colorMap: Record<string, string> }) => {
     const { fitView } = useReactFlow();
@@ -147,7 +148,9 @@ const ViewerCore = ({ data, params, colorMap }: { data: RustOcpnData; params: Vi
         const flowEdges = validArcs.map((arc) => {
             const src = getArcId(arc.source);
             const tgt = getArcId(arc.target);
-            const connectedPlace = currentData.places.find((p) => String(p.id) === src || String(p.id) === tgt);
+            const connectedPlace = currentData.places.find(
+                (p) => String(p.id) === src || String(p.id) === tgt
+            );
             const objType = connectedPlace ? connectedPlace.object_type : 'default';
             
             return {
@@ -177,15 +180,7 @@ const ViewerCore = ({ data, params, colorMap }: { data: RustOcpnData; params: Vi
         const { flowNodes, flowEdges } = runBfsLayout(data, params);
         setNodes(flowNodes);
         setEdges(flowEdges);
-        requestAnimationFrame(() => fitView({ padding: 0.2, duration: 200 }));
-    }, [params, data, setNodes, setEdges, runBfsLayout, fitView]);
-
-    useEffect(() => {
-        (window as any).fitToScreen = () => fitView({ padding: 0.2, duration: 300 });
-        return () => {
-            delete (window as any).fitToScreen;
-        };
-    }, [fitView]);
+    }, [params, data, setNodes, setEdges, runBfsLayout]);
 
     return (
         <ReactFlow nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} nodeTypes={nodeTypes} edgeTypes={edgeTypes} fitViewOptions={{ padding: 0.2 }}>

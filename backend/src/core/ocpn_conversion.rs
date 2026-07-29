@@ -46,9 +46,6 @@ impl std::error::Error for ConvertOcptToOcpnError {}
 
 #[derive(Debug, Default)]
 struct LeafMetadataIndex {
-    related: BTreeMap<String, BTreeSet<String>>,
-    divergent: BTreeMap<String, BTreeSet<String>>,
-    convergent: BTreeMap<String, BTreeSet<String>>,
     all_object_types: BTreeSet<String>,
 }
 
@@ -56,25 +53,18 @@ impl LeafMetadataIndex {
     fn from_ocpt(ocpt: &OCPT) -> Self {
         let mut index = Self::default();
         for leaf in ocpt.find_all_leaves() {
-            let activity = match &leaf.activity_label {
-                OCPTLeafLabel::Activity(activity) => activity.clone(),
+            match &leaf.activity_label {
+                OCPTLeafLabel::Activity(_) => {}
                 OCPTLeafLabel::Tau => continue,
-            };
+            }
 
-            let related: BTreeSet<String> = leaf.related_ob_types.iter().cloned().collect();
-            let divergent: BTreeSet<String> = leaf.divergent_ob_types.iter().cloned().collect();
-            let convergent: BTreeSet<String> = leaf.convergent_ob_types.iter().cloned().collect();
             index.all_object_types.extend(
-                related
+                leaf.related_ob_types
                     .iter()
-                    .chain(divergent.iter())
-                    .chain(convergent.iter())
+                    .chain(leaf.divergent_ob_types.iter())
+                    .chain(leaf.convergent_ob_types.iter())
                     .cloned(),
             );
-
-            index.related.insert(activity.clone(), related);
-            index.divergent.insert(activity.clone(), divergent);
-            index.convergent.insert(activity, convergent);
         }
         index
     }
@@ -181,12 +171,7 @@ fn project_ocpt_for_object_type(
                 return Ok(tau_tree());
             }
 
-            if related_activities.iter().all(|activity| {
-                metadata
-                    .divergent
-                    .get(activity)
-                    .is_some_and(|types| types.contains(object_type))
-            }) {
+            if is_fully_divergent_subtree(node, object_type, metadata) {
                 return Ok(divergence_loop_tree(&related_activities));
             }
 
@@ -287,7 +272,7 @@ fn project_ocpt_for_object_type(
                             metadata,
                         )?);
                     }
-                    if has_optional_tau_child(op.children.as_slice(), object_type) {
+                    if has_optional_tau_child(op.children.as_slice()) {
                         children.push(tau_tree());
                     }
 
@@ -1034,34 +1019,53 @@ fn collect_convergent_activities(ocpt: &OCPT, object_type: &str) -> BTreeSet<Str
         .collect()
 }
 
-fn subtree_visible_activities(node: &OCPTNode) -> BTreeSet<String> {
+fn subtree_related_visible_activities(
+    node: &OCPTNode,
+    object_type: &str,
+    _metadata: &LeafMetadataIndex,
+) -> BTreeSet<String> {
     match node {
         OCPTNode::Leaf(leaf) => match &leaf.activity_label {
-            OCPTLeafLabel::Activity(activity) => BTreeSet::from([activity.clone()]),
+            OCPTLeafLabel::Activity(activity) if leaf.related_ob_types.contains(object_type) => {
+                BTreeSet::from([activity.clone()])
+            }
             OCPTLeafLabel::Tau => BTreeSet::new(),
+            OCPTLeafLabel::Activity(_) => BTreeSet::new(),
         },
         OCPTNode::Operator(op) => op
             .children
             .iter()
-            .flat_map(subtree_visible_activities)
+            .flat_map(|child| subtree_related_visible_activities(child, object_type, _metadata))
             .collect(),
     }
 }
 
-fn subtree_related_visible_activities(
+fn subtree_has_related_leaf_and_all_are_divergent(
     node: &OCPTNode,
     object_type: &str,
-    metadata: &LeafMetadataIndex,
-) -> BTreeSet<String> {
-    subtree_visible_activities(node)
-        .into_iter()
-        .filter(|activity| {
-            metadata
-                .related
-                .get(activity)
-                .is_some_and(|types| types.contains(object_type))
-        })
-        .collect()
+) -> (bool, bool) {
+    match node {
+        OCPTNode::Leaf(leaf) => {
+            let related = matches!(leaf.activity_label, OCPTLeafLabel::Activity(_))
+                && leaf.related_ob_types.contains(object_type);
+            (
+                related,
+                !related || leaf.divergent_ob_types.contains(object_type),
+            )
+        }
+        OCPTNode::Operator(op) => {
+            op.children
+                .iter()
+                .fold((false, true), |(seen_related, all_divergent), child| {
+                    let (child_seen, child_all_divergent) =
+                        subtree_has_related_leaf_and_all_are_divergent(child, object_type);
+                    (
+                        seen_related || child_seen,
+                        all_divergent && child_all_divergent,
+                    )
+                })
+        }
+    }
 }
 
 fn is_fully_divergent_subtree(
@@ -1069,22 +1073,15 @@ fn is_fully_divergent_subtree(
     object_type: &str,
     metadata: &LeafMetadataIndex,
 ) -> bool {
-    let related = subtree_related_visible_activities(node, object_type, metadata);
-    !related.is_empty()
-        && related.iter().all(|activity| {
-            metadata
-                .divergent
-                .get(activity)
-                .is_some_and(|types| types.contains(object_type))
-        })
+    let _ = metadata;
+    let (seen_related, all_divergent) =
+        subtree_has_related_leaf_and_all_are_divergent(node, object_type);
+    seen_related && all_divergent
 }
 
-fn has_optional_tau_child(children: &[OCPTNode], object_type: &str) -> bool {
+fn has_optional_tau_child(children: &[OCPTNode]) -> bool {
     children.iter().any(|child| match child {
-        OCPTNode::Leaf(leaf) => {
-            matches!(leaf.activity_label, OCPTLeafLabel::Tau)
-                && leaf.related_ob_types.contains(object_type)
-        }
+        OCPTNode::Leaf(leaf) => matches!(leaf.activity_label, OCPTLeafLabel::Tau),
         OCPTNode::Operator(_) => false,
     })
 }
@@ -1408,6 +1405,137 @@ mod tests {
             })
             .count();
         assert_eq!(variable_for_i, 11);
+    }
+
+    #[test]
+    fn repeated_activity_labels_preserve_each_leafs_object_types() {
+        fn activity(id: u128, label: &str, object_type: &str) -> OCPTNode {
+            OCPTNode::Leaf(OCPTLeaf {
+                uuid: Uuid::from_u128(id),
+                activity_label: OCPTLeafLabel::Activity(label.to_string()),
+                related_ob_types: HashSet::from([object_type.to_string()]),
+                divergent_ob_types: HashSet::new(),
+                convergent_ob_types: HashSet::new(),
+                deficient_ob_types: HashSet::new(),
+            })
+        }
+
+        let mut customer_choice = OCPTOperator::new(OCPTOperatorType::ExclusiveChoice);
+        customer_choice.children = vec![
+            activity(20, "Create Transport Document", "Customer Order"),
+            activity(21, "Register Customer Order", "Customer Order"),
+        ];
+
+        let mut document_sequence = OCPTOperator::new(OCPTOperatorType::Sequence);
+        document_sequence.children = vec![
+            activity(22, "Create Transport Document", "Transport Document"),
+            activity(23, "Depart", "Transport Document"),
+        ];
+
+        let mut combined = OCPTOperator::new(OCPTOperatorType::Concurrency);
+        combined.children = vec![
+            OCPTNode::Operator(customer_choice),
+            OCPTNode::Operator(document_sequence),
+        ];
+
+        let ocpn = convert_ocpt_to_ocpn(&OCPT::new(OCPTNode::Operator(combined))).unwrap();
+
+        let bundle_labels = |object_type: &str| {
+            let mut labels: Vec<String> = ocpn.nets[object_type]
+                .to_petri_net()
+                .transitions
+                .values()
+                .filter_map(|transition| transition.label.clone())
+                .collect();
+            labels.sort();
+            labels
+        };
+        assert_eq!(
+            bundle_labels("Customer Order"),
+            vec![
+                "Create Transport Document".to_string(),
+                "Register Customer Order".to_string(),
+            ]
+        );
+        assert_eq!(
+            bundle_labels("Transport Document"),
+            vec![
+                "Create Transport Document".to_string(),
+                "Depart".to_string(),
+            ]
+        );
+
+        let shared_transition_id = ocpn
+            .transitions
+            .iter()
+            .find(|transition| transition.label.as_deref() == Some("Create Transport Document"))
+            .unwrap()
+            .id;
+        let adjacent_object_types: BTreeSet<String> = ocpn
+            .arcs
+            .iter()
+            .filter_map(|arc| match (&arc.source, &arc.target) {
+                (OCPNNodeRef::Place(place_id), OCPNNodeRef::Transition(transition_id))
+                | (OCPNNodeRef::Transition(transition_id), OCPNNodeRef::Place(place_id))
+                    if *transition_id == shared_transition_id =>
+                {
+                    ocpn.place(*place_id).map(|place| place.object_type.clone())
+                }
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            adjacent_object_types,
+            BTreeSet::from([
+                "Customer Order".to_string(),
+                "Transport Document".to_string(),
+            ])
+        );
+    }
+
+    #[test]
+    fn untyped_tau_branch_preserves_optional_activity_in_ocpn() {
+        fn activity(id: u128, label: &str) -> OCPTNode {
+            OCPTNode::Leaf(OCPTLeaf {
+                uuid: Uuid::from_u128(id),
+                activity_label: OCPTLeafLabel::Activity(label.to_string()),
+                related_ob_types: HashSet::from(["Transport Document".to_string()]),
+                divergent_ob_types: HashSet::new(),
+                convergent_ob_types: HashSet::new(),
+                deficient_ob_types: HashSet::new(),
+            })
+        }
+
+        let mut optional = OCPTOperator::new(OCPTOperatorType::ExclusiveChoice);
+        optional.children = vec![
+            activity(30, "Reschedule Container"),
+            OCPTNode::Leaf(OCPTLeaf::new(None)),
+        ];
+
+        let mut sequence = OCPTOperator::new(OCPTOperatorType::Sequence);
+        sequence.children = vec![
+            activity(31, "Book Vehicles"),
+            OCPTNode::Operator(optional),
+            activity(32, "Create Transport Document"),
+        ];
+
+        let ocpn = convert_ocpt_to_ocpn(&OCPT::new(OCPTNode::Operator(sequence))).unwrap();
+        let net = ocpn.nets["Transport Document"].to_petri_net();
+        let (reschedule_id, _) = net
+            .transitions
+            .iter()
+            .find(|(_, transition)| transition.label.as_deref() == Some("Reschedule Container"))
+            .unwrap();
+        let reschedule_id = TransitionID(*reschedule_id);
+        let reschedule_input = net.preset_of_transition(reschedule_id);
+        let reschedule_output = net.postset_of_transition(reschedule_id);
+
+        assert!(net.transitions.iter().any(|(transition_id, transition)| {
+            let transition_id = TransitionID(*transition_id);
+            transition.label.is_none()
+                && net.preset_of_transition(transition_id) == reschedule_input
+                && net.postset_of_transition(transition_id) == reschedule_output
+        }));
     }
 
     #[test]

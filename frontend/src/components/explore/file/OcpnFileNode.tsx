@@ -11,6 +11,27 @@ import { useGetOcpn } from '~/services/queries';
 import { generateColorMap } from '~/lib/colors';
 import { propagateMapDownstream, syncMatchingColorsGlobally } from '~/lib/explore/flowActions';
 import { FileNode } from '~/types/explore/nodes';
+import type { OcpnArcEndpoint, RustOcpnData } from '~/types/ocpn.types';
+
+const normalizeEndpointId = (endpoint: OcpnArcEndpoint): OcpnArcEndpoint => ({
+    ...endpoint,
+    id: String(endpoint.id),
+});
+
+const normalizeOcpnIds = (ocpn: RustOcpnData): RustOcpnData => ({
+    ...ocpn,
+    places: (ocpn.places || []).map((place) => ({ ...place, id: String(place.id) })),
+    transitions: (ocpn.transitions || []).map((transition) => ({
+        ...transition,
+        id: String(transition.id),
+    })),
+    arcs: (ocpn.arcs || []).map((arc) => ({
+        ...arc,
+        id: String(arc.id),
+        source: normalizeEndpointId(arc.source),
+        target: normalizeEndpointId(arc.target),
+    })),
+});
 
 const OcpnFileNode = memo<NodeProps<FileNode>>((props) => {
     const { id, data: nodeData } = props;
@@ -32,7 +53,7 @@ const OcpnFileNode = memo<NodeProps<FileNode>>((props) => {
             const graphData = data.ocpn ? data.ocpn : data;
 
             if (graphData.places) {
-                updateNodeData(id, { processedData: graphData });
+                updateNodeData(id, { processedData: normalizeOcpnIds(graphData) });
             } else {
                 console.error('Data is missing `places`! It cannot be rendered.', graphData);
             }
