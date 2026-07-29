@@ -42,13 +42,10 @@ export interface VizParams {
     nodeSize: number;
     labelSize: number;
 }
-
 const nodeTypes = { place: PlaceNode, transition: TransitionNode };
 const edgeTypes = { arc: ArcEdge };
-
 // Force ID to be a String. React Flow crashes if given Integers!
 const getArcId = (endpoint: any) => String(typeof endpoint === 'object' && endpoint !== null ? endpoint.id : endpoint);
-
 const ViewerCore = ({
     data,
     params,
@@ -62,46 +59,37 @@ const ViewerCore = ({
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
     const getColor = useCallback((type: string) => colorMap[type] || getDeterministicColor(type), [colorMap]);
-
     const runBfsLayout = useCallback(
         (currentData: RustOcpnData, currentParams: VizParams) => {
             const nodesList = [
                 ...currentData.places.map((p) => ({ ...p, type: 'place' })),
                 ...(currentData.transitions || []).map((t) => ({ ...t, type: 'transition' })),
             ];
-
             const adj: Record<string, string[]> = {};
             const inDegree: Record<string, number> = {};
-
             nodesList.forEach((n) => {
                 adj[n.id] = [];
                 inDegree[n.id] = 0;
             });
-
             const rawArcs = currentData.arcs || [];
             const validNodeIds = new Set(nodesList.map((n) => String(n.id)));
-
             const validArcs = rawArcs.filter(
                 (arc) => validNodeIds.has(getArcId(arc.source)) && validNodeIds.has(getArcId(arc.target))
             );
-
             validArcs.forEach((arc) => {
                 const src = getArcId(arc.source);
                 const tgt = getArcId(arc.target);
                 adj[src].push(tgt);
                 inDegree[tgt]++;
             });
-
             const levels: Record<string, number> = {};
             let startNodes = nodesList.filter((n) => (n as any).initial);
             if (startNodes.length === 0) startNodes = nodesList.filter((n) => inDegree[n.id] === 0);
             if (startNodes.length === 0 && nodesList.length > 0) startNodes = [nodesList[0]];
-
             const q: string[] = startNodes.map((n) => String(n.id));
             startNodes.forEach((n) => {
                 levels[n.id] = 0;
             });
-
             while (q.length > 0) {
                 const curr = q.shift()!;
                 const currLevel = levels[curr];
@@ -112,47 +100,37 @@ const ViewerCore = ({
                     }
                 });
             }
-
             nodesList.forEach((n) => {
                 if (levels[n.id] === undefined) levels[n.id] = 0;
             });
-
             let maxLevel = Math.max(0, ...Object.values(levels));
             const finalNodes = nodesList.filter((n) => (n as any).final);
-
             if (finalNodes.length > 0) {
                 maxLevel++;
                 finalNodes.forEach((n) => {
                     levels[n.id] = maxLevel;
                 });
             }
-
             const levelGroups: Record<number, any[]> = {};
             nodesList.forEach((n) => {
                 const l = levels[n.id];
                 if (!levelGroups[l]) levelGroups[l] = [];
                 levelGroups[l].push(n);
             });
-
             // UI Sliders
             const vSpacing = currentParams.vSpacing;
             const hSpacing = currentParams.hSpacing;
-
             const flowNodes = nodesList.map((n) => {
                 const l = levels[n.id];
                 const group = levelGroups[l];
                 group.sort((a, b) => ((a.object_type || '') > (b.object_type || '') ? 1 : -1));
-
                 const idx = group.indexOf(n);
                 const total = group.length;
-
                 let x = (idx - (total - 1) / 2) * hSpacing;
                 let y = l * vSpacing;
-
                 // Safely handle NaN if any math fails
                 if (isNaN(x)) x = 0;
                 if (isNaN(y)) y = 0;
-
                 return {
                     id: String(n.id || crypto.randomUUID()), // Convert Integer to String
                     type: n.type as string,
@@ -169,13 +147,11 @@ const ViewerCore = ({
                     },
                 };
             });
-
             const flowEdges = validArcs.map((arc, index) => {
                 const src = getArcId(arc.source);
                 const tgt = getArcId(arc.target);
                 const connectedPlace = currentData.places.find((p) => String(p.id) === src || String(p.id) === tgt);
                 const objType = connectedPlace ? connectedPlace.object_type : 'default';
-
                 return {
                     id: String(arc.id || `e-${src}-${tgt}-${index}`), //Convert Integer to String
                     source: src,
@@ -192,23 +168,19 @@ const ViewerCore = ({
                     },
                 };
             });
-
             return { flowNodes, flowEdges };
         },
         [getColor]
     );
-
     // Re-run layout on load and whenever sliders change
     useEffect(() => {
         if (!data || !data.places) return;
         const { flowNodes, flowEdges } = runBfsLayout(data, params);
         setNodes(flowNodes);
         setEdges(flowEdges);
-
         // Ensure camera centers on the newly generated graph
         setTimeout(() => fitView({ duration: 800, padding: 0.2 }), 50);
     }, [params, data, setNodes, setEdges, runBfsLayout, fitView]);
-
     return (
         <ReactFlow
             nodes={nodes}
@@ -224,7 +196,6 @@ const ViewerCore = ({
         </ReactFlow>
     );
 };
-
 // ==========================================
 // MAIN LAYOUT
 // ==========================================
@@ -233,86 +204,68 @@ export default function OcpnViewer({ nodeId: propNodeId }: { nodeId?: string }) 
     const params = useParams<{ nodeId: string }>();
     const nodeId = propNodeId || params.nodeId;
     const [isExiting, setIsExiting] = useState(false);
-
     const { getNode } = useExploreFlowStore();
     const node = nodeId ? getNode(nodeId) : undefined;
     const nodeData = node?.data as FileExploreNodeData | undefined;
-
     // Memoizing rawData to prevent infinite re-renders
     const rawData = useMemo(() => (nodeData?.processedData as RustOcpnData) || null, [nodeData?.processedData]);
     const colorMap = useMemo(() => (nodeData?.colorMap as Record<string, string>) || {}, [nodeData?.colorMap]);
-
     const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['objects', 'styling']));
-
     const [vizParams, setVizParams] = useState<VizParams>({
         hSpacing: 180,
         vSpacing: 120,
         nodeSize: 18,
         labelSize: 11,
     });
-
     const allObjectTypes = useMemo(
         () => Array.from(new Set(rawData?.places?.map((p) => p.object_type) || [])),
         [rawData]
     );
-
     const [visibleObjectTypes, setVisibleObjectTypes] = useState<Set<string>>(new Set());
-
     useEffect(() => {
         if (allObjectTypes.length > 0 && visibleObjectTypes.size === 0) {
             setVisibleObjectTypes(new Set(allObjectTypes));
         }
     }, [allObjectTypes]);
-
     const filteredData = useMemo(() => {
         if (!rawData || !rawData.places) return null;
-
         const places = rawData.places.filter((p) => visibleObjectTypes.has(p.object_type));
         const placeIds = new Set(places.map((p) => String(p.id))); // Ensure strings here too
-
         const rawArcs = rawData.arcs || [];
         const candidateArcs = rawArcs.filter((a) => {
             const src = getArcId(a.source);
             const tgt = getArcId(a.target);
             return placeIds.has(src) || placeIds.has(tgt);
         });
-
         const connectedNodeIds = new Set();
         candidateArcs.forEach((a) => {
             connectedNodeIds.add(getArcId(a.source));
             connectedNodeIds.add(getArcId(a.target));
         });
-
         const transitions = (rawData.transitions || []).filter((t) => connectedNodeIds.has(String(t.id)));
         const transitionIds = new Set(transitions.map((t) => String(t.id)));
-
         const finalValidNodeIds = new Set([...placeIds, ...transitionIds]);
         const arcs = candidateArcs.filter((a) => {
             return finalValidNodeIds.has(getArcId(a.source)) && finalValidNodeIds.has(getArcId(a.target));
         });
-
         return { ...rawData, places, arcs, transitions };
     }, [rawData, visibleObjectTypes]);
-
     const toggleSection = (id: string) => {
         const next = new Set(expandedSections);
         if (next.has(id)) next.delete(id);
         else next.add(id);
         setExpandedSections(next);
     };
-
     const toggleObjectType = (type: string) => {
         const next = new Set(visibleObjectTypes);
         if (next.has(type)) next.delete(type);
         else next.add(type);
         setVisibleObjectTypes(next);
     };
-
     const handleBackToPipeline = () => {
         setIsExiting(true);
         setTimeout(() => navigate('/data/pipeline/explore'), 50);
     };
-
     if (!rawData || !rawData.places) {
         return (
             <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-slate-50 text-slate-500 font-medium">
@@ -328,7 +281,6 @@ export default function OcpnViewer({ nodeId: propNodeId }: { nodeId?: string }) 
             </div>
         );
     }
-
     return (
         <TooltipProvider>
             <div className="flex absolute inset-0 w-full h-full bg-white text-slate-900 font-sans overflow-hidden">

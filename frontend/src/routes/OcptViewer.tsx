@@ -13,7 +13,6 @@
 // import { OcptFileNode } from '~/types/explore/nodes';
 // import { type Node } from '~/types/ocpt/ocpt.types';
 // import mockForestData from '/Users/ekanshagarwal/Desktop/Hiwi_proj/scope/example_data/mock_data.json';
-// // IMPORT MOCK DATA
 // const OcptViewer: React.FC = () => {
 //     const [treeData, setTreeData] = useState<Node | null>(null);
 //     const [objectTypes, setObjectTypes] = useState<string[]>([]);
@@ -58,110 +57,46 @@
 //         }
 //         return scaleOrdinal<string, string>({ domain: [], range: [] });
 //     }, [viewState, colorMap]);
-//     // // Handle Data Loading and Switching
-//     // useEffect(() => {
-//     //     if (isForestMode) {
-//     //         // LOAD MOCK DATA
-//     //         const idTree = addIdsToTree(mockForestData.hierarchy as any);
-//     //         setTreeData(idTree);
-//     //         setObjectTypes(mockForestData.ots);
-//     //     } else {
-//     //         // LOAD REAL BACKEND DATA
-//     //         if (nodeId) {
-//     //             const processedData = nodeData?.processedData;
-//     //             if (processedData) {
-//     //                 const idTree = addIdsToTree(processedData.hierarchy);
-//     //                 setTreeData(idTree);
-//     //                 setObjectTypes(processedData.ots);
-//     //             }
-//     //         } else {
-//     //             // Local dev fallback if viewed without a routing nodeId
-//     //             const idTree = addIdsToTree(mockForestData.hierarchy as any);
-//     //             setTreeData(idTree);
-//     //             setObjectTypes(mockForestData.ots);
-//     //         }
-//     //     }
-//     // }, [nodeId, nodeData, isForestMode]);
-//     // // Ensure all object types are selected by default upon first load
-//     // useEffect(() => {
-//     //     if (!isForestMode && objectTypes.length > 0) {
-//     //         if (nodeId && viewState) {
-//     //             if (viewState.filteredObjectTypes.length === 0) {
-//     //                 updateNodeData(nodeId, { viewState: { ...viewState, filteredObjectTypes: objectTypes } });
-//     //             }
-//     //         } else {
-//     //             if (filteredObjectTypes.length === 0) {
-//     //                 setFilteredObjectTypes(objectTypes);
-//     //             }
-//     //         }
-//     //     }
-//     // }, [objectTypes]);
-//     // // SMART TOGGLE HANDLER: Automatically adjusts checkboxes when switching modes
-//     // const handleModeToggle = (newMode: boolean) => {
-//     //     setIsForestMode(newMode);
-//     //     // Ensure we are using the correct source of object types depending on if we are in mock mode
-//     //     const currentAllTypes = isForestMode ? mockForestData.ots : objectTypes;
-//     //     if (newMode) {
-//     //         // Switch to Forest Mode: Select ONLY the very first object type to show a projection
-//     //         const singleOt = currentAllTypes.length > 0 ? [currentAllTypes[0]] : [];
-//     //         if (nodeId && viewState) {
-//     //             updateNodeData(nodeId, { viewState: { ...viewState, filteredObjectTypes: singleOt } });
-//     //         } else {
-//     //             setFilteredObjectTypes(singleOt);
-//     //         }
-//     //     } else {
-//     //         // Switch to Normal Mode: Select ALL object types to show the full tree
-//     //         if (nodeId && viewState) {
-//     //             updateNodeData(nodeId, { viewState: { ...viewState, filteredObjectTypes: currentAllTypes } });
-//     //         } else {
-//     //             setFilteredObjectTypes(currentAllTypes);
-//     //         }
-//     //     }
-//     // };
-//     // Handle Data Loading and Switching
+//     // CORE FIX: Load Data AND explicitly push the selection to the sidebar at the exact same time
 //     useEffect(() => {
 //         if (isForestMode) {
-//             // LOAD MOCK DATA FOR FOREST
+//             // LOAD MOCK DATA
 //             const idTree = addIdsToTree(mockForestData.hierarchy as any);
+//             const ots = mockForestData.ots;
 //             setTreeData(idTree);
-//             setObjectTypes(mockForestData.ots);
-//         } else {
-//             // LOAD REAL BACKEND DATA FOR NORMAL OCPT
-//             if (nodeId && nodeData?.processedData) {
-//                 const idTree = addIdsToTree(nodeData.processedData.hierarchy);
-//                 setTreeData(idTree);
-//                 setObjectTypes(nodeData.processedData.ots);
+//             setObjectTypes(ots);
+//             // Force select ONLY the first object type
+//             const initialSelection = ots.length > 0 ? [ots[0]] : [];
+//             if (nodeId && viewState) {
+//                 updateNodeData(nodeId, { viewState: { ...viewState, filteredObjectTypes: initialSelection } });
 //             } else {
-//                 // Local dev fallback
-//                 const idTree = addIdsToTree(mockForestData.hierarchy as any);
-//                 setTreeData(idTree);
-//                 setObjectTypes(mockForestData.ots);
+//                 setFilteredObjectTypes(initialSelection);
+//             }
+//         } else {
+//             // LOAD REAL BACKEND DATA (or fallback to mock if no backend data exists)
+//             const sourceData = nodeId && nodeData?.processedData ? nodeData.processedData : mockForestData;
+//             const idTree = addIdsToTree(sourceData.hierarchy as any);
+//             const ots = sourceData.ots;
+//             setTreeData(idTree);
+//             setObjectTypes(ots);
+//             // CORE FIX: Force select ALL object types so the sidebar matches the tree
+//             if (nodeId && viewState) {
+//                 // Only push the update if it's not already fully selected, to avoid infinite render loops
+//                 if (viewState.filteredObjectTypes.length !== ots.length) {
+//                     updateNodeData(nodeId, { viewState: { ...viewState, filteredObjectTypes: ots } });
+//                 }
+//             } else {
+//                 setFilteredObjectTypes(ots);
 //             }
 //         }
-//     }, [nodeId, nodeData, isForestMode]);
+//         // eslint-disable-next-line react-hooks/exhaustive-deps
+//     }, [nodeId, nodeData?.processedData, isForestMode]);
 //     // SMART TOGGLE HANDLER
 //     const handleModeToggle = (newMode: boolean) => {
 //         setIsForestMode(newMode);
-//         // Use mock object types if going into forest mode, otherwise use backend types
-//         const currentTypes = newMode ? mockForestData.ots : nodeData?.processedData?.ots || mockForestData.ots;
-//         if (newMode) {
-//             // FOREST MODE: Select exactly the first object type to project
-//             const singleOt = currentTypes.length > 0 ? [currentTypes[0]] : [];
-//             if (nodeId && viewState) {
-//                 updateNodeData(nodeId, { viewState: { ...viewState, filteredObjectTypes: singleOt } });
-//             } else {
-//                 setFilteredObjectTypes(singleOt);
-//             }
-//         } else {
-//             // NORMAL MODE: Select ALL object types to show the COMPLETE tree
-//             if (nodeId && viewState) {
-//                 updateNodeData(nodeId, { viewState: { ...viewState, filteredObjectTypes: currentTypes } });
-//             } else {
-//                 setFilteredObjectTypes(currentTypes);
-//             }
-//         }
+//         // The useEffect above will catch the `isForestMode` state change and instantly
+//         // re-run the data loading and sidebar selection logic.
 //     };
-//     // Use viewState if we are in a routed node, otherwise fallback to local state
 //     const currentFilteredTypes = viewState?.filteredObjectTypes ?? filteredObjectTypes;
 //     return (
 //         <SidebarProvider>
@@ -202,7 +137,7 @@
 //                         onShowDetailsChange={setShowDetails}
 //                         onExport={handleExport}
 //                         isForestMode={isForestMode}
-//                         setIsForestMode={handleModeToggle} // Use our smart handler!
+//                         setIsForestMode={handleModeToggle}
 //                     />
 //                 ) : (
 //                     <div>Can not load sidebar. No data found.</div>
@@ -226,18 +161,12 @@ import { addIdsToTree } from '~/lib/ocpt/ocptAddIds';
 import { FileExploreNodeData } from '~/types/explore/nodeData/fileNodeData';
 import { OcptFileNode } from '~/types/explore/nodes';
 import { type Node } from '~/types/ocpt/ocpt.types';
-import mockForestData from '/Users/ekanshagarwal/Desktop/Hiwi_proj/scope/example_data/mock_data.json';
 
 const OcptViewer: React.FC = () => {
     const [treeData, setTreeData] = useState<Node | null>(null);
     const [objectTypes, setObjectTypes] = useState<string[]>([]);
-
-    // For local fallback filtering if there is no nodeId
     const [filteredObjectTypes, setFilteredObjectTypes] = useState<string[]>([]);
     const [showDetails, setShowDetails] = useState(false);
-
-    const [isForestMode, setIsForestMode] = useState(false);
-
     const exportFnRef = useRef<(() => void) | null>(null);
     const handleExportReady = useCallback((fn: () => void) => {
         exportFnRef.current = fn;
@@ -245,7 +174,6 @@ const OcptViewer: React.FC = () => {
     const handleExport = useCallback(() => {
         exportFnRef.current?.();
     }, []);
-
     const { nodeId } = useParams<{ nodeId: string }>();
     const [searchParams] = useSearchParams();
     const { getNode, updateNodeData } = useExploreFlowStore();
@@ -256,6 +184,7 @@ const OcptViewer: React.FC = () => {
     const isIdentityOcpt = nodeData?.assets?.some((a) => a.type === 'identityOcptAsset') ?? false;
     const viewState = nodeData?.viewState;
 
+    // Reactively subscribe to colorMap so the tree re-renders when colors change
     const colorMap = useExploreFlowStore((s) => {
         const n = s.nodes.find((n) => n.id === nodeId);
         const raw = (n?.data as FileExploreNodeData)?.colorMap;
@@ -265,6 +194,7 @@ const OcptViewer: React.FC = () => {
         return undefined;
     });
 
+    // Build colorScale: if colorMap exists, use it. Otherwise fall back to viewState.colorScale.range.
     const colorScale = useMemo(() => {
         if (viewState && colorMap && viewState.colorScale.domain.length > 0) {
             const domain = viewState.colorScale.domain;
@@ -280,96 +210,89 @@ const OcptViewer: React.FC = () => {
         return scaleOrdinal<string, string>({ domain: [], range: [] });
     }, [viewState, colorMap]);
 
-    // CORE FIX: Load Data AND explicitly push the selection to the sidebar at the exact same time
     useEffect(() => {
-        if (isForestMode) {
-            // LOAD MOCK DATA
-            const idTree = addIdsToTree(mockForestData.hierarchy as any);
-            const ots = mockForestData.ots;
-            setTreeData(idTree);
-            setObjectTypes(ots);
+        const filterFromUrl = searchParams.get('filter');
+        // Only sync from the URL if the parameter exists.
+        if (filterFromUrl !== null && nodeId && viewState) {
+            const newFilteredObjectTypes = filterFromUrl === '' ? [] : filterFromUrl.split(',');
 
-            // Force select ONLY the first object type
-            const initialSelection = ots.length > 0 ? [ots[0]] : [];
-            if (nodeId && viewState) {
-                updateNodeData(nodeId, { viewState: { ...viewState, filteredObjectTypes: initialSelection } });
-            } else {
-                setFilteredObjectTypes(initialSelection);
-            }
-        } else {
-            // LOAD REAL BACKEND DATA (or fallback to mock if no backend data exists)
-            const sourceData = nodeId && nodeData?.processedData ? nodeData.processedData : mockForestData;
-
-            const idTree = addIdsToTree(sourceData.hierarchy as any);
-            const ots = sourceData.ots;
-            setTreeData(idTree);
-            setObjectTypes(ots);
-
-            // CORE FIX: Force select ALL object types so the sidebar matches the tree
-            if (nodeId && viewState) {
-                // Only push the update if it's not already fully selected, to avoid infinite render loops
-                if (viewState.filteredObjectTypes.length !== ots.length) {
-                    updateNodeData(nodeId, { viewState: { ...viewState, filteredObjectTypes: ots } });
-                }
-            } else {
-                setFilteredObjectTypes(ots);
+            // Update the store only if the URL state is different from the store state.
+            if (JSON.stringify(viewState.filteredObjectTypes) !== JSON.stringify(newFilteredObjectTypes)) {
+                updateNodeData(nodeId, { viewState: { ...viewState, filteredObjectTypes: newFilteredObjectTypes } });
             }
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [nodeId, nodeData?.processedData, isForestMode]);
+        // We only want this effect to run when the component loads or the URL/node changes,
+        // not when the viewState is updated by the user in the sidebar.
+    }, [searchParams, nodeId]);
 
-    // SMART TOGGLE HANDLER
-    const handleModeToggle = (newMode: boolean) => {
-        setIsForestMode(newMode);
-        // The useEffect above will catch the `isForestMode` state change and instantly
-        // re-run the data loading and sidebar selection logic.
-    };
+    useEffect(() => {
+        if (nodeId) {
+            const processedData = nodeData?.processedData;
 
-    const currentFilteredTypes = viewState?.filteredObjectTypes ?? filteredObjectTypes;
+            if (processedData) {
+                const idTree = addIdsToTree(processedData.hierarchy);
+                setTreeData(idTree);
+                setObjectTypes(processedData.ots);
+            }
+        }
+    }, [nodeId, nodeData]);
 
     return (
         <SidebarProvider>
             <div className="h-screen w-screen overflow-hidden">
                 <BreadcrumbNav />
                 <div className="flex flex-1 h-full w-full">
-                    {treeData ? (
+                    {isOcptMode && node ? (
                         <OCPT
                             treeData={treeData}
                             colorScale={colorScale}
-                            filteredObjectTypes={currentFilteredTypes}
+                            filteredObjectTypes={viewState?.filteredObjectTypes ?? []}
                             showDetails={showDetails}
                             isIdentityOcpt={isIdentityOcpt}
                             onExportReady={handleExportReady}
-                            isForestMode={isForestMode}
+                        />
+                    ) : treeData ? (
+                        <OCPT
+                            treeData={treeData}
+                            colorScale={colorScale}
+                            filteredObjectTypes={filteredObjectTypes}
+                            showDetails={showDetails}
+                            isIdentityOcpt={isIdentityOcpt}
+                            onExportReady={handleExportReady}
                         />
                     ) : (
-                        <div>Loading Viewer...</div>
+                        <div></div>
                     )}
                 </div>
-                {treeData ? (
+                {nodeId && viewState ? (
                     <OcptSidebar
                         objectTypes={objectTypes}
                         coloring={colorScale}
                         nodeId={nodeId}
-                        filteredObjectTypes={currentFilteredTypes}
-                        onFilteredObjectTypesChange={(newFiltered) => {
-                            if (nodeId && viewState) {
-                                updateNodeData(nodeId, {
-                                    viewState: { ...viewState, filteredObjectTypes: newFiltered },
-                                });
-                            } else {
-                                setFilteredObjectTypes(newFiltered);
-                            }
+                        filteredObjectTypes={viewState.filteredObjectTypes}
+                        onFilteredObjectTypesChange={(newFilteredObjectTypes) => {
+                            updateNodeData(nodeId, {
+                                viewState: { ...viewState, filteredObjectTypes: newFilteredObjectTypes },
+                            });
                         }}
                         conformanceData={nodeData?.conformanceData}
                         showDetails={showDetails}
                         onShowDetailsChange={setShowDetails}
                         onExport={handleExport}
-                        isForestMode={isForestMode}
-                        setIsForestMode={handleModeToggle}
+                    />
+                ) : treeData ? (
+                    <OcptSidebar
+                        objectTypes={objectTypes}
+                        coloring={colorScale}
+                        nodeId={undefined}
+                        filteredObjectTypes={filteredObjectTypes}
+                        onFilteredObjectTypesChange={setFilteredObjectTypes}
+                        showDetails={showDetails}
+                        onShowDetailsChange={setShowDetails}
+                        onExport={handleExport}
                     />
                 ) : (
-                    <div>Can not load sidebar. No data found.</div>
+                    <div>Can not load sidebar. No nodeId found.</div>
                 )}
             </div>
         </SidebarProvider>

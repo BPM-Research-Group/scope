@@ -13,9 +13,10 @@ import FlowViewer from '~/routes/FlowViewer';
 import HistViz from '~/routes/Hist-Viz';
 import Home from '~/routes/Home';
 import OcelViewer from '~/routes/OcelViewer';
-import ResourceViewer from '~/routes/ResourceViewer';
+import OcpfViewer from '~/routes/OcpfViewer';
 import OcptViewer from '~/routes/OcptViewer';
 import Pipeline from '~/routes/Pipeline';
+import ResourceViewer from '~/routes/ResourceViewer';
 import Upload from '~/routes/Upload';
 import OcpnViewer from './routes/OcpnViewer';
 
@@ -39,10 +40,6 @@ const router = createBrowserRouter([
         path: '/data/pipeline/explore/',
         element: <Explore />,
     },
-    // {
-    //     path: '/ocel/ocel-visualization/',
-    //     element: <OcelVisualization />,
-    // },
     {
         path: '/data/pipeline/explore/ocpt/:nodeId',
         element: (
@@ -96,13 +93,21 @@ const router = createBrowserRouter([
         element: (
             <RedirectErrorBoundary>
                 <OcpnViewer />
-            </RedirectErrorBoundary>    
-         ),
-     },
-     {       
+            </RedirectErrorBoundary>
+        ),
+    },
+    {
+        path: '/data/pipeline/explore/ocpf/:nodeId',
+        element: (
+            <RedirectErrorBoundary>
+                <OcpfViewer />
+            </RedirectErrorBoundary>
+        ),
+    },
+    {
         path: '/data/pipeline/explore/resource_graph/:nodeId',
         element: (
-             <RedirectErrorBoundary>
+            <RedirectErrorBoundary>
                 <ResourceViewer />
             </RedirectErrorBoundary>
         ),

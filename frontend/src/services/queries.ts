@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     AbstractionSourceKind,
     extendOcptWithIdentity,
     getAbstraction,
     getAbstractionById,
-    getAdvancedCN,
+    getActivityResource,
     getCaseNotions,
     getConformanceAbstractionAbstraction,
     getConformanceExtendedOcptAbstraction,
@@ -13,24 +14,23 @@ import {
     getConformanceOcptAbstraction,
     getConformanceOcptOcel,
     getConformanceOcptOcpt,
-    getConnectedComponentsCN,
     getHistogramEventPersp,
     getHistogramObjectPersp,
+    getIdentityOcpt,
     getLogGraphs,
+    getOcel,
     getOcelCollection,
     getOcelObjectTypes,
+    getOcpf,
+    getOcpfByObject,
     getOcpn,
-    getOcpnFromOcpt,
-    getIdentityOcpt,
     getOcpt,
-    getTraditionalCN,
     mineIdentityOcpt,
     mineOcpn,
     mineOcpt,
-    getActivityResource,
+    mineProcessForest,
     postSpecialActivities,
 } from '~/services/api';
-import { getOcel } from '~/services/api';
 import { CaseNotionApiResponse } from '~/types/case_notion.types';
 
 export const useGetOcpt = (fileId: string | null, shouldFetch: boolean) => {
@@ -60,10 +60,7 @@ export const useGetOcel = (fileId: string | null) => {
     });
 };
 
-
 export const useGetActivityResource = (fileId: string | null) => {
-   
-
     return useQuery({
         queryKey: ['getActivityResource', fileId],
         queryFn: () => getActivityResource(fileId!),
@@ -72,34 +69,13 @@ export const useGetActivityResource = (fileId: string | null) => {
     });
 };
 
-// export const usePostSpecialActivity = (fileId: string | null, ac) => {
-//     console.log('query');
-//         console.log(fileId);
-
-//     return useQuery({
-//         queryKey: ['postSpecialActivities', fileId],
-//         queryFn: () => getActivityResource(fileId!),
-//         refetchOnWindowFocus: false,
-//         enabled: Boolean(fileId),
-//     });
-// };
-
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-
 export const usePostSpecialActivity = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({
-            fileId,
-            activities,
-        }: {
-            fileId: string;
-            activities: string[];
-        }) => postSpecialActivities(fileId, activities),
-
+        mutationFn: ({ fileId, activities }: { fileId: string; activities: string[] }) =>
+            postSpecialActivities(fileId, activities),
         onSuccess: (data, variables) => {
-            // 🔁 Refetch activity resource after POST
             queryClient.invalidateQueries({
                 queryKey: ['getActivityResource', variables.fileId],
             });
@@ -139,6 +115,24 @@ export const useMineOcpt = (nodeId: string, fileId: string | null, algorithm: st
         queryKey: ['mineOcpt', nodeId, fileId, algorithm],
         queryFn: () => mineOcpt(fileId!, algorithm),
         enabled: Boolean(fileId) && shouldFetch,
+        refetchOnWindowFocus: false,
+    });
+};
+
+export const useMineProcessForest = (nodeId: string, fileId: string | null, shouldFetch: boolean) => {
+    return useQuery({
+        queryKey: ['mineProcessForest', nodeId, fileId],
+        queryFn: () => mineProcessForest(fileId!),
+        enabled: Boolean(fileId) && shouldFetch,
+        refetchOnWindowFocus: false,
+    });
+};
+
+export const useGetOcpfByObject = (fileId: string | null, objectType: string | null, shouldFetch: boolean = true) => {
+    return useQuery({
+        queryKey: ['getOcpfByObject', fileId, objectType],
+        queryFn: () => getOcpfByObject(fileId!, objectType!),
+        enabled: Boolean(fileId) && Boolean(objectType) && shouldFetch,
         refetchOnWindowFocus: false,
     });
 };
@@ -188,7 +182,10 @@ export const useGetConformanceOcptAbstraction = (ocptId: string | null, abstract
     });
 };
 
-export const useGetConformanceExtendedOcptAbstraction = (extendedOcptId: string | null, abstractionId: string | null) => {
+export const useGetConformanceExtendedOcptAbstraction = (
+    extendedOcptId: string | null,
+    abstractionId: string | null
+) => {
     return useQuery({
         queryKey: ['getConformanceExtendedOcptAbstraction', extendedOcptId, abstractionId],
         queryFn: () => getConformanceExtendedOcptAbstraction(extendedOcptId!, abstractionId!),
@@ -206,7 +203,10 @@ export const useGetConformanceExtendedOcptOcel = (extendedOcptId: string | null,
     });
 };
 
-export const useGetConformanceExtendedOcptExtendedOcpt = (extendedOcptId1: string | null, extendedOcptId2: string | null) => {
+export const useGetConformanceExtendedOcptExtendedOcpt = (
+    extendedOcptId1: string | null,
+    extendedOcptId2: string | null
+) => {
     return useQuery({
         queryKey: ['getConformanceExtendedOcptExtendedOcpt', extendedOcptId1, extendedOcptId2],
         queryFn: () => getConformanceExtendedOcptExtendedOcpt(extendedOcptId1!, extendedOcptId2!),
@@ -215,7 +215,10 @@ export const useGetConformanceExtendedOcptExtendedOcpt = (extendedOcptId1: strin
     });
 };
 
-export const useGetConformanceAbstractionAbstraction = (abstractionId1: string | null, abstractionId2: string | null) => {
+export const useGetConformanceAbstractionAbstraction = (
+    abstractionId1: string | null,
+    abstractionId2: string | null
+) => {
     return useQuery({
         queryKey: ['getConformanceAbstractionAbstraction', abstractionId1, abstractionId2],
         queryFn: () => getConformanceAbstractionAbstraction(abstractionId1!, abstractionId2!),
@@ -287,11 +290,19 @@ export const useMineOcpn = (nodeId: string, fileId: string | null, shouldFetch: 
         refetchOnWindowFocus: false,
     });
 };
+
 export const useGetOcpn = (fileId: string | null, enabled: boolean = true) => {
     return useQuery({
         queryKey: ['getOcpn', fileId],
         queryFn: () => getOcpn(fileId as string),
-        // This ensures it only runs if the fileId actually exists AND the component says it's okay to run
+        enabled: !!fileId && enabled,
+    });
+};
+
+export const useGetOcpf = (fileId: string | null, enabled: boolean = true) => {
+    return useQuery({
+        queryKey: ['getProcessForest', fileId],
+        queryFn: () => getOcpf(fileId as string),
         enabled: !!fileId && enabled,
     });
 };
