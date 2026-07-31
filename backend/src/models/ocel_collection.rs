@@ -3,16 +3,53 @@ use crate::traits::import_export::ImportableFromPath;
 use async_trait::async_trait;
 use axum::http::StatusCode;
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, from_reader, from_value};
+use serde_json::{Map, Value, from_reader, from_value};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufReader, ErrorKind};
 use std::path::Path;
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct OCELCollection {
     pub ocels: Vec<OCEL>,
     pub attributes: HashMap<String, Value>,
+}
+
+impl OCELCollection {
+    /// Write `./temp/case_ocels_{id}.json`, return the new id.
+    pub async fn export_to_path(&self) -> Result<String, (StatusCode, String)> {
+        let export_id = Uuid::new_v4().to_string();
+        let mut payload = Map::new();
+        for (key, value) in &self.attributes {
+            payload.insert(key.clone(), value.clone());
+        }
+
+        let case_ocels_value = serde_json::to_value(&self.ocels).map_err(|err| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to serialize case OCELs: {err}"),
+            )
+        })?;
+        payload.insert("case_ocels".to_string(), case_ocels_value);
+
+        let path = format!("./temp/case_ocels_{}.json", export_id);
+        let pretty = serde_json::to_string_pretty(&Value::Object(payload)).map_err(|err| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to serialize case OCEL collection: {err}"),
+            )
+        })?;
+
+        tokio::fs::write(&path, pretty).await.map_err(|err| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to persist case OCEL collection: {err}"),
+            )
+        })?;
+
+        Ok(export_id)
+    }
 }
 
 #[async_trait]
