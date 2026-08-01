@@ -1,3 +1,4 @@
+pub mod activity_label_splitting;
 pub mod case_notion;
 pub mod clustering;
 pub mod df2_miner;

@@ -19,6 +19,27 @@ fn is_ocel_v2(v: &Value) -> bool {
     v.get("objectTypes").is_some() && v.get("eventTypes").is_some()
 }
 
+/// Replace null/missing relationship qualifiers with "" so OCEL deserialization succeeds.
+fn normalize_null_qualifiers(value: &mut Value) {
+    for key in ["events", "objects"] {
+        let Some(items) = value.get_mut(key).and_then(|v| v.as_array_mut()) else {
+            continue;
+        };
+        for item in items {
+            let Some(rels) = item.get_mut("relationships").and_then(|v| v.as_array_mut()) else {
+                continue;
+            };
+            for rel in rels {
+                if let Some(obj) = rel.as_object_mut() {
+                    if matches!(obj.get("qualifier"), Some(Value::Null) | None) {
+                        obj.insert("qualifier".to_string(), Value::String(String::new()));
+                    }
+                }
+            }
+        }
+    }
+}
+
 async fn ensure_temp_dir() -> Result<(), std::io::Error> {
     fs::create_dir_all("./temp").await
 }
@@ -35,6 +56,8 @@ pub async fn post_ocel_json(Json(payload): Json<Value>) -> impl IntoResponse {
             .into_response();
     }
 
+    let mut payload = payload;
+
     // Normalize into OCEL (v2 struct)
     let ocel_struct: OCEL = if is_ocel_v1(&payload) {
         match ocel_1_ocel_2_converter::convert_ocel1_value_to_ocel(&payload) {
@@ -46,7 +69,7 @@ pub async fn post_ocel_json(Json(payload): Json<Value>) -> impl IntoResponse {
             }
         }
     } else if is_ocel_v2(&payload) {
-        // Validate/normalize the v2 by parsing into OCEL
+        normalize_null_qualifiers(&mut payload);
         match serde_json::from_value::<OCEL>(payload) {
             Ok(oc) => oc,
             Err(e) => {
@@ -130,7 +153,7 @@ pub async fn post_ocel_binary(mut multipart: Multipart) -> impl IntoResponse {
             return (StatusCode::BAD_REQUEST, "File is not valid UTF-8").into_response();
         }
     };
-    let value: Value = match serde_json::from_str(text) {
+    let mut value: Value = match serde_json::from_str(text) {
         Ok(v) => v,
         Err(e) => {
             eprintln!("❌ Invalid JSON: {e}");
@@ -158,6 +181,7 @@ pub async fn post_ocel_binary(mut multipart: Multipart) -> impl IntoResponse {
             }
         }
     } else if is_ocel_v2(&value) {
+        normalize_null_qualifiers(&mut value);
         match serde_json::from_value::<OCEL>(value) {
             Ok(oc) => oc,
             Err(e) => {
