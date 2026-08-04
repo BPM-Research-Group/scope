@@ -18,6 +18,7 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
 
     const inputAsset = useInputAsset(assets);
     const fileId = inputAsset?.id ?? null;
+    const [loading, setLoading] = useState(false);
     const [result, setResult] = useState({
             case_ocels_file_id: '',
             source_case_ocels_file_id: inputAsset?.id ?? null,
@@ -26,7 +27,7 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
         });
 
 
-    useMinerOutput(node.id, result.case_ocels_file_id, "outputName", 'ocelCollectionFile', 'ocelCollectionNode');
+    useMinerOutput(node.id, result.case_ocels_file_id, "s_" + (inputAsset?.name ?? ''), 'ocelCollectionFile', 'ocelCollectionNode');
 
     const handleReset = useCallback(() => {
         queryClient.removeQueries({ queryKey: ['getAbstraction', node.id] });
@@ -35,6 +36,21 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
 
     const renderActions = () => {
         if (!fileId) return null;
+        return (
+            (loading) ? (
+            <div className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 rounded-md">
+                <span className="text-xs text-yellow-600">Processing...</span>
+            </div>
+            ) : result.splitting_applied ? (
+            <div className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 rounded-md">
+                <span className="text-xs text-blue-600">Splits applied</span>
+            </div>
+            ) : (
+            <div className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 rounded-md">
+                <span className="text-xs text-green-600">Checked</span>
+            </div>
+            )
+        );
     };
 
     const backendSimulating = () => {
@@ -43,7 +59,7 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
             console.log("Simulating backend processing for asset: ", inputAsset);
             return {case_ocels_file_id: inputAsset.id,
                 source_case_ocels_file_id: "446768e8-f013-4761-8e2d-04bbf27905f5",
-                splitting_applied: false,
+                splitting_applied: true,
                 splits: []
             };
         } 
@@ -51,6 +67,7 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
 
     useEffect(() => {
         if (!inputAsset) return;
+        setLoading(true);
         console.log("AssetChanged: ", inputAsset);
         const answer = backendSimulating();
         setResult(answer);
@@ -59,7 +76,10 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
         if (!answer.splitting_applied) {
             console.log("No splits applied");
 
+        } else {
+            console.log("Splits applied: ", answer.splits);
         }
+        setLoading(false);
     }, [inputAsset]);
 
     return (
@@ -72,7 +92,7 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
                 { id: 'source', position: Position.Right, type: 'source' as const },
             ]}
             dropdownOptions={[]}
-            isLoading={false}
+            isLoading={loading} //true starts the miner animation
             customActions={renderActions()}
             onReset={handleReset}
         />
