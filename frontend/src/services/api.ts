@@ -334,3 +334,24 @@ export const saveOcpt = async (ocpt: any): Promise<{ file_id: string }> => {
     const response = await api.post('v1/event_stream/save', ocpt);
     return response.data;
 };
+
+export const caseClustering = async (fileId: string, metric: string, algorithm: string = 'dfg-typ', k: number) => {
+    if(algorithm === 'k-medoids') {
+        const response = await api.get(`/v1/clustering/cluster/${fileId}`, { params: { k, metric } });
+        return response.data;
+    } else if (algorithm === 'agglomerative') {
+        const response = await api.get(`/v1/clustering/agglomerative/${fileId}`, { params: { k, metric } });
+        return response.data;
+    }
+    throw new Error(`Algorithm ${algorithm} not supported`);
+};
+
+export const agglomerativeClustering = async (aggFileId: string, k: number) => {
+    const response = await api.get(`/v1/clustering/agglomerative/${aggFileId}/cut?k=${k}`);
+    return response.data;
+};
+
+export const materialiseClustering = async (case_ocels_file_id: string, case_assignments:any, cluster_ids: number[]) => {
+    const response= await api.post(`/v1/clustering/materialize/${case_ocels_file_id}`, {case_assignments, cluster_ids}); 
+    return response;
+};

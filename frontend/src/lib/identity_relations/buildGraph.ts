@@ -36,49 +36,74 @@ export function buildFlowGraph(
         type: 'otNode' as const,
         position: { x: 0, y: 0 },
         data: { objectType: ot, color: getObjectColor(ot) },
-        draggable: false,
+        draggable: true,
     }));
 
     const edges: Edge[] = [];
 
-    relations.forEach((rel, i) => {
-        let sourceId: string;
-        if (rel.left.length === 1) {
-            sourceId = rel.left[0];
-        } else {
-            const hubId = `hub-left-${i}`;
+    // The miner can emit several relations over the same object-type groups (e.g. a
+    // subset sync always arrives paired with a sync on identical left/right sets), so
+    // hubs are shared per group and parallel edges are tagged for fanned-out rendering.
+    const hubIdsByGroup = new Map<string, string>();
+    const hubConnectors = new Set<string>();
+    const getHubId = (group: string[], connectTowardsHub: boolean): string => {
+        const key = [...group].sort().join(' ');
+        let hubId = hubIdsByGroup.get(key);
+        if (!hubId) {
+            hubId = `hub-${hubIdsByGroup.size}`;
+            hubIdsByGroup.set(key, hubId);
             g.setNode(hubId, { width: HUB_SIZE, height: HUB_SIZE });
             nodes.push({ id: hubId, type: 'hubNode' as const, position: { x: 0, y: 0 }, data: {}, draggable: false });
-            rel.left.forEach((ot) => {
-                g.setEdge(ot, hubId);
-                edges.push({ id: `${hubId}-${ot}`, source: ot, target: hubId, type: 'hubEdge' as const, data: {} });
-            });
-            sourceId = hubId;
         }
+        group.forEach((ot) => {
+            const connectorId = `${hubId}-${ot}`;
+            if (hubConnectors.has(connectorId)) return;
+            hubConnectors.add(connectorId);
+            const [source, target] = connectTowardsHub ? [ot, hubId!] : [hubId!, ot];
+            g.setEdge(source, target);
+            edges.push({ id: connectorId, source, target, type: 'hubEdge' as const, data: {} });
+        });
+        return hubId;
+    };
 
-        let targetId: string;
-        if (rel.right.length === 1) {
-            targetId = rel.right[0];
-        } else {
-            const hubId = `hub-right-${i}`;
-            g.setNode(hubId, { width: HUB_SIZE, height: HUB_SIZE });
-            nodes.push({ id: hubId, type: 'hubNode' as const, position: { x: 0, y: 0 }, data: {}, draggable: false });
-            rel.right.forEach((ot) => {
-                g.setEdge(hubId, ot);
-                edges.push({ id: `${hubId}-${ot}`, source: hubId, target: ot, type: 'hubEdge' as const, data: {} });
-            });
-            targetId = hubId;
-        }
+    const resolved = relations.map((rel) => ({
+        rel,
+        sourceId: rel.left.length === 1 ? rel.left[0] : getHubId(rel.left, true),
+        targetId: rel.right.length === 1 ? rel.right[0] : getHubId(rel.right, false),
+    }));
 
-        g.setEdge(sourceId, targetId);
+    const pairKey = (a: string, b: string) => (a < b ? `${a} ${b}` : `${b} ${a}`);
+    const pairCounts = new Map<string, number>();
+    resolved.forEach(({ sourceId, targetId }) => {
+        const key = pairKey(sourceId, targetId);
+        pairCounts.set(key, (pairCounts.get(key) ?? 0) + 1);
+    });
+
+    const pairSeen = new Map<string, number>();
+    resolved.forEach(({ rel, sourceId, targetId }, i) => {
+        const key = pairKey(sourceId, targetId);
+        const parallelIndex = pairSeen.get(key) ?? 0;
+        pairSeen.set(key, parallelIndex + 1);
+
+        // dagre is not a multigraph; one edge per pair is enough for layout
+        if (parallelIndex === 0) g.setEdge(sourceId, targetId);
+
         edges.push({
             id: rel.id ?? `rel-${i}`,
             source: sourceId,
             target: targetId,
             type: 'identityRelEdge' as const,
-            data: { kind: rel.kind, batchSize: rel.batchSize, activities: rel.activities },
+            data: {
+                kind: rel.kind,
+                batchSize: rel.batchSize,
+                activities: rel.activities,
+                parallelIndex,
+                parallelCount: pairCounts.get(key),
+            },
             markerEnd: ARROW_MARKER,
-            markerStart: ['sync', 'subsetSync', 'subsetSyncPartition', 'subsetSyncOverlap'].includes(rel.kind) ? ARROW_MARKER : undefined,
+            markerStart: ['sync', 'subsetSync', 'subsetSyncPartition', 'subsetSyncOverlap'].includes(rel.kind)
+                ? ARROW_MARKER
+                : undefined,
         });
     });
 

@@ -12,7 +12,6 @@ import { useMineCaseNotionMutation } from '~/services/mutation';
 import { useAttributeStats, useCaseStats, useKpiHistogramFilter, useMineKpi } from '~/services/queries';
 import { createNode } from '~/lib/explore/createNode';
 import { handleConnect } from '~/lib/explore/flowActions';
-import { HistogramChart } from '../HistogramChart';
 import { HistChart } from './HistChart';
 
 type Stats = {

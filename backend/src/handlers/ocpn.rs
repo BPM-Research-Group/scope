@@ -1,5 +1,7 @@
-use crate::core::ocpf_conversion::ConvertProcessForestToOcpnError;
-use crate::core::ocpf_conversion::convert_process_forest_to_ocpn;
+use crate::core::ocpf_conversion::{
+    ConvertProcessForestToOcpnError, convert_process_forest_to_ocpn,
+    convert_process_forest_to_optimized_ocpn, convert_process_forest_to_semantic_ocpn,
+};
 use crate::core::ocpn_conversion::{ConvertOcptToOcpnError, convert_ocpt_to_ocpn};
 use crate::core::struct_converters::ocpn_ocgraphconf::backend_to_ocgraphconf;
 use crate::handlers::ocpt::ensure_temp_dir;
@@ -9,6 +11,7 @@ use crate::models::process_forest::ProcessForest;
 use crate::traits::import_export::{ExportableToPath, ImportableFromPath};
 use axum::{Json, extract::Path, http::StatusCode, response::IntoResponse, response::Response};
 use axum_extra::extract::Multipart;
+use serde::Deserialize;
 use serde_json::Value;
 use tokio::fs;
 
@@ -141,18 +144,77 @@ pub async fn get_ocpn_from_process_forest(
     Path(process_forest_id): Path<String>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let process_forest = ProcessForest::import_from_path(&process_forest_id).await?;
-    if !process_forest.is_valid() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            "Source Process Forest is invalid".to_string(),
-        ));
-    }
+    let ocpn = convert_process_forest_to_optimized_ocpn(&process_forest)
+        .map_err(map_ocpf_convert_error)?;
+    let file_id = ocpn.export_to_path().await?;
+    let payload = serde_json::json!({
+        "file_id": file_id,
+        "source_process_forest_id": process_forest_id,
+        "optimization": "parallel_boundary_contraction",
+        "ocpn": ocpn,
+    });
+    Ok((StatusCode::OK, Json(payload)))
+}
 
+pub async fn get_reference_ocpn_from_process_forest(
+    Path(process_forest_id): Path<String>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let process_forest = ProcessForest::import_from_path(&process_forest_id).await?;
     let ocpn = convert_process_forest_to_ocpn(&process_forest).map_err(map_ocpf_convert_error)?;
     let file_id = ocpn.export_to_path().await?;
     let payload = serde_json::json!({
         "file_id": file_id,
-        "source_process_forest_file_id": process_forest_id,
+        "source_process_forest_id": process_forest_id,
+        "conversion": "paper_reference",
+        "ocpn": ocpn,
+    });
+    Ok((StatusCode::OK, Json(payload)))
+}
+
+pub async fn get_optimized_ocpn_from_process_forest(
+    Path(process_forest_id): Path<String>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let process_forest = ProcessForest::import_from_path(&process_forest_id).await?;
+    let ocpn = convert_process_forest_to_optimized_ocpn(&process_forest)
+        .map_err(map_ocpf_convert_error)?;
+    let file_id = ocpn.export_to_path().await?;
+    let payload = serde_json::json!({
+        "file_id": file_id,
+        "source_process_forest_id": process_forest_id,
+        "optimization": "parallel_boundary_contraction",
+        "ocpn": ocpn,
+    });
+    Ok((StatusCode::OK, Json(payload)))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SemanticOcpnQuery {
+    object_types: Option<String>,
+}
+
+pub async fn get_semantic_ocpn_from_process_forest(
+    Path(process_forest_id): Path<String>,
+    axum::extract::Query(query): axum::extract::Query<SemanticOcpnQuery>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let process_forest = ProcessForest::import_from_path(&process_forest_id).await?;
+    let object_types = query.object_types.map_or_else(
+        || process_forest.object_types.clone(),
+        |value| {
+            value
+                .split(',')
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(str::to_string)
+                .collect()
+        },
+    );
+    let ocpn = convert_process_forest_to_semantic_ocpn(&process_forest, &object_types)
+        .map_err(map_ocpf_convert_error)?;
+    let file_id = ocpn.export_to_path().await?;
+    let payload = serde_json::json!({
+        "file_id": file_id,
+        "source_process_forest_id": process_forest_id,
+        "object_types": object_types,
         "ocpn": ocpn,
     });
     Ok((StatusCode::OK, Json(payload)))
@@ -209,12 +271,14 @@ fn map_convert_error(error: ConvertOcptToOcpnError) -> (StatusCode, String) {
 fn map_ocpf_convert_error(error: ConvertProcessForestToOcpnError) -> (StatusCode, String) {
     match error {
         ConvertProcessForestToOcpnError::InvalidProcessForest
-        | ConvertProcessForestToOcpnError::DuplicateObjectType(_)
-        | ConvertProcessForestToOcpnError::InvalidLeafMetadata { .. }
-        | ConvertProcessForestToOcpnError::MissingOperator { .. } => {
+        | ConvertProcessForestToOcpnError::InvalidLeafMetadata
+        | ConvertProcessForestToOcpnError::TooManyDeficientObjectTypes { .. }
+        | ConvertProcessForestToOcpnError::EmptySemanticObjectTypes
+        | ConvertProcessForestToOcpnError::UnknownSemanticObjectType(_) => {
             (StatusCode::BAD_REQUEST, error.to_string())
         }
-        ConvertProcessForestToOcpnError::InvalidGeneratedOcpn => {
+        ConvertProcessForestToOcpnError::SemanticProjectionFailed(_)
+        | ConvertProcessForestToOcpnError::InvalidGeneratedOcpn => {
             (StatusCode::INTERNAL_SERVER_ERROR, error.to_string())
         }
     }
@@ -224,7 +288,7 @@ fn map_ocpf_convert_error(error: ConvertProcessForestToOcpnError) -> (StatusCode
 mod tests {
     use super::*;
     use crate::models::ocpn::{OCPNArc, OCPNNodeRef, OCPNPlace, OCPNProperties, OCPNTransition};
-    use crate::models::process_forest::ProcessForestNode;
+    use crate::models::process_forest::{ProcessForestNode, ProcessForestOperator};
     use axum::body::to_bytes;
 
     fn sample_ocpn() -> OCPN {
@@ -300,18 +364,17 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn process_forest_conversion_handler_persists_generated_ocpn() {
+    async fn default_process_forest_handler_persists_optimized_ocpn() {
         let process_forest = ProcessForest {
             object_types: vec!["order".to_string()],
             root: ProcessForestNode::Leaf {
-                activity: Some("pay".to_string()),
+                activity: Some("register".to_string()),
                 related: vec!["order".to_string()],
                 convergent: Vec::new(),
                 deficient: Vec::new(),
             },
         };
         let process_forest_id = process_forest.export_to_path().await.unwrap();
-
         let response = get_ocpn_from_process_forest(Path(process_forest_id.clone()))
             .await
             .unwrap()
@@ -320,16 +383,106 @@ mod tests {
 
         let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
         let payload: serde_json::Value = serde_json::from_slice(&body).unwrap();
-        let ocpn_id = payload["file_id"].as_str().unwrap();
         assert_eq!(
-            payload["source_process_forest_file_id"].as_str(),
+            payload["source_process_forest_id"].as_str(),
             Some(process_forest_id.as_str())
         );
-        assert_eq!(payload["ocpn"]["name"].as_str(), Some("process_forest"));
+        assert_eq!(
+            payload["ocpn"]["properties"]["soundness"].as_str(),
+            Some("identifier-sound-via-behavior-preserving-parallel-contraction")
+        );
+        assert_eq!(
+            payload["optimization"].as_str(),
+            Some("parallel_boundary_contraction")
+        );
 
+        let ocpn_id = payload["file_id"].as_str().unwrap();
         let process_forest_path = format!("./temp/ocpf_{process_forest_id}.json");
         let ocpn_path = format!("./temp/ocpn_{ocpn_id}.json");
         tokio::fs::remove_file(process_forest_path).await.unwrap();
         tokio::fs::remove_file(ocpn_path).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn reference_process_forest_handler_keeps_paper_construction() {
+        let process_forest = ProcessForest {
+            object_types: vec!["order".to_string()],
+            root: ProcessForestNode::Leaf {
+                activity: Some("register".to_string()),
+                related: vec!["order".to_string()],
+                convergent: Vec::new(),
+                deficient: Vec::new(),
+            },
+        };
+        let process_forest_id = process_forest.export_to_path().await.unwrap();
+        let response = get_reference_ocpn_from_process_forest(Path(process_forest_id.clone()))
+            .await
+            .unwrap()
+            .into_response();
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let payload: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(payload["conversion"].as_str(), Some("paper_reference"));
+        assert_eq!(
+            payload["ocpn"]["properties"]["soundness"].as_str(),
+            Some("identifier-sound-by-construction")
+        );
+
+        let ocpn_id = payload["file_id"].as_str().unwrap();
+        tokio::fs::remove_file(format!("./temp/ocpf_{process_forest_id}.json"))
+            .await
+            .unwrap();
+        tokio::fs::remove_file(format!("./temp/ocpn_{ocpn_id}.json"))
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn optimized_process_forest_handler_persists_contracted_ocpn() {
+        let activity = |name: &str| ProcessForestNode::Leaf {
+            activity: Some(name.to_string()),
+            related: vec!["order".to_string()],
+            convergent: Vec::new(),
+            deficient: Vec::new(),
+        };
+        let process_forest = ProcessForest {
+            object_types: vec!["order".to_string()],
+            root: ProcessForestNode::Operator {
+                operators: std::collections::BTreeMap::from([(
+                    "order".to_string(),
+                    ProcessForestOperator::Parallel,
+                )]),
+                children: vec![activity("create"), activity("finish")],
+            },
+        };
+        let process_forest_id = process_forest.export_to_path().await.unwrap();
+        let response = get_optimized_ocpn_from_process_forest(Path(process_forest_id.clone()))
+            .await
+            .unwrap()
+            .into_response();
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let payload: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(
+            payload["optimization"].as_str(),
+            Some("parallel_boundary_contraction")
+        );
+        assert_eq!(
+            payload["ocpn"]["properties"]["parallel_boundary_contraction"].as_bool(),
+            Some(true)
+        );
+        assert_eq!(payload["ocpn"]["places"].as_array().unwrap().len(), 4);
+        assert_eq!(payload["ocpn"]["transitions"].as_array().unwrap().len(), 4);
+        assert_eq!(payload["ocpn"]["arcs"].as_array().unwrap().len(), 8);
+
+        let ocpn_id = payload["file_id"].as_str().unwrap();
+        tokio::fs::remove_file(format!("./temp/ocpf_{process_forest_id}.json"))
+            .await
+            .unwrap();
+        tokio::fs::remove_file(format!("./temp/ocpn_{ocpn_id}.json"))
+            .await
+            .unwrap();
     }
 }

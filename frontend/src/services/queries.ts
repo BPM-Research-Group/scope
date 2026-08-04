@@ -33,6 +33,9 @@ import {
     attributeStats,
     caseStats,
     kpiHistogramFilter,
+    caseClustering,
+    agglomerativeClustering,
+    materialiseClustering
 } from '~/services/api';
 import { getOcel } from '~/services/api';
 import { CaseNotionApiResponse } from '~/types/case_notion.types';
@@ -203,6 +206,7 @@ export const useMineIdentityOcpt = (nodeId: string, fileId: string | null, algor
 };
 
 export const useGetIdentityOcpt = (fileId: string | null, shouldFetch: boolean) => {
+    console.log('Api, file ID 2.2', fileId);
     return useQuery({
         queryKey: ['getIdentityOcpt', fileId],
         queryFn: () => getIdentityOcpt(fileId!),
@@ -345,3 +349,30 @@ export const useGetOcpn = (fileId: string | null, enabled: boolean = true) => {
         enabled: !!fileId && enabled,
     });
 };
+
+export const useCaseClustering = (nodeId: string, fileId: string | null, metric:string, algorithm: string, numberOfClusters: number, shouldFetch: boolean) => {
+    return useQuery({
+        queryKey: ['caseClustering', nodeId, fileId, metric, algorithm, numberOfClusters],
+        queryFn: () => caseClustering(fileId!, metric, algorithm, numberOfClusters),
+        enabled: Boolean(fileId) && shouldFetch,
+        refetchOnWindowFocus: false,
+    });
+};
+
+export const useAgglomerativeClustering = (nodeId: string, fileId: string | null, numberOfClusters: number, shouldFetch: boolean) => {
+    return useQuery({
+        queryKey: ['agglomerativeClustering', nodeId, fileId, numberOfClusters],
+        queryFn: () => agglomerativeClustering(fileId!,numberOfClusters),
+        enabled: Boolean(fileId) && shouldFetch,
+        refetchOnWindowFocus: false,
+    });
+};
+
+export const useMaterialiseClustering = (case_ocels_file_id: string, case_assignments:any, cluster_ids: number[], shouldFetch: boolean) => {
+    return useQuery({
+        queryKey: ['materialiseClustering', case_ocels_file_id,case_assignments, cluster_ids],
+        queryFn: () => materialiseClustering(case_ocels_file_id, case_assignments, cluster_ids),
+        enabled: Boolean(case_ocels_file_id) && shouldFetch,
+        refetchOnWindowFocus: false,
+    })
+}

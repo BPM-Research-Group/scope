@@ -4,6 +4,8 @@ import type { BaseExploreNodeAsset } from '~/types/explore/nodeData/baseNodeData
 import type { ExploreNodeType } from '~/types/explore/nodeTypesCategories';
 import type { AssetType } from '~/types/files.types';
 
+import { handleMultipleMinerOutputs, MinerOutputConfig } from '~/lib/explore/flowActions';
+
 /**
  * Returns the first input asset matching the given type(s), or null.
  * Pass no types to match any input asset.
@@ -36,4 +38,17 @@ export function useMinerOutput(
         if (!outputAssetId || !inputFileName) return;
         handleMinerOutput({ nodeId, outputAssetId, outputAssetType, outputNodeType, inputFileName });
     }, [nodeId, outputAssetId, inputFileName, outputAssetType, outputNodeType]);
+}
+
+export function useMultipleMinerOutputs(
+    nodeId: string,
+    outputs: MinerOutputConfig[],
+    isReady: boolean = false
+) {
+    useEffect(() => {
+        if (!isReady) return;
+        const validOutputs = outputs.filter(o => o.outputAssetId && o.inputFileName);
+        if (validOutputs.length === 0) return;
+        handleMultipleMinerOutputs(nodeId, validOutputs);
+    }, [nodeId, JSON.stringify(outputs), isReady]);
 }
