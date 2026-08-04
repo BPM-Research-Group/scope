@@ -19,7 +19,7 @@ export const KIND_SYMBOLS: Record<IdentityRelationKind, string> = {
     subsetSyncOverlap: '⊆~',
     impConcurrent: '‖',
     impOrdered: '[→]',
-    impBatch: 'xk',
+    impBatch: '×k',
     objectSplit: '÷',
     objectMerge: '⊕',
 };

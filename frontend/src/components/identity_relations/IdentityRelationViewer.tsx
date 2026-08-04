@@ -23,7 +23,6 @@ export interface IdentityRelationViewerProps {
 const nodeTypes = { otNode: IdentityRelationOtNode, hubNode: IdentityRelationHubNode };
 const edgeTypes = { identityRelEdge: IdentityRelationEdge, hubEdge: HubEdge };
 
-// Line-style families — must mirror getDashArray() in IdentityRelationEdge.
 const IMPLICATION_KINDS: IdentityRelationKind[] = ['impConcurrent', 'impOrdered', 'impBatch'];
 const OBJECT_KINDS: IdentityRelationKind[] = ['objectSplit', 'objectMerge'];
 
