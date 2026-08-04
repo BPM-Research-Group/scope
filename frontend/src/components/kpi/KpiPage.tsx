@@ -1,14 +1,7 @@
 import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { AxisBottom, AxisLeft } from '@visx/axis';
-import { Group } from '@visx/group';
-import { scaleBand, scaleLinear, scaleOrdinal } from '@visx/scale';
-import { Bar, Pie } from '@visx/shape';
 import axios from 'axios';
-import { FileVideo2 } from 'lucide-react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { v4 as uuidv4 } from 'uuid';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useExploreFlowStore } from '~/stores/exploreStore';
-import { useMineCaseNotionMutation } from '~/services/mutation';
 import { useAttributeStats, useCaseStats, useKpiHistogramFilter, useMineKpi } from '~/services/queries';
 import { createNode } from '~/lib/explore/createNode';
 import { handleConnect } from '~/lib/explore/flowActions';
@@ -93,24 +86,12 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId, Id, sourceType }) => {
     const [showActivityHistogram, setShowActivityHistogram] = useState(false);
     const [selectedActivityBins, setSelectedActivityBins] = useState<number[]>([]);
     const [selectedCaseType, setSelectedCaseType] = useState('case_attribute_object_type');
-
     const [hasUnminedChanges, setHasUnminedChanges] = useState(false);
-
-    const [algorithm, setAlgorithm] = useState<string>('traditional');
-
-    const [genericPayload, setGenericPayload] = useState<any>(null);
     const [shouldFetchStats, setShouldFetchStats] = useState(false);
     const { data: metadata, isLoading: metadataLoading, error: metadataError } = useMineKpi(fileId);
-    const [timeKpiType, setTimeKpiType] = useState<'case_duration' | 'activity_time'>('case_duration');
-
     const [fromActivity, setFromActivity] = useState('');
     const [toActivity, setToActivity] = useState('');
-
-    const [timeStats, setTimeStats] = useState<Stats | null>(null);
-
-    const [isLoadingTimeKpi, setIsLoadingTimeKpi] = useState(false);
     const [successors, setSuccessors] = useState<Record<string, string[]>>({});
-    const [isLoadingSuccessors, setIsLoadingSuccessors] = useState(false);
     const [leftIntraCaseAgg, setLeftIntraCaseAgg] = useState<'sum' | 'mean' | 'min' | 'max' | 'count' | ''>('');
     const [rightIntraCaseAgg, setRightIntraCaseAgg] = useState<'sum' | 'mean' | 'min' | 'max' | 'count' | ''>('');
     const [intraCaseAgg, setIntraCaseAgg] = useState<'sum' | 'mean' | 'min' | 'max' | 'count' | ''>('sum');
@@ -120,14 +101,6 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId, Id, sourceType }) => {
     const navigate = useNavigate();
     const { addNode, updateNodeData, getNode } = useExploreFlowStore();
     const [kpiFilterPayload, setKpiFilterPayload] = useState<any>(null);
-
-    // const {
-    //     mutate,
-    //     isPending: isMiningCaseNotion,
-    //     data: caseNotionData,
-    //     reset: resetCaseNotionMutation,
-    // } = useMineCaseNotionMutation();
-
     const [aggregation, setAggregation] = useState<keyof Stats>('mean');
 
     const activityBins = useMemo(
@@ -749,7 +722,6 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId, Id, sourceType }) => {
             outline-none
         "
                                     >
-                                        {/* <option value="">None (Default)</option> */}
                                         <option value="sum">Sum per Case</option>
                                         <option value="mean">Mean per Case</option>
                                         <option value="min">Min per Case</option>
@@ -1343,7 +1315,6 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId, Id, sourceType }) => {
             outline-none
         "
                                     >
-                                        {/* <option value="">None (Default)</option> */}
                                         <option value="sum">Sum per Case</option>
                                         <option value="mean">Mean per Case</option>
                                         <option value="min">Min per Case</option>
@@ -1361,7 +1332,7 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId, Id, sourceType }) => {
                                 value={selectedHistogramOption.toString()}
                                 onChange={(e) => {
                                     setSelectedHistogramOption(e.target.value === 'true');
-                                    // onChange={(e) => setAggregation(e.target.value as keyof Stats)}
+
                                     setShouldFetchStats(false);
                                 }}
                                 className="
@@ -1492,8 +1463,6 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId, Id, sourceType }) => {
             )}
 
             {selectedHistogramOption == true && showHistogram && hasHistogram && (
-                // <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                //     <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl p-6 mx-4">
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
                     <div className="bg-white rounded-2xl shadow-xl w-[95vw] h-[90vh] overflow-auto p-6">
                         <div className="flex items-center justify-between mb-6">
@@ -1570,15 +1539,6 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId, Id, sourceType }) => {
                                 width={950}
                                 height={500}
                             />
-                            {/* <div className="mt-4 flex justify-end">
-        <button
-            onClick={applyActivityHistogramFilter}
-            disabled={isApplyingActivityFilter}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl"
-        >
-           {isApplyingActivityFilter ? "Filtering..." : "Apply Filter"}
-        </button>
-    </div> */}
                         </div>
                     </div>
                 </div>

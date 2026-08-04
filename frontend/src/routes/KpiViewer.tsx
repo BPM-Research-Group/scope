@@ -11,7 +11,6 @@ const KpiViewer: React.FC = () => {
     const { nodeId } = useParams<{ nodeId: string }>();
     const { getNode } = useExploreFlowStore();
 
-    
     useEffect(() => {
         const savedFlow = localStorage.getItem('currentExploreFlow');
 
@@ -25,34 +24,23 @@ const KpiViewer: React.FC = () => {
         }
     }, []);
 
-    
     const node = useMemo(() => {
         if (!nodeId) return undefined;
         return getNode(nodeId);
     }, [nodeId, getNode]);
 
-    
     const firstAsset = node?.data?.assets?.[0];
 
-    
     const fileId = firstAsset?.id ?? null;
-    
-    
 
-    
-    const sourceType: Extract<
-        ExploreFileNodeType,
-        'ocelFileNode' | 'ocelCollectionNode'
-    > =
+    const sourceType: Extract<ExploreFileNodeType, 'ocelFileNode' | 'ocelCollectionNode'> =
         firstAsset?.type &&
         (assetTypeToNodeType(firstAsset.type) === 'ocelCollectionNode' ||
             assetTypeToNodeType(firstAsset.type) === 'ocelFileNode')
             ? assetTypeToNodeType(firstAsset.type)
             : 'ocelFileNode';
 
-    useEffect(() => {
-       
-    }, [node, fileId, sourceType]);
+    useEffect(() => {}, [node, fileId, sourceType]);
 
     return (
         <SidebarProvider>
@@ -60,11 +48,7 @@ const KpiViewer: React.FC = () => {
                 <BreadcrumbNav />
 
                 <div className="flex flex-1 h-full w-full overflow-hidden">
-                    <KpiPage
-                        fileId={fileId}
-                        sourceType={sourceType}
-                        Id={nodeId!}
-                    />
+                    <KpiPage fileId={fileId} sourceType={sourceType} Id={nodeId!} />
                 </div>
             </div>
         </SidebarProvider>
