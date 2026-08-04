@@ -30,6 +30,7 @@ import OcpnMinerNode from '~/components/explore/miner/OcpnMinerNode';
 import OcptMinerNode from '~/components/explore/miner/OcptMinerNode';
 import OcptStreamMinerNode from '~/components/explore/miner/OcptStreamMinerNode';
 import ResourceMinerNode from '~/components/explore/miner/ResourceMinerNode';
+import SanityCheckMinerNode from '~/components/explore/miner/SanityCheckMinerNode';
 import { RefocusProgressPanel } from '~/components/explore/RefocusProgressPanel';
 import { RestoreDraftPanel } from '~/components/explore/RestoreDraftPanel';
 import { useConnections } from '~/hooks/explore/useConnections';
@@ -64,6 +65,8 @@ const nodeTypes = {
     flowFileNode: FlowFileNode,
     kpiBuilderNode: KpiBuilderNode,
     caseClusteringMinerNode: CaseClusteringMinerNode,
+    sanityCheckMinerNode: SanityCheckMinerNode,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } satisfies Record<keyof typeof nodeRegistry, React.ComponentType<NodeProps<any>>>;
 
 const Explore: React.FC = () => {
