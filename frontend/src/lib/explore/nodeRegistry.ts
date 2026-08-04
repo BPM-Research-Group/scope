@@ -82,7 +82,7 @@ export const nodeRegistry = {
     // ── Miner nodes ────────────────────────────────────────────────────────────
     ocptMinerNode: {
         category: 'miner',
-        allowedAssetTypes: ['ocelFile'],
+        allowedAssetTypes: ['ocelFile', 'ocelCollectionFile'],
         sidebar: { label: 'OCPT Miner', icon: 'treePine', group: 'miners' },
     },
     histogramMinerNode: {
@@ -106,10 +106,17 @@ export const nodeRegistry = {
     },
     flowMinerNode: {
         category: 'miner',
-        allowedAssetTypes: ['ocptAsset', 'ocptFile', 'identityOcptAsset', 'ocelAsset', 'ocelFile'],
+        allowedAssetTypes: [
+            'ocptAsset',
+            'ocptFile',
+            'identityOcptAsset',
+            'ocelAsset',
+            'ocelFile',
+            'ocelCollectionFile',
+        ],
         inputs: [
             { label: 'Model', types: ['ocptAsset', 'ocptFile', 'identityOcptAsset'] },
-            { label: 'Log', types: ['ocelAsset', 'ocelFile'] },
+            { label: 'Log', types: ['ocelAsset', 'ocelFile', 'ocelCollectionFile'] },
         ],
         sidebar: { label: 'Flow Visualization', icon: 'zap', group: 'miners' },
     },
