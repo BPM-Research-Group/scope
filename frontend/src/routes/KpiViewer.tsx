@@ -2,10 +2,12 @@ import { useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { SidebarProvider } from '~/components/ui/sidebar';
 import BreadcrumbNav from '~/components/BreadcrumbNav';
-import KpiPage from '~/components/kpi/KpiPage';
+// import KpiPage from '~/components/kpi/KpiPage';
+import Kpi from '/components/kpi/KpiBuilder';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { assetTypeToNodeType } from '~/lib/explore/exploreNodes.utils';
 import { ExploreFileNodeType } from '~/types/explore/nodeTypesCategories';
+import KpiBuilder from '~/components/kpi/KpiBuilder';
 
 const KpiViewer: React.FC = () => {
     const { nodeId } = useParams<{ nodeId: string }>();
@@ -48,7 +50,7 @@ const KpiViewer: React.FC = () => {
                 <BreadcrumbNav />
 
                 <div className="flex flex-1 h-full w-full overflow-hidden">
-                    <KpiPage fileId={fileId} sourceType={sourceType} Id={nodeId!} />
+                    <KpiBuilder fileId={fileId} sourceType={sourceType} Id={nodeId!} />
                 </div>
             </div>
         </SidebarProvider>
