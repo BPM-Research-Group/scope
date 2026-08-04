@@ -4,16 +4,16 @@ import { scaleOrdinal } from '@visx/scale';
 import { hierarchy as d3Hierarchy } from 'd3';
 import { schemeSet1 } from 'd3-scale-chromatic';
 import { useParams } from 'react-router-dom';
+import { SidebarInset, SidebarProvider } from '~/components/ui/sidebar';
+import BreadcrumbNav from '~/components/BreadcrumbNav';
 import FlowWithAnimation from '~/components/flow/Flow';
 import FlowSidebar from '~/components/flow/FlowSidebar';
-import BreadcrumbNav from '~/components/BreadcrumbNav';
-import { SidebarInset, SidebarProvider } from '~/components/ui/sidebar';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { useColorScaleStore } from '~/stores/store';
-import { useGetIdentityOcpt, useGetOcpt, useGetOcel } from '~/services/queries';
+import { useGetIdentityOcpt, useGetOcel, useGetOcelCollection, useGetOcpt } from '~/services/queries';
+import { buildObjectFlowMap, flattenOcel2Events, type Ocel2Response } from '~/lib/flow/parseOcel';
 import { addIdsToTree } from '~/lib/ocpt/ocptAddIds';
 import { updateTreeWithExtendedOperators } from '~/lib/ocpt/ocptProject';
-import { buildObjectFlowMap, flattenOcel2Events, type Ocel2Response } from '~/lib/flow/parseOcel';
 import type { ObjectFlowMapRecord, OcelEventData } from '~/types/ocel.types';
 import type { Node as OcptNode } from '~/types/ocpt/ocpt.types';
 
@@ -31,25 +31,53 @@ const FlowViewer: React.FC = () => {
     const ocptAsset = useMemo(
         () =>
             node?.data.assets.find(
-                (a) => a.io === 'input' && (a.type === 'ocptFile' || a.type === 'ocptAsset' || a.type === 'identityOcptAsset')
+                (a) =>
+                    a.io === 'input' &&
+                    (a.type === 'ocptFile' || a.type === 'ocptAsset' || a.type === 'identityOcptAsset')
             ),
         [node?.data.assets]
     );
 
     const ocelAsset = useMemo(
-        () => node?.data.assets.find((a) => a.io === 'input' && (a.type === 'ocelFile' || a.type === 'ocelAsset')),
+        () =>
+            node?.data.assets.find(
+                (a) =>
+                    a.io === 'input' &&
+                    (a.type === 'ocelFile' || a.type === 'ocelAsset' || a.type === 'ocelCollectionFile')
+            ),
         [node?.data.assets]
     );
 
     const isIdentity = ocptAsset?.type === 'identityOcptAsset';
+
+    // A Case Collection log holds many case-level OCELs, the user steps through
+    // them one at a time so the animation stays legible instead of merging all cases.
+    const isCollectionLog = ocelAsset?.type === 'ocelCollectionFile';
 
     // Fetch OCPT — regular or identity
     const { data: regularOcptData } = useGetOcpt(!isIdentity ? (ocptAsset?.id ?? null) : null, true);
     const { data: identityOcptData } = useGetIdentityOcpt(isIdentity ? (ocptAsset?.id ?? null) : null, true);
     const ocptResponse = regularOcptData ?? identityOcptData;
 
-    // Fetch OCEL — returned in OCEL 2.0 JSON format
-    const { data: rawOcel } = useGetOcel(ocelAsset?.id ?? null);
+    // Fetch the Log: a single OCEL, or a collection we index into. Both are OCEL 2.0 JSON.
+    const { data: singleOcel } = useGetOcel(!isCollectionLog ? (ocelAsset?.id ?? null) : null);
+    const { data: collectionData } = useGetOcelCollection(isCollectionLog ? (ocelAsset?.id ?? null) : null);
+
+    const caseCount = collectionData?.case_ocels?.length ?? 0;
+    const [selectedCaseIndex, setSelectedCaseIndex] = useState(0);
+
+    // Guard against a stale index if the collection shrinks or changes.
+    useEffect(() => {
+        if (selectedCaseIndex >= caseCount && caseCount > 0) setSelectedCaseIndex(0);
+    }, [caseCount, selectedCaseIndex]);
+
+    const rawOcel = useMemo(() => {
+        if (isCollectionLog) {
+            const cases = collectionData?.case_ocels;
+            return cases && selectedCaseIndex < cases.length ? cases[selectedCaseIndex] : undefined;
+        }
+        return singleOcel;
+    }, [isCollectionLog, collectionData, singleOcel, selectedCaseIndex]);
 
     const ocel = useMemo<OcelEventData[]>(() => {
         if (!rawOcel?.events) return [];
@@ -69,7 +97,10 @@ const FlowViewer: React.FC = () => {
         if (!ocptResponse) return { ocptHierarchy: null, objectTypes: [] };
 
         const nodeWithIds = addIdsToTree(ocptResponse.ocpt.hierarchy);
-        const root = d3Hierarchy<OcptNode>(nodeWithIds, (n) => n.children ?? []) as unknown as HierarchyPointNode<OcptNode>;
+        const root = d3Hierarchy<OcptNode>(
+            nodeWithIds,
+            (n) => n.children ?? []
+        ) as unknown as HierarchyPointNode<OcptNode>;
         updateTreeWithExtendedOperators(root);
 
         return { ocptHierarchy: root, objectTypes: ocptResponse.ocpt.ots };
@@ -122,6 +153,9 @@ const FlowViewer: React.FC = () => {
                 nodeId={nodeId}
                 filteredObjectTypes={filteredObjectTypes}
                 onFilteredObjectTypesChange={setFilteredObjectTypes}
+                caseCount={isCollectionLog ? caseCount : undefined}
+                selectedCaseIndex={selectedCaseIndex}
+                onSelectedCaseIndexChange={setSelectedCaseIndex}
             />
         </SidebarProvider>
     );
