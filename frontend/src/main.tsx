@@ -17,6 +17,7 @@ import ResourceViewer from '~/routes/ResourceViewer';
 import OcptViewer from '~/routes/OcptViewer';
 import Pipeline from '~/routes/Pipeline';
 import Upload from '~/routes/Upload';
+import { initPipelineAutosave } from '~/lib/explore/pipelineAutosave';
 import OcpnViewer from './routes/OcpnViewer';
 import CaseClustering from './routes/CaseClustering';
 
@@ -117,6 +118,10 @@ const router = createBrowserRouter([
         ),
     },
 ]);
+
+// Mirror the pipeline being edited into localStorage so it survives navigating
+// away or reloading, and can be restored from the pipeline overview.
+initPipelineAutosave();
 
 createRoot(document.getElementById('root')!).render(
     <StrictMode>

@@ -1,28 +1,14 @@
 import { StateCreator } from 'zustand';
 import { ExploreFlowStore } from '~/stores/exploreStore';
-import { ExploreNode } from '~/types/explore/nodes';
+import { clearPipelineDraft, readPipelineDraft } from '~/lib/explore/pipelineDraft';
+import { restoreGraphNodes, serializeGraph } from '~/lib/explore/pipelineSerialization';
 import { PipelineSlice, SavedPipeline } from './pipelineSlice.types';
 
 export const createPipelineSlice: StateCreator<ExploreFlowStore, [], [], PipelineSlice> = (set, get) => ({
     currentPipeline: { id: null, name: null },
     savePipeline: (name: string, pipelineIdToOverwrite?: string) => {
         const { nodes, edges } = get();
-        const cleanNodes = nodes.map((node) => ({
-            id: node.id,
-            type: node.type,
-            position: node.position,
-            data: node.data,
-            selected: false,
-            dragging: false,
-        }));
-        const cleanEdges = edges.map((edge) => ({
-            id: edge.id,
-            source: edge.source,
-            target: edge.target,
-            sourceHandle: edge.sourceHandle,
-            targetHandle: edge.targetHandle,
-            animated: edge.animated,
-        }));
+        const { nodes: cleanNodes, edges: cleanEdges } = serializeGraph(nodes, edges);
         const existingPipelines = JSON.parse(localStorage.getItem('savedPipelines') || '[]') as SavedPipeline[];
         let updatedPipelines: SavedPipeline[];
         let savedPipeline: SavedPipeline | undefined;
@@ -34,7 +20,7 @@ export const createPipelineSlice: StateCreator<ExploreFlowStore, [], [], Pipelin
                     savedPipeline = {
                         ...p,
                         name,
-                        nodes: cleanNodes as ExploreNode[],
+                        nodes: cleanNodes,
                         edges: cleanEdges,
                         savedAt: new Date().toISOString(),
                     };
@@ -49,7 +35,7 @@ export const createPipelineSlice: StateCreator<ExploreFlowStore, [], [], Pipelin
             savedPipeline = {
                 id: Date.now().toString(),
                 name: name,
-                nodes: cleanNodes as ExploreNode[],
+                nodes: cleanNodes,
                 edges: cleanEdges,
                 savedAt: new Date().toISOString(),
             };
@@ -64,15 +50,8 @@ export const createPipelineSlice: StateCreator<ExploreFlowStore, [], [], Pipelin
         const pipelines = JSON.parse(localStorage.getItem('savedPipelines') || '[]');
         const pipeline = pipelines.find((p: SavedPipeline) => p.id === pipelineId);
         if (pipeline) {
-            const restoredNodes = pipeline.nodes.map((node: ExploreNode) => ({
-                ...node,
-                data: {
-                    ...node.data,
-                    ...(node.data.visualize !== undefined && { visualize: () => {} }),
-                },
-            }));
             set({
-                nodes: restoredNodes,
+                nodes: restoreGraphNodes(pipeline.nodes),
                 edges: pipeline.edges,
                 currentPipeline: { id: pipeline.id, name: pipeline.name },
             });
@@ -86,7 +65,21 @@ export const createPipelineSlice: StateCreator<ExploreFlowStore, [], [], Pipelin
         const updatedPipelines = pipelines.filter((p: SavedPipeline) => p.id !== pipelineId);
         localStorage.setItem('savedPipelines', JSON.stringify(updatedPipelines));
         if (get().currentPipeline.id === pipelineId) {
+            get().discardPipelineDraft();
             set({ nodes: [], edges: [], currentPipeline: { id: null, name: null } });
         }
     },
+    getPipelineDraft: () => readPipelineDraft(),
+    restorePipelineDraft: () => {
+        const draft = readPipelineDraft();
+        if (!draft) return false;
+
+        set({
+            nodes: restoreGraphNodes(draft.nodes),
+            edges: draft.edges,
+            currentPipeline: { id: draft.pipelineId, name: draft.pipelineName },
+        });
+        return true;
+    },
+    discardPipelineDraft: () => clearPipelineDraft(),
 });

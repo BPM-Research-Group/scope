@@ -1,19 +1,27 @@
+import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '~/components/ui/button';
 import { Separator } from '~/components/ui/separator';
 import BreadcrumbNav from '~/components/BreadcrumbNav';
+import PipelineDraftCard from '~/components/pipeline/PipelineDraftCard';
 import PipelineList from '~/components/pipeline/PipelineList';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 
 const Pipeline: React.FC = () => {
     const navigate = useNavigate();
-    const { clearFlow } = useExploreFlowStore();
+    const { clearFlow, getPipelineDraft, discardPipelineDraft } = useExploreFlowStore();
+    const [draft, setDraft] = useState(() => getPipelineDraft());
 
     const newPipelineHandler = () => {
         // Remove the old pipeline context
         clearFlow();
         navigate('/data/pipeline/explore')
+    }
+
+    const discardDraftHandler = () => {
+        discardPipelineDraft();
+        setDraft(null);
     }
 
     return (
@@ -29,7 +37,9 @@ const Pipeline: React.FC = () => {
                 </div>
 
                 <Separator orientation="horizontal" className="w-full mt-4" />
-                
+
+                {draft && <PipelineDraftCard draft={draft} onDiscard={discardDraftHandler} />}
+
                 <div className="w-full border-[1px] rounded-lg border-black border-opacity-25 mt-4 flex-grow">
                     <div className="rounded-lg w-full mt-4">
                         <h2 className="text-l font-semibold ml-4">Saved Pipelines</h2>
