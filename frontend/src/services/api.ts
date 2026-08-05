@@ -282,8 +282,7 @@ export const getOcelCollection = async (ocelCollectionFileId: string): Promise<C
 };
 
 export const getProcessForest = async (fileId: string): Promise<ProcessForestResponse> => {
-    // const response = await api.get(`/v1/process_forest/${fileId}?threshold=0.2`);
-    const response = await api.get(`/v1/objects/process_forest/${fileId}/frontend`);
+    const response = await api.get(`/v1/objects/process_forest/${fileId}`);
     return response.data;
 };
 
