@@ -249,6 +249,7 @@ export const HistChart: React.FC<Props> = ({
                     top={innerH}
                     scale={xScale}
                     stroke="#374151"
+                    tickFormat={(value) => Number(value).toFixed(2)}
                     tickStroke="#374151"
                     tickLabelProps={() => ({
                         fill: '#374151',
@@ -283,7 +284,8 @@ export const HistChart: React.FC<Props> = ({
                         marginRight: idx !== selectedIdx.length - 1 ? '4px' : '0', // Add spacing after each bin
                     }}
                 >
-                    {bins[i]?.x ?? '?'}
+                    {/* {bins[i]?.x ?? '?'} */}
+                    {bins[i]?.x != null ? Number(bins[i].x).toFixed(2) : '?'}
                     {idx !== selectedIdx.length - 1 && ','}
                 </span>
             ))}
