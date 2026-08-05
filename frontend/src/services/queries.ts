@@ -44,6 +44,7 @@ import {
     mineProcessForest,
     OcpnGenerationMode,
     postSpecialActivities,
+    labelSplitting,
 } from '~/services/api';
 import { CaseNotionApiResponse } from '~/types/case_notion.types';
 
@@ -414,3 +415,12 @@ export const useMineOcpnFromProcessForest = (
         refetchOnWindowFocus: false,
     });
 };
+
+export const useLabelSplitting = (case_ocels_file_id: string, eps: any, min_samples: any, shouldFetch: boolean) => {
+    return useQuery({
+        queryKey: ['labelSplitting', case_ocels_file_id, eps, min_samples],
+        queryFn: () => labelSplitting(case_ocels_file_id, eps, min_samples),
+        enabled: Boolean(case_ocels_file_id) && shouldFetch,
+        refetchOnWindowFocus: false,
+    })
+}
