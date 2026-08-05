@@ -1104,10 +1104,10 @@ pub fn run_k_sweep_save_jsonl(
 
 // Helper: ensure output dir exists
 pub fn ensure_parent_dir_exists(path: &str) -> std::io::Result<()> {
-    if let Some(parent) = Path::new(path).parent() {
-        if !parent.as_os_str().is_empty() {
-            std::fs::create_dir_all(parent)?;
-        }
+    if let Some(parent) = Path::new(path).parent()
+        && !parent.as_os_str().is_empty()
+    {
+        std::fs::create_dir_all(parent)?;
     }
 
     Ok(())

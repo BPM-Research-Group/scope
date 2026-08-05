@@ -1375,7 +1375,7 @@ mod tests {
                 stored["case_count"].as_u64(),
                 Some(cluster["case_count"].as_u64().unwrap())
             );
-            assert!(stored["case_ocels"].as_array().unwrap().len() > 0);
+            assert!(!stored["case_ocels"].as_array().unwrap().is_empty());
             assert_eq!(stored["origin_file_id_ocel"].as_str(), Some("source-1"));
             assert_eq!(
                 stored["materialized_from_case_assignments"].as_bool(),

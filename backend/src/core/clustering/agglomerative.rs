@@ -76,12 +76,12 @@ pub fn run_agglomerative_clustering_with_cut(
     cut_k: Option<usize>,
 ) -> Result<AgglomerativeClusteringRun, String> {
     let n = case_ocels.len();
-    if let Some(k) = cut_k {
-        if k == 0 || k > n {
-            return Err(format!(
-                "k must be between 1 and the number of cases ({n}) for agglomerative clustering."
-            ));
-        }
+    if let Some(k) = cut_k
+        && (k == 0 || k > n)
+    {
+        return Err(format!(
+            "k must be between 1 and the number of cases ({n}) for agglomerative clustering."
+        ));
     }
 
     let total_timer = Instant::now();
@@ -312,7 +312,6 @@ fn build_agglomerative_linkage(
         let remaining_ids: Vec<usize> = active
             .keys()
             .copied()
-            .into_iter()
             .filter(|id| *id != left && *id != right)
             .collect();
 
