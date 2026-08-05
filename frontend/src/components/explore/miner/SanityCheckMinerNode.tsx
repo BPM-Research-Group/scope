@@ -1,10 +1,7 @@
-import { memo, useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { NodeProps } from '@xyflow/react';
 import { Position } from '@xyflow/react';
-import { Eye } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '~/components/ui/button';
 import BaseMinerNode from '~/components/explore/miner/BaseMinerNode';
 import { useInputAsset, useMinerOutput } from '~/hooks/explore/useMinerAssets';
 import { MinerNode } from '~/types/explore/nodes';
@@ -13,8 +10,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '~/components/u
 
 
 const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
-    const navigate = useNavigate();
-    const { id, data: nodeData } = node;
     const queryClient = useQueryClient();
     const { assets } = node.data;
 
@@ -73,7 +68,6 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
                 { id: 'source', position: Position.Right, type: 'source' as const },
             ]}
             dropdownOptions={[]}
-            isLoading={false} //true starts the miner animation
             customActions={renderActions()}
             onReset={handleReset}
              >
@@ -87,14 +81,29 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
                     <div className="flex-1 min-h-0 w-full relative bg-slate-50/50">
                         <div className="flex-1 min-h-0 w-full relative bg-slate-50/50 p-6 flex flex-col gap-6 overflow-y-auto">
                             <div className="flex items-center gap-2 p-3 bg-white border rounded-md max-w-sm text-sm">
-                                <span className="font-medium text-gray-700">There are currently being {queryData?.splits.length} splits made.</span>
+                                <span className="font-medium text-gray-700">There are currently being {(queryData?.splits.length ?? "...")} splits made.</span>
                             </div>
-                            {/* Parameter A */}
+                            {queryData?.splits.length > 0 && (
+                            <div className="mt-1 pt-2 border-t border-gray-100 flex flex-col gap-1">
+                                <span className="text-xs text-gray-500 font-medium">Splitt Activities:</span>
+                                <ul className="list-disc list-inside text-xs text-gray-700 flex flex-col gap-0.5">
+                                    {queryData?.splits.map((item, index) => (
+                                        <li key={index} className="truncate">
+                                            {item.activity}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                            {/* Parameter eps */}
                             <div className="flex flex-col gap-2 max-w-sm">
                                 <div className="flex justify-between items-center text-sm font-medium">
                                     <label htmlFor="param-a">Parameter A</label>
                                     <span className="text-gray-500 font-mono">{eps}</span>
                                 </div>
+                                <p className="text-xs text-gray-500 leading-relaxed">
+                                    Controls how similar event contexts must be. Lower values create stricter, potentially smaller clusters; higher values create broader clusters that may merge different variants.
+                                </p>
                                 <input
                                     id="param-a"
                                     type="range"
@@ -106,12 +115,15 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
                                     className="w-full cursor-pointer"
                                 />
                             </div>
-                            {/* Parameter B */}
+                            {/* Parameter min_samples */}
                             <div className="flex flex-col gap-2 max-w-sm">
                                 <div className="flex justify-between items-center text-sm font-medium">
                                     <label htmlFor="param-b">Parameter B (Min: 2)</label>
                                     <span className="text-gray-500 font-mono">{min_samples}</span>
                                 </div>
+                                <p className="text-xs text-gray-500 leading-relaxed">
+                                    Sets the minimum number of similar events required to form a cluster. Lower values allow smaller variants; higher values require stronger evidence and may classify more events as noise.
+                                </p>
                                 <input
                                     id="param-b"
                                     type="number"
