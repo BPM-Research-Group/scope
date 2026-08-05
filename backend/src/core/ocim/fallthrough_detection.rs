@@ -33,7 +33,7 @@ fn kmeans_2(data: &[Vec<f64>]) -> Vec<usize> {
     }
 
     let dim = data[0].len();
-    let mut centroids = vec![data[0].clone(), data[n - 1].clone()];
+    let mut centroids = [data[0].clone(), data[n - 1].clone()];
     let mut labels = vec![0usize; n];
 
     for _ in 0..10 {
@@ -49,7 +49,7 @@ fn kmeans_2(data: &[Vec<f64>]) -> Vec<usize> {
         }
 
         let mut sums = vec![vec![0.0; dim]; 2];
-        let mut counts = vec![0usize; 2];
+        let mut counts = [0usize; 2];
         for (i, sample) in data.iter().enumerate() {
             let lbl = labels[i];
             counts[lbl] += 1;
@@ -389,7 +389,7 @@ pub fn detect_fallthrough_sequence(
             let bidirectional = get_non_divergent_types(a, b, &local_data.alphabet, global_data)
                 .into_iter()
                 .any(|ot| {
-                    local_data.clos.get(&ot).map_or(false, |c| {
+                    local_data.clos.get(&ot).is_some_and(|c| {
                         c.contains(&(a.clone(), b.clone())) && c.contains(&(b.clone(), a.clone()))
                     })
                 });
@@ -562,14 +562,11 @@ pub fn detect_fallthrough_loop(
 
     for ot in &local_data.object_types {
         let relevant_for_ot = local_data.alphabet.iter().any(|act| {
-            global_data
-                .related
-                .get(act)
-                .map_or(false, |r| r.contains(ot))
+            global_data.related.get(act).is_some_and(|r| r.contains(ot))
                 && !global_data
                     .divergence
                     .get(act)
-                    .map_or(false, |d| d.contains(ot))
+                    .is_some_and(|d| d.contains(ot))
         });
         if !relevant_for_ot {
             continue;
@@ -600,12 +597,9 @@ pub fn detect_fallthrough_loop(
                 continue;
             }
 
-            let related_in_j = partition[j].iter().any(|act| {
-                global_data
-                    .related
-                    .get(act)
-                    .map_or(false, |r| r.contains(ot))
-            });
+            let related_in_j = partition[j]
+                .iter()
+                .any(|act| global_data.related.get(act).is_some_and(|r| r.contains(ot)));
             if !related_in_j {
                 continue;
             }

@@ -84,7 +84,7 @@ impl OCPN {
                 (OCPNNodeRef::Place(place_id), OCPNNodeRef::Transition(target_id))
                     if *target_id == transition_id =>
                 {
-                    Some(place_id.clone())
+                    Some(*place_id)
                 }
                 _ => None,
             })
@@ -98,7 +98,7 @@ impl OCPN {
                 (OCPNNodeRef::Transition(source_id), OCPNNodeRef::Place(place_id))
                     if *source_id == transition_id =>
                 {
-                    Some(place_id.clone())
+                    Some(*place_id)
                 }
                 _ => None,
             })
@@ -112,7 +112,7 @@ impl OCPN {
                 (OCPNNodeRef::Transition(transition_id), OCPNNodeRef::Place(target_id))
                     if *target_id == place_id =>
                 {
-                    Some(transition_id.clone())
+                    Some(*transition_id)
                 }
                 _ => None,
             })
@@ -126,7 +126,7 @@ impl OCPN {
                 (OCPNNodeRef::Place(source_id), OCPNNodeRef::Transition(transition_id))
                     if *source_id == place_id =>
                 {
-                    Some(transition_id.clone())
+                    Some(*transition_id)
                 }
                 _ => None,
             })
@@ -142,8 +142,7 @@ impl OCPN {
     }
 
     pub fn is_valid(&self) -> bool {
-        let place_ids: BTreeSet<OCPNId> =
-            self.places.iter().map(|place| place.id.clone()).collect();
+        let place_ids: BTreeSet<OCPNId> = self.places.iter().map(|place| place.id).collect();
         if place_ids.len() != self.places.len() {
             return false;
         }
@@ -151,13 +150,13 @@ impl OCPN {
         let transition_ids: BTreeSet<OCPNId> = self
             .transitions
             .iter()
-            .map(|transition| transition.id.clone())
+            .map(|transition| transition.id)
             .collect();
         if transition_ids.len() != self.transitions.len() {
             return false;
         }
 
-        let arc_ids: BTreeSet<OCPNId> = self.arcs.iter().map(|arc| arc.id.clone()).collect();
+        let arc_ids: BTreeSet<OCPNId> = self.arcs.iter().map(|arc| arc.id).collect();
         if arc_ids.len() != self.arcs.len() {
             return false;
         }

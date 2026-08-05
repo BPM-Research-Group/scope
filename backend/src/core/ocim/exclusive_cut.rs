@@ -25,7 +25,7 @@ pub fn is_exclusive_cut_valid(
             for ot in related {
                 if projected_start
                     .get(ot)
-                    .map_or(false, |starts| starts.contains(a))
+                    .is_some_and(|starts| starts.contains(a))
                 {
                     let start_count = local_data
                         .dfgs
@@ -50,7 +50,7 @@ pub fn is_exclusive_cut_valid(
                 None => return false,
             };
             for ot in related {
-                if projected_end.get(ot).map_or(false, |ends| ends.contains(a)) {
+                if projected_end.get(ot).is_some_and(|ends| ends.contains(a)) {
                     let end_count = local_data
                         .dfgs
                         .get(ot)
