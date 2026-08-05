@@ -29,6 +29,10 @@ import {
     mineOcpt,
     getActivityResource,
     postSpecialActivities,
+    mineKpi,
+    attributeStats,
+    caseStats,
+    kpiHistogramFilter,
     caseClustering,
     agglomerativeClustering,
     materialiseClustering
@@ -74,18 +78,6 @@ export const useGetActivityResource = (fileId: string | null) => {
         enabled: Boolean(fileId),
     });
 };
-
-// export const usePostSpecialActivity = (fileId: string | null, ac) => {
-//     console.log('query');
-//         console.log(fileId);
-
-//     return useQuery({
-//         queryKey: ['postSpecialActivities', fileId],
-//         queryFn: () => getActivityResource(fileId!),
-//         refetchOnWindowFocus: false,
-//         enabled: Boolean(fileId),
-//     });
-// };
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -143,6 +135,64 @@ export const useMineOcpt = (nodeId: string, fileId: string | null, algorithm: st
         queryFn: () => mineOcpt(fileId!, algorithm),
         enabled: Boolean(fileId) && shouldFetch,
         refetchOnWindowFocus: false,
+    });
+};
+
+export const useMineKpi = ( fileId: string | null) => {
+    return useQuery({
+        queryKey: ['mineKpi',  fileId],
+        queryFn: () => mineKpi(fileId!),
+        enabled: Boolean(fileId) ,
+        refetchOnWindowFocus: false,
+    });
+};
+
+export const useKpiHistogramFilter = ( fileId: string | null,
+    params: any, options = {}) => {
+    return useQuery({
+        queryKey: ['kpiHistogramFilter', fileId, params],
+        queryFn: () => kpiHistogramFilter(fileId!,params),
+        enabled: Boolean(fileId) ,
+        // refetchOnWindowFocus: false,
+    });
+};
+
+
+export const useAttributeStats = (
+    fileId: string | null,
+    params: any,
+    options = {}
+) => {
+    return useQuery({
+        queryKey: ['attributeStats', fileId, params],
+
+        queryFn: () => attributeStats(fileId!, params),
+
+        enabled: Boolean(fileId) && Boolean(params),
+
+        refetchOnWindowFocus: false,
+
+        ...options,
+    });
+};
+
+export const useCaseStats = (
+    fileId: string | null,
+    params: any,
+    caseType: string,
+    options = {}
+) => {
+    return useQuery({
+        queryKey: ['caseStats', fileId,   params, caseType],
+        queryFn: () => {
+        return caseStats(fileId!, params, caseType);
+    },
+
+        enabled: Boolean(fileId) && Boolean(params) && Boolean(caseType),
+
+        refetchOnWindowFocus: false,
+
+        ...options,
     });
 };
 
