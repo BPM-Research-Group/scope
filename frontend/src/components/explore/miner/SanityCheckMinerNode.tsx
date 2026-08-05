@@ -9,6 +9,7 @@ import BaseMinerNode from '~/components/explore/miner/BaseMinerNode';
 import { useInputAsset, useMinerOutput } from '~/hooks/explore/useMinerAssets';
 import { MinerNode } from '~/types/explore/nodes';
 import { useLabelSplitting } from '~/services/queries';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '~/components/ui/dialog';
 
 
 const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
@@ -20,21 +21,20 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
     const inputAsset = useInputAsset(assets);
     const fileId = inputAsset?.id ?? null;
 
-    const queryLabelSplitting = useLabelSplitting(fileId?? '', 0.3, 2, true);
-    const queryData = queryLabelSplitting.data?.data;
-    const miner_output_id = queryData?.case_ocels_file_id ?? null;
-    const loading = miner_output_id? false : true;
-
-    useEffect(() => {
-        console.log("queryLabelSplitting: ", queryLabelSplitting);
-    }, [queryLabelSplitting]);
-
-    useMinerOutput(node.id, miner_output_id, "s_" + (inputAsset?.name ?? ''), 'ocelCollectionFile', 'ocelCollectionNode');
-
     const handleReset = useCallback(() => {
         queryClient.removeQueries({ queryKey: ['getAbstraction', node.id] });
     }, [queryClient, node.id]);
 
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [eps, setEps] = useState<number>(0.3);
+    const [min_samples, setMinSamples] = useState<number>(2);
+
+    const queryLabelSplitting = useLabelSplitting(fileId?? '', eps, min_samples, true);
+    const queryData = queryLabelSplitting.data?.data;
+    const miner_output_id = queryData?.case_ocels_file_id ?? null;
+    const loading = miner_output_id? false : true;
+
+    useMinerOutput(node.id, miner_output_id, "s_" + (inputAsset?.name ?? ''), 'ocelCollectionFile', 'ocelCollectionNode');
 
     const renderActions = () => {
         if (!fileId) return null;
@@ -44,7 +44,10 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
                 <span className="text-xs text-yellow-600">Processing...</span>
             </div>
             ) : queryData?.splitting_applied ? (
-            <div className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 rounded-md">
+            <div
+                onClick={() => {setDialogOpen(true)}}
+                className="flex items-center h-6 px-2 bg-gray-100 hover:bg-gray-200 rounded-md cursor-pointer select-none"
+            >
                 <span className="text-xs text-blue-600">Splits applied</span>
             </div>
             ) : (queryData?.splitting_applied === false) ? (
@@ -59,6 +62,7 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
         );
     };
 
+
     return (
         <BaseMinerNode
             {...node}
@@ -72,7 +76,56 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
             isLoading={false} //true starts the miner animation
             customActions={renderActions()}
             onReset={handleReset}
-        />
+             >
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogContent className="w-fit max-w-[95vw] h-fit flex flex-col p-0 gap-0 overflow-hidden">    
+                    <DialogHeader className="p-4 border-b bg-white">
+                        <DialogTitle className="flex items-center gap-2">
+                            Activity Label Splitting
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="flex-1 min-h-0 w-full relative bg-slate-50/50">
+                        <div className="flex-1 min-h-0 w-full relative bg-slate-50/50 p-6 flex flex-col gap-6 overflow-y-auto">
+                            <div className="flex items-center gap-2 p-3 bg-white border rounded-md max-w-sm text-sm">
+                                <span className="font-medium text-gray-700">There are currently being {queryData?.splits.length} splits made.</span>
+                            </div>
+                            {/* Parameter A */}
+                            <div className="flex flex-col gap-2 max-w-sm">
+                                <div className="flex justify-between items-center text-sm font-medium">
+                                    <label htmlFor="param-a">Parameter A</label>
+                                    <span className="text-gray-500 font-mono">{eps}</span>
+                                </div>
+                                <input
+                                    id="param-a"
+                                    type="range"
+                                    min="0"
+                                    max="1"
+                                    step="0.05"
+                                    value={eps}
+                                    onChange={(e) => setEps(parseFloat(e.target.value))}
+                                    className="w-full cursor-pointer"
+                                />
+                            </div>
+                            {/* Parameter B */}
+                            <div className="flex flex-col gap-2 max-w-sm">
+                                <div className="flex justify-between items-center text-sm font-medium">
+                                    <label htmlFor="param-b">Parameter B (Min: 2)</label>
+                                    <span className="text-gray-500 font-mono">{min_samples}</span>
+                                </div>
+                                <input
+                                    id="param-b"
+                                    type="number"
+                                    min="2"
+                                    value={min_samples}
+                                    onChange={(e) => setMinSamples(Math.max(2, parseInt(e.target.value) || 2))}
+                                    className="w-full px-3 py-1 text-sm border rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+        </BaseMinerNode>
     );
 });
 
