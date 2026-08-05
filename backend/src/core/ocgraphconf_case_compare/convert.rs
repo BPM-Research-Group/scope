@@ -46,6 +46,7 @@ pub struct CaseGraph {
 }
 
 impl CaseGraph {
+    #[allow(dead_code)]
     pub fn event_label(&self, node_id: usize) -> Option<&str> {
         match self.nodes.get(&node_id).map(|node| &node.kind) {
             Some(CaseNodeKind::Event { event_type, .. }) => Some(event_type.as_str()),

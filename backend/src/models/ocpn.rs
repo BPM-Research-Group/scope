@@ -328,18 +328,22 @@ pub struct OCPNArc {
     pub properties: OCPNProperties,
 }
 
+// Reserved for object-aware execution state; currently exercised by model tests.
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct OCPNToken {
     pub place_id: OCPNId,
     pub object_id: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 pub struct OCPNMarking {
     #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
     pub tokens: BTreeSet<OCPNToken>,
 }
 
+#[allow(dead_code)]
 impl OCPNMarking {
     pub fn add_token(&mut self, place_id: OCPNId, object_id: impl Into<String>) {
         let object_id = object_id.into();
@@ -351,6 +355,8 @@ impl OCPNMarking {
     }
 }
 
+// Reserved for selecting and validating executable OCPN fragments.
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 pub struct OCPNSubprocess {
     #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
@@ -363,6 +369,7 @@ pub struct OCPNSubprocess {
     pub sound: bool,
 }
 
+#[allow(dead_code)]
 impl OCPNSubprocess {
     pub fn from_ocpn(
         ocpn: &OCPN,
@@ -411,6 +418,8 @@ impl OCPNSubprocess {
     }
 }
 
+// Reserved for attaching behavioral diagnostics without changing canonical OCPN storage.
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct EnhancedOCPN {
     pub ocpn: OCPN,
