@@ -31,7 +31,8 @@ import {
     postSpecialActivities,
     caseClustering,
     agglomerativeClustering,
-    materialiseClustering
+    materialiseClustering,
+    labelSplitting
 } from '~/services/api';
 import { getOcel } from '~/services/api';
 import { CaseNotionApiResponse } from '~/types/case_notion.types';
@@ -322,6 +323,15 @@ export const useMaterialiseClustering = (case_ocels_file_id: string, case_assign
     return useQuery({
         queryKey: ['materialiseClustering', case_ocels_file_id,case_assignments, cluster_ids],
         queryFn: () => materialiseClustering(case_ocels_file_id, case_assignments, cluster_ids),
+        enabled: Boolean(case_ocels_file_id) && shouldFetch,
+        refetchOnWindowFocus: false,
+    })
+}
+
+export const useLabelSplitting = (case_ocels_file_id: string, eps: any, min_samples: any, shouldFetch: boolean) => {
+    return useQuery({
+        queryKey: ['labelSplitting', case_ocels_file_id, eps, min_samples],
+        queryFn: () => labelSplitting(case_ocels_file_id, eps, min_samples),
         enabled: Boolean(case_ocels_file_id) && shouldFetch,
         refetchOnWindowFocus: false,
     })
