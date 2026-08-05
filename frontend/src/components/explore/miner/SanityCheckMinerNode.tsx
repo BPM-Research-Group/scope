@@ -8,26 +8,28 @@ import { Button } from '~/components/ui/button';
 import BaseMinerNode from '~/components/explore/miner/BaseMinerNode';
 import { useInputAsset, useMinerOutput } from '~/hooks/explore/useMinerAssets';
 import { MinerNode } from '~/types/explore/nodes';
+import { useLabelSplitting } from '~/services/queries';
 
 
 const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
-     const navigate = useNavigate();
+    const navigate = useNavigate();
     const { id, data: nodeData } = node;
     const queryClient = useQueryClient();
     const { assets } = node.data;
 
     const inputAsset = useInputAsset(assets);
     const fileId = inputAsset?.id ?? null;
-    const [loading, setLoading] = useState(false);
-    const [result, setResult] = useState({
-            case_ocels_file_id: '',
-            source_case_ocels_file_id: inputAsset?.id ?? null,
-            splitting_applied: false,
-            splits: [], 
-        });
 
+    const queryLabelSplitting = useLabelSplitting(fileId?? '', 0.3, 2, true);
+    const queryData = queryLabelSplitting.data?.data;
+    const miner_output_id = queryData?.case_ocels_file_id ?? null;
+    const loading = miner_output_id? false : true;
 
-    useMinerOutput(node.id, result.case_ocels_file_id, "s_" + (inputAsset?.name ?? ''), 'ocelCollectionFile', 'ocelCollectionNode');
+    useEffect(() => {
+        console.log("queryLabelSplitting: ", queryLabelSplitting);
+    }, [queryLabelSplitting]);
+
+    useMinerOutput(node.id, miner_output_id, "s_" + (inputAsset?.name ?? ''), 'ocelCollectionFile', 'ocelCollectionNode');
 
     const handleReset = useCallback(() => {
         queryClient.removeQueries({ queryKey: ['getAbstraction', node.id] });
@@ -41,46 +43,21 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
             <div className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 rounded-md">
                 <span className="text-xs text-yellow-600">Processing...</span>
             </div>
-            ) : result.splitting_applied ? (
+            ) : queryData?.splitting_applied ? (
             <div className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 rounded-md">
                 <span className="text-xs text-blue-600">Splits applied</span>
             </div>
-            ) : (
+            ) : (queryData?.splitting_applied === false) ? (
             <div className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 rounded-md">
                 <span className="text-xs text-green-600">Checked</span>
+            </div>
+            ) : (
+                <div className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 rounded-md">
+                <span className="text-xs text-green-600">Undefined</span>
             </div>
             )
         );
     };
-
-    const backendSimulating = () => {
-        if (!inputAsset) return result;
-        else {
-            console.log("Simulating backend processing for asset: ", inputAsset);
-            return {case_ocels_file_id: inputAsset.id,
-                source_case_ocels_file_id: "446768e8-f013-4761-8e2d-04bbf27905f5",
-                splitting_applied: true,
-                splits: []
-            };
-        } 
-    };
-
-    useEffect(() => {
-        if (!inputAsset) return;
-        setLoading(true);
-        console.log("AssetChanged: ", inputAsset);
-        const answer = backendSimulating();
-        setResult(answer);
-        console.log("result: ", result);
-        console.log("answer: ", answer);
-        if (!answer.splitting_applied) {
-            console.log("No splits applied");
-
-        } else {
-            console.log("Splits applied: ", answer.splits);
-        }
-        setLoading(false);
-    }, [inputAsset]);
 
     return (
         <BaseMinerNode
@@ -92,7 +69,7 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
                 { id: 'source', position: Position.Right, type: 'source' as const },
             ]}
             dropdownOptions={[]}
-            isLoading={loading} //true starts the miner animation
+            isLoading={false} //true starts the miner animation
             customActions={renderActions()}
             onReset={handleReset}
         />
