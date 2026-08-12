@@ -1,4 +1,5 @@
 use crate::models::ocel::OCEL;
+use crate::models::ocgraphconf_case_compare::{EdgeDetail, NodeDetail};
 use axum::http::StatusCode;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -51,6 +52,49 @@ impl CaseGraph {
         match self.nodes.get(&node_id).map(|node| &node.kind) {
             Some(CaseNodeKind::Event { event_type, .. }) => Some(event_type.as_str()),
             _ => None,
+        }
+    }
+}
+
+impl CaseEdgeType {
+    pub fn display_label(self) -> &'static str {
+        match self {
+            Self::DF => "DF (Directly Follows)",
+            Self::E2O => "E2O (Event to Object)",
+        }
+    }
+
+    pub fn element_type(self) -> &'static str {
+        match self {
+            Self::DF => "df",
+            Self::E2O => "e2o",
+        }
+    }
+}
+
+impl From<&CaseNode> for NodeDetail {
+    fn from(node: &CaseNode) -> Self {
+        let (label, element_type) = match &node.kind {
+            CaseNodeKind::Event { event_type, .. } => (event_type.clone(), "event"),
+            CaseNodeKind::Object { object_type, .. } => (object_type.clone(), "object"),
+        };
+
+        Self {
+            id: node.id,
+            label,
+            element_type: element_type.to_string(),
+        }
+    }
+}
+
+impl From<&CaseEdge> for EdgeDetail {
+    fn from(edge: &CaseEdge) -> Self {
+        Self {
+            id: edge.id,
+            source_id: edge.from,
+            target_id: edge.to,
+            element_type: edge.edge_type.element_type().to_string(),
+            label: edge.edge_type.display_label().to_string(),
         }
     }
 }
