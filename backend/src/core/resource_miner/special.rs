@@ -1,20 +1,22 @@
-// Special activities: find a non-diverging combo, attach silent objects.
-// For case_ocels: merge → fix → resplit → export.
+// Special activity features:
+//   1. Find the smallest jointly non-diverging object type combination for a special activity.
+//   2. Create silent objects for that combination and attach them to the OCEL.
+//
+// Silent objects are synthetic OCEL objects — one per unique combination instance.
+// Their type name is derived from the combination only (not the activity), so two activities
+// sharing the same combination reuse the same silent type and objects.
 
 use crate::core::resource_miner::{
-    build_object_id_to_type, is_special_activity, merge_case_ocels, resplit_fixed_cases,
-    validate_special_activity_and_related,
+    build_object_id_to_type, is_special_activity, validate_special_activity_and_related,
 };
 use crate::models::ocel::{OCEL, OCELObject, OCELRelationship, OCELType, OCELUtils};
-use crate::models::ocel_collection::OCELCollection;
 use crate::models::resource_miner::{
     FixMultipleSpecialActivitiesResponse, FixedActivityInfo, NonDivergingCombination,
     SpecialActivityCombinationResponse,
 };
-use crate::traits::import_export::{ExportableToPath, ImportableFromPath};
+use crate::traits::import_export::ExportableToPath;
 use axum::http::StatusCode;
 use rustc_hash::FxHashSet;
-use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
@@ -119,66 +121,15 @@ pub fn build_non_diverging_combinations_response(
     })
 }
 
-/// Load case_ocels or ocel, run fix, export the same kind of file.
-pub async fn fix_special_activities(
-    file_id: &str,
+// Fixes multiple special activities in one pass and exports a single new OCEL file.
+// Activities are processed in order; after each fix the OCEL state changes, so patterns
+// are recomputed per iteration — a previously special activity may no longer be special.
+// A shared registry prevents duplicate silent objects across activities.
+pub async fn fix_multiple_special_activities(
+    ocel: &mut OCEL,
+    source_file_id: &str,
     activities: &[String],
 ) -> Result<FixMultipleSpecialActivitiesResponse, (StatusCode, String)> {
-    match OCELCollection::import_from_path(file_id).await {
-        Ok(mut collection) => {
-            let original = collection.ocels.clone();
-            let mut merged = merge_case_ocels(&original)?;
-            let (fixed, skipped_not_special, resolved_by_cascade, no_combination_found) =
-                apply_fixes(&mut merged, activities)?;
-
-            collection.ocels = resplit_fixed_cases(&merged, &original);
-            collection.attributes.insert(
-                "source_case_ocels_file_id".to_string(),
-                Value::String(file_id.to_string()),
-            );
-
-            let new_file_id = collection.export_to_path().await?;
-            Ok(FixMultipleSpecialActivitiesResponse {
-                source_file_id: file_id.to_string(),
-                new_file_id,
-                fixed,
-                skipped_not_special,
-                resolved_by_cascade,
-                no_combination_found,
-            })
-        }
-        Err((StatusCode::NOT_FOUND, _)) => {
-            let mut ocel = OCEL::import_from_path(file_id).await?;
-            let (fixed, skipped_not_special, resolved_by_cascade, no_combination_found) =
-                apply_fixes(&mut ocel, activities)?;
-
-            let new_file_id = ocel.export_to_path().await?;
-            Ok(FixMultipleSpecialActivitiesResponse {
-                source_file_id: file_id.to_string(),
-                new_file_id,
-                fixed,
-                skipped_not_special,
-                resolved_by_cascade,
-                no_combination_found,
-            })
-        }
-        Err(err) => Err(err),
-    }
-}
-
-// Mutates the OCEL in place; does not write a file.
-fn apply_fixes(
-    ocel: &mut OCEL,
-    activities: &[String],
-) -> Result<
-    (
-        Vec<FixedActivityInfo>,
-        Vec<String>,
-        Vec<String>,
-        Vec<String>,
-    ),
-    (StatusCode, String),
-> {
     let mut fixed: Vec<FixedActivityInfo> = Vec::new();
     let mut skipped_not_special: Vec<String> = Vec::new();
     let mut no_combination_found: Vec<String> = Vec::new();
@@ -303,12 +254,15 @@ fn apply_fixes(
         .collect();
     resolved_by_cascade.sort();
 
-    Ok((
+    let new_file_id = ocel.export_to_path().await?;
+    Ok(FixMultipleSpecialActivitiesResponse {
+        source_file_id: source_file_id.to_string(),
+        new_file_id,
         fixed,
         skipped_not_special,
         resolved_by_cascade,
         no_combination_found,
-    ))
+    })
 }
 
 // Builds an event profile for each event of the given activity type.

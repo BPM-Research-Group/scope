@@ -41,7 +41,13 @@ pub struct FixMultipleActivitiesRequest {
     pub activities: Vec<String>,
 }
 
-// Fix response. new_file_id is case_ocels_* or ocel_v2_*, matching the input kind.
+// Response for fixing multiple special activities in one pass.
+// fixed                : activities that were successfully fixed
+// skipped_not_special  : requested activities that were not special in the original OCEL at all
+// resolved_by_cascade  : activities that were originally special but became non-special as a
+//                        side-effect of fixing other activities — whether or not they appeared
+//                        in the request list
+// no_combination_found : activities that are still special but have no jointly non-diverging combination
 #[derive(Debug, Serialize)]
 pub struct FixMultipleSpecialActivitiesResponse {
     pub source_file_id: String,
