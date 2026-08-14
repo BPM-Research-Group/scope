@@ -29,10 +29,21 @@ pub async fn post_activity_label_split(
         Err((status, msg)) => return (status, msg).into_response(),
     };
 
+    if already_split(&collection) {
+        return (
+            StatusCode::BAD_REQUEST,
+            "Activity label splitting was already applied to this case OCEL collection. \
+Use the original (pre-split) collection instead."
+                .to_string(),
+        )
+            .into_response();
+    }
+
     let defaults = SplitParams::default();
     let params = SplitParams {
         eps: query.eps.unwrap_or(defaults.eps),
         min_samples: query.min_samples.unwrap_or(defaults.min_samples),
+        keep_noise: query.keep_noise.unwrap_or(defaults.keep_noise),
     };
 
     if !(params.eps > 0.0 && params.eps <= 1.0) {
@@ -70,11 +81,14 @@ pub async fn post_activity_label_split(
                 case_ocels_file_id: file_id.clone(),
                 source_case_ocels_file_id: file_id,
                 splitting_applied: false,
+                noise_detected: false,
                 splits: summaries,
             }),
         )
             .into_response();
     }
+
+    let noise_detected = summaries.iter().any(|s| s.noise_count > 0);
 
     let out = OCELCollection {
         ocels: split_ocels,
@@ -88,6 +102,7 @@ pub async fn post_activity_label_split(
                 case_ocels_file_id: new_id,
                 source_case_ocels_file_id: file_id,
                 splitting_applied: true,
+                noise_detected,
                 splits: summaries,
             }),
         )
@@ -121,6 +136,10 @@ async fn persist_split_cases(
         "activity_label_splitting_min_samples".to_string(),
         Value::from(params.min_samples as u64),
     );
+    payload.insert(
+        "activity_label_splitting_keep_noise".to_string(),
+        Value::Bool(params.keep_noise),
+    );
 
     let cases = serde_json::to_value(&collection.ocels).map_err(|err| {
         eprintln!("serialize split cases failed: {err}");
@@ -149,4 +168,26 @@ async fn persist_split_cases(
     })?;
 
     Ok(id)
+}
+
+fn already_split(collection: &OCELCollection) -> bool {
+    if collection
+        .attributes
+        .get("activity_label_splitting_applied")
+        .and_then(|v| v.as_bool())
+        == Some(true)
+    {
+        return true;
+    }
+
+    collection.ocels.iter().any(|case| {
+        case.event_types
+            .iter()
+            .any(|t| is_split_label(&t.name))
+            || case.events.iter().any(|e| is_split_label(&e.event_type))
+    })
+}
+
+fn is_split_label(name: &str) -> bool {
+    name.contains(" [variant ") || name.ends_with(" [noise]")
 }
