@@ -10,6 +10,7 @@ use std::collections::{BTreeMap, BTreeSet};
 pub struct SplitParams {
     pub eps: f64,
     pub min_samples: usize,
+    pub keep_noise: bool,
 }
 
 impl Default for SplitParams {
@@ -17,6 +18,7 @@ impl Default for SplitParams {
         Self {
             eps: 0.3,
             min_samples: 2,
+            keep_noise: false,
         }
     }
 }
@@ -80,6 +82,7 @@ pub fn split_activity_labels(
         .collect();
 
     let mut renames: FxHashMap<(usize, usize), String> = FxHashMap::default();
+    let mut to_delete: FxHashSet<(usize, usize)> = FxHashSet::default();
     let mut summaries: Vec<SplitInfo> = Vec::new();
 
     for (activity, refs) in candidates {
@@ -101,11 +104,13 @@ pub fn split_activity_labels(
         let matrix = distance_matrix(&event_contexts, object_types);
         let labels = dbscan(&matrix, params.eps, params.min_samples);
 
-        // skip noise (-1), only real clusters get renamed
         let mut groups: BTreeMap<i32, Vec<usize>> = BTreeMap::new();
+        let mut noise_members: Vec<usize> = Vec::new();
         for (i, &label) in labels.iter().enumerate() {
             if label >= 0 {
                 groups.entry(label).or_default().push(i);
+            } else if label == -1 {
+                noise_members.push(i);
             }
         }
         if groups.len() < 2 {
@@ -125,14 +130,26 @@ pub fn split_activity_labels(
             }
         }
 
+        // noise: rename to [noise] or mark for deletion
+        let noise_name = format!("{} [noise]", activity);
+        for &member in &noise_members {
+            let r = refs[member];
+            if params.keep_noise {
+                renames.insert((r.case_idx, r.event_idx), noise_name.clone());
+            } else {
+                to_delete.insert((r.case_idx, r.event_idx));
+            }
+        }
+
         summaries.push(SplitInfo {
             activity,
             variants: ordered.len(),
             event_counts,
+            noise_count: noise_members.len(),
         });
     }
 
-    if renames.is_empty() {
+    if renames.is_empty() && to_delete.is_empty() {
         return (Vec::new(), summaries);
     }
 
@@ -149,11 +166,38 @@ pub fn split_activity_labels(
                 event.event_type = name.clone();
             }
         }
+
+        if !to_delete.is_empty() {
+            let mut keep = Vec::with_capacity(case.events.len());
+            for (event_idx, event) in case.events.drain(..).enumerate() {
+                if !to_delete.contains(&(case_idx, event_idx)) {
+                    keep.push(event);
+                }
+            }
+            case.events = keep;
+            prune_unused_objects(case);
+        }
+
         sync_event_types(case, &schema);
     }
 
     summaries.sort_by(|a, b| a.activity.cmp(&b.activity));
     (result, summaries)
+}
+
+fn prune_unused_objects(case: &mut OCEL) {
+    let used_objects: FxHashSet<String> = case
+        .events
+        .iter()
+        .flat_map(|e| e.relationships.iter().map(|r| r.object_id.clone()))
+        .collect();
+    case.objects.retain(|o| used_objects.contains(&o.id));
+    let used_types: FxHashSet<String> = case
+        .objects
+        .iter()
+        .map(|o| o.object_type.clone())
+        .collect();
+    case.object_types.retain(|t| used_types.contains(&t.name));
 }
 
 fn sync_event_types(case: &mut OCEL, schema: &FxHashMap<String, Vec<OCELTypeAttribute>>) {
@@ -175,5 +219,6 @@ fn sync_event_types(case: &mut OCEL, schema: &FxHashMap<String, Vec<OCELTypeAttr
 }
 
 fn base_activity(name: &str) -> Option<&str> {
-    name.rsplit_once(" [variant ").map(|(base, _)| base)
+    name.strip_suffix(" [noise]")
+        .or_else(|| name.rsplit_once(" [variant ").map(|(base, _)| base))
 }
