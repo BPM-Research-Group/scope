@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { usePopper } from 'react-popper';
 import LegendRect from '~/components/ocpt/ui/LegendRect';
 import '~/components/ocpt/ui/NodeTooltip.css';
-import { isActivity } from '~/lib/ocpt/ocptGuards';
+import { isActivity, isExtendedProcessTreeOperatorNode, isIdentityOperatorApi } from '~/lib/ocpt/ocptGuards';
+import type { IdentityRelation } from '~/types/ocpt/identityOcpt.types';
 import type { Activity } from '~/types/ocpt/ocpt.types';
 
 const ActivityTooltipContent = ({ value, coloring }: { value: Activity; coloring: any }) => {
@@ -36,6 +37,90 @@ const ActivityTooltipContent = ({ value, coloring }: { value: Activity; coloring
     );
 };
 
+const OtLabel = ({ ot, coloring }: { ot: string; coloring: any }) => (
+    <span className="inline-flex items-center gap-0.5">
+        <LegendRect fill={coloring(ot)} size={12} />
+        <span className="font-medium">{ot}</span>
+    </span>
+);
+
+const IdentityRelationItem = ({ relation, coloring }: { relation: IdentityRelation; coloring: any }) => {
+    const kindLabel =
+        relation.kind === 'sync'
+            ? 'Synchronous'
+            : relation.kind === 'impConcurrent'
+              ? 'Implicitly Concurrent'
+              : 'Temporal Implication';
+    return (
+        <div className="py-1">
+            <div className="text-xs text-gray-400 mb-0.5">{kindLabel}</div>
+            <div className="flex items-center gap-1 text-sm flex-wrap">
+                {relation.left.map((ot, i) => (
+                    <span key={i} className="inline-flex items-center">
+                        {i > 0 && <span className="text-gray-400 mr-1">,</span>}
+                        <OtLabel ot={ot} coloring={coloring} />
+                    </span>
+                ))}
+                <span className="text-gray-400">
+                    {relation.kind === 'sync' ? '=' : relation.kind === 'impConcurrent' ? '⇒‖' : '⇒→'}
+                </span>
+                {relation.right.map((ot, i) => (
+                    <span key={i} className="inline-flex items-center">
+                        {i > 0 && <span className="text-gray-400 mr-1">,</span>}
+                        <OtLabel ot={ot} coloring={coloring} />
+                    </span>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+const OperatorTooltipContent = ({
+    operator,
+    identity,
+    coloring,
+}: {
+    operator: string;
+    identity: IdentityRelation[];
+    coloring: any;
+}) => {
+    return (
+        <>
+            <div className="pb-1 mb-1 text-sm font-bold leading-none border-b border-gray-200 border-opacity-20">
+                {operator}
+            </div>
+            <div className="text-xs font-semibold text-gray-400 mb-1">Identity Relations</div>
+            <div className="divide-y divide-gray-700">
+                {identity.map((rel, i) => (
+                    <IdentityRelationItem key={i} relation={rel} coloring={coloring} />
+                ))}
+            </div>
+        </>
+    );
+};
+
+// Component for Process Forests
+const ForestOperatorTooltipContent = ({ operators }: { operators: Record<string, string> }) => {
+    return (
+        <>
+            <div className="pb-1 mb-2 text-sm font-bold leading-none border-b border-gray-200 border-opacity-20">
+                Process Forest Operator
+            </div>
+            <div className="text-xs font-semibold text-gray-400 mb-2">Operators per Object Type</div>
+            <div className="grid gap-y-1">
+                {Object.entries(operators).map(([ot, op]) => (
+                    <div key={ot} className="flex justify-between items-center gap-4 text-xs">
+                        <span className="font-medium text-gray-200">{ot}:</span>
+                        <span className="font-mono text-[10px] bg-slate-800 text-slate-200 px-1.5 py-0.5 rounded border border-slate-700">
+                            {String(op)}
+                        </span>
+                    </div>
+                ))}
+            </div>
+        </>
+    );
+};
+
 const NodeTooltip = ({ hoverPoint, transformMatrix, coloring }: any) => {
     if (!hoverPoint) return null;
 
@@ -46,11 +131,43 @@ const NodeTooltip = ({ hoverPoint, transformMatrix, coloring }: any) => {
 
     const value = hoverPoint.data.value;
 
+    // Check for Process Forest operator
+    // If it has our mapped 'operators' dictionary, render the special list
+    if (value.operators && Object.keys(value.operators).length > 0) {
+        return (
+            <XYPopper x={adjustedX} y={adjustedY}>
+                <ForestOperatorTooltipContent operators={value.operators} />
+            </XYPopper>
+        );
+    }
+
     // Activity or SilentActivity tooltip
     if (isActivity(value)) {
         return (
             <XYPopper x={adjustedX} y={adjustedY}>
                 <ActivityTooltipContent value={value} coloring={coloring} />
+            </XYPopper>
+        );
+    }
+
+    // Operator with identity relations (post-projection with ots)
+    if (isExtendedProcessTreeOperatorNode(value) && value.identity?.length) {
+        return (
+            <XYPopper x={adjustedX} y={adjustedY}>
+                <OperatorTooltipContent operator={value.operator} identity={value.identity} coloring={coloring} />
+            </XYPopper>
+        );
+    }
+
+    // Operator object from API (pre-projection, no ots)
+    if (isIdentityOperatorApi(value) && Array.isArray((value as any).identity) && (value as any).identity.length > 0) {
+        return (
+            <XYPopper x={adjustedX} y={adjustedY}>
+                <OperatorTooltipContent
+                    operator={value.operator}
+                    identity={(value as any).identity}
+                    coloring={coloring}
+                />
             </XYPopper>
         );
     }

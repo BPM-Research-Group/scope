@@ -13,13 +13,12 @@ import FlowViewer from '~/routes/FlowViewer';
 import HistViz from '~/routes/Hist-Viz';
 import Home from '~/routes/Home';
 import OcelViewer from '~/routes/OcelViewer';
-import ResourceViewer from '~/routes/ResourceViewer';
-import KpiViewer from '~/routes/KpiViewer';
+import OcpfViewer from '~/routes/OcpfViewer';
 import OcptViewer from '~/routes/OcptViewer';
 import Pipeline from '~/routes/Pipeline';
+import ResourceViewer from '~/routes/ResourceViewer';
 import Upload from '~/routes/Upload';
 import OcpnViewer from './routes/OcpnViewer';
-import CaseClustering from './routes/CaseClustering';
 
 // Create a client
 const queryClient = new QueryClient();
@@ -41,10 +40,6 @@ const router = createBrowserRouter([
         path: '/data/pipeline/explore/',
         element: <Explore />,
     },
-    // {
-    //     path: '/ocel/ocel-visualization/',
-    //     element: <OcelVisualization />,
-    // },
     {
         path: '/data/pipeline/explore/ocpt/:nodeId',
         element: (
@@ -98,30 +93,22 @@ const router = createBrowserRouter([
         element: (
             <RedirectErrorBoundary>
                 <OcpnViewer />
-            </RedirectErrorBoundary>    
-         ),
-     },
-     {       
-        path: '/data/pipeline/explore/resource_graph/:nodeId',
-        element: (
-             <RedirectErrorBoundary>
-                <ResourceViewer />
             </RedirectErrorBoundary>
         ),
     },
     {
-        path: '/data/pipeline/explore/kpi/:nodeId',
+        path: '/data/pipeline/explore/ocpf/:nodeId',
         element: (
             <RedirectErrorBoundary>
-                <KpiViewer />
-                </RedirectErrorBoundary>
+                <OcpfViewer />
+            </RedirectErrorBoundary>
         ),
     },
-                {
-        path: '/data/pipeline/explore/caseclustering/:nodeId',
+    {
+        path: '/data/pipeline/explore/resource_graph/:nodeId',
         element: (
             <RedirectErrorBoundary>
-                <CaseClustering />
+                <ResourceViewer />
             </RedirectErrorBoundary>
         ),
     },
@@ -135,14 +122,7 @@ createRoot(document.getElementById('root')!).render(
           <SidebarTrigger /> */}
             <RouterProvider router={router} />
             {/* </SidebarProvider> */}
-            <Toaster
-                position="top-center"
-                // toastOptions={{
-                //     classNames: {
-                //         // toast: 'data-[type=success]:bg-green-500 data-[type=success]:text-white',
-                //     },
-                // }}
-            />
+            <Toaster position="top-center" />
             {/* <ReactQueryDevtools /> */}
         </QueryClientProvider>
     </StrictMode>
