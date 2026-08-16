@@ -374,7 +374,7 @@ export const saveOcpt = async (ocpt: any): Promise<{ file_id: string }> => {
     return response.data;
 };
 
-export const labelSplitting = async (case_ocels_file_id: string, eps: any, min_samples: any) => {
-    const response = await api.post(`/v1/activity_label_splitting/${case_ocels_file_id}`, { params: { eps, min_samples } });
+export const labelSplitting = async (case_ocels_file_id: string, eps: any, min_samples: any, keep_noise: boolean) => {
+    const response = await api.post(`/v1/activity_label_splitting/${case_ocels_file_id}`, { params: { eps, min_samples, keep_noise } });
     return response;
 }

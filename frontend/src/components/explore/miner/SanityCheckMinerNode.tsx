@@ -23,9 +23,9 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [eps, setEps] = useState<number>(0.3);
     const [min_samples, setMinSamples] = useState<number>(2);
-    const [noise, setNoise] = useState<boolean>(false);
+    const [keep_noise, setKeepNoise] = useState<boolean>(false);
 
-    const queryLabelSplitting = useLabelSplitting(fileId ?? '', eps, min_samples, true);
+    const queryLabelSplitting = useLabelSplitting(fileId ?? '', eps, min_samples, keep_noise, true);
     const queryData = queryLabelSplitting.data?.data;
     const miner_output_id = queryData?.case_ocels_file_id ?? null;
     const loading = miner_output_id ? false : true;
@@ -34,13 +34,13 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
 
     const renderActions = () => {
         if (!fileId) return null;
-        return loading ? (
+        return (loading || (queryLabelSplitting.fetchStatus === 'fetching')) ? (
             <div className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 rounded-md">
                 <span className="text-xs text-yellow-600">Processing...</span>
             </div>
         ) : queryData?.splitting_applied ? (
             <div className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 rounded-md">
-                <span className="text-xs text-green-600">Splits applied</span>
+                <span className="text-xs text-orange-600">Splits applied</span>
             </div>
         ) : queryData?.splitting_applied === false ? (
             <div className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 rounded-md">
@@ -48,7 +48,7 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
             </div>
         ) : (
             <div className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 rounded-md">
-                <span className="text-xs text-green-600">Undefined</span>
+                <span className="text-xs text-gray-600">Undefined</span>
             </div>
         );
     };
@@ -63,10 +63,6 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
             <span className="text-xs text-blue-600">Settings</span>
         </div>
     );
-
-    useEffect(() => {
-        console.log('Current value of queryLabelSplitting:', queryData);
-    }, [queryLabelSplitting]);
 
     return (
         <BaseMinerNode
@@ -97,7 +93,7 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
                                 <div className="mt-1 pt-2 flex flex-col">
                                     <span className="text-xs text-gray-500 font-medium">Splitt Activities:</span>
                                     <ul className="list-disc list-inside text-xs text-gray-700 flex flex-col gap-0.5">
-                                        {queryData?.splits.map((item, index) => (
+                                        {queryData?.splits.map((item:any, index:any) => (
                                             <li key={index} className="truncate">
                                                 {item.activity}
                                             </li>
@@ -108,21 +104,21 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
                             <div className="flex flex-col gap-2 max-w-sm">
                                 <div className="flex items-center justify-between">
                                     <label htmlFor="param-bool" className="text-sm font-medium cursor-pointer">
-                                        Include Noise
+                                        Keep Noise
                                     </label>
                                     <button
                                         id="param-bool"
                                         type="button"
                                         role="switch"
-                                        aria-checked={noise}
-                                        onClick={() => setNoise(!noise)}
+                                        aria-checked={keep_noise}
+                                        onClick={() => setKeepNoise(!keep_noise)}
                                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                                            noise ? 'bg-blue-600' : 'bg-gray-300'
+                                            keep_noise ? 'bg-blue-600' : 'bg-gray-300'
                                         }`}
                                     >
                                         <span
                                             className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                                noise ? 'translate-x-6' : 'translate-x-1'
+                                                keep_noise ? 'translate-x-6' : 'translate-x-1'
                                             }`}
                                         />
                                     </button>
