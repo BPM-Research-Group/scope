@@ -19,8 +19,8 @@ import {
     ScanEye,
     ShieldCheck,
     TreePine,
+    Trees,
     Waves,
-    Ungroup,
     Waypoints,
     Workflow,
     Zap,
@@ -40,7 +40,6 @@ export const iconMap: Record<string, ComponentType<LucideProps>> = {
     grip: Grip,
     file: File,
     waves: Waves,
-    ungroup: Ungroup,
     pickaxe: Pickaxe,
     chartBar: ChartBar,
     fileStack: FileStack,
@@ -51,6 +50,7 @@ export const iconMap: Record<string, ComponentType<LucideProps>> = {
     scanEye: ScanEye,
     shieldCheck: ShieldCheck,
     zap: Zap,
+    trees: Trees,
 };
 
 export const getIconComponent = (iconName: string): ComponentType<LucideProps> => {
@@ -94,10 +94,20 @@ export const ASSET_TYPE_VISUALS: Record<AssetType, AssetTypeVisual> = {
         color: 'text-blue-500',
         label: 'OCEL',
     },
+    ocpfFile: {
+        icon: Trees,
+        color: 'text-yellow-500',
+        label: 'OCPF',
+    },
+    ocpfAsset: {
+        icon: Trees,
+        color: 'text-yellow-500',
+        label: 'OCPF',
+    },
     ocelCollectionFile: {
         icon: FileStack,
         color: 'text-green-500',
-        label: 'Case Collection',
+        label: 'OCEL Collection',
     },
     identityOcptAsset: {
         icon: FileText,
