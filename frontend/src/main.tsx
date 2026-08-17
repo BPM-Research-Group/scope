@@ -102,7 +102,7 @@ const router = createBrowserRouter([
          ),
      },
      {       
-        path: '/data/pipeline/explore/resource_graph/:nodeId',
+        path: '/data/pipeline/explore/resource_miner/:nodeId',
         element: (
              <RedirectErrorBoundary>
                 <ResourceViewer />

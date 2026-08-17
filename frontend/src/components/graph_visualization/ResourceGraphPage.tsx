@@ -3,7 +3,11 @@ import { Group } from '@visx/group';
 import { Circle, Line } from '@visx/shape';
 import { Text } from '@visx/text';
 import { Zoom } from '@visx/zoom';
+import { useNavigate } from 'react-router-dom';
+import { useExploreFlowStore } from '~/stores/exploreStore';
 import { useGetActivityResource, usePostSpecialActivity } from '~/services/queries';
+import { createNode } from '~/lib/explore/createNode';
+import { handleConnect } from '~/lib/explore/flowActions';
 
 type NodeType =
     | 'object_type_not_resource'
@@ -21,14 +25,17 @@ type GraphNode = {
 
 type Props = {
     fileId: string | null;
+    nodeeId: string | null;
     sourceType: string;
 };
 
-const ResourceGraphPage: React.FC<Props> = ({ fileId: initialFileId }) => {
+const ResourceGraphPage: React.FC<Props> = ({ fileId: initialFileId, nodeeId: nodeId }) => {
     const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
     const [fileId, setFileId] = useState<string | null>(initialFileId);
-    console.log('file');
-    console.log(fileId);
+    const [newFileId, setNewFileId] = useState<string | null>('');
+    const [isExporting, setIsExporting] = useState<boolean>(false);
+    const navigate = useNavigate();
+    const { addNode, updateNodeData, getNode } = useExploreFlowStore();
     useEffect(() => {
         if (initialFileId) {
             setFileId(initialFileId);
@@ -43,8 +50,6 @@ const ResourceGraphPage: React.FC<Props> = ({ fileId: initialFileId }) => {
     if (!resourceData) return <div>No data found</div>;
 
     const data = resourceData;
-    console.log(data);
-
     const maxNodes = Math.max(
         data.object_resource.length,
         data.object_type_not_resource.length,
@@ -98,7 +103,7 @@ const ResourceGraphPage: React.FC<Props> = ({ fileId: initialFileId }) => {
         });
     });
 
-    const getNode = (id: string) => nodes.find((n) => n.id === id);
+    const gettNode = (id: string) => nodes.find((n) => n.id === id);
 
     const toggleSelection = (id: string) => {
         setSelectedActivities((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
@@ -114,10 +119,8 @@ const ResourceGraphPage: React.FC<Props> = ({ fileId: initialFileId }) => {
             },
             {
                 onSuccess: (data) => {
-                    console.log('Success:', data);
-                    console.log('newfileid:', data.new_file_id);
-                    setFileId(data.new_file_id);
-                    setSelectedActivities([]);
+                    setNewFileId(data.new_file_id);
+                    // setSelectedActivities([]);
                 },
                 onError: (err) => {
                     console.error('Error:', err);
@@ -126,48 +129,183 @@ const ResourceGraphPage: React.FC<Props> = ({ fileId: initialFileId }) => {
         );
     };
 
+    const handleExportNode = () => {
+        const sourceNode = getNode(nodeId!);
+
+        if (!sourceNode) return;
+        setIsExporting(true);
+
+        const newNode = createNode(
+            {
+                x: sourceNode.position.x + 420,
+                y: sourceNode.position.y,
+            },
+            'ocelCollectionNode',
+            true
+        );
+
+        newNode.data.assets = [
+            {
+                id: newFileId!,
+                io: 'output',
+                origin: 'mined',
+                type: 'ocelCollectionFile',
+                name: 'Fixed Special Activity',
+            },
+        ];
+
+        addNode(newNode);
+
+        handleConnect({
+            source: nodeId!,
+            target: newNode.id,
+            sourceHandle: 'source',
+            targetHandle: 'target',
+        });
+
+        navigate('/data/pipeline/explore');
+    };
+
+    const LegendRow = ({ color, label }: { color: string; label: string }) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <span style={{ width: 12, height: 12, borderRadius: 3, background: color, display: 'inline-block' }} />
+            {label}
+        </div>
+    );
+
     return (
         <div style={{ width: '100%', height: '100vh', position: 'relative' }}>
             <Zoom width={width} height={height} scaleXMin={0.5} scaleXMax={4} scaleYMin={0.5} scaleYMax={4}>
                 {(zoom) => (
                     <>
-                        <div style={{ position: 'absolute', top: 20, left: 20, zIndex: 10 }}>
+                        {/* <div style={{ position: 'absolute', top: 20, left: 20, zIndex: 10 }}>
                             <button onClick={zoom.reset}>Reset</button>
+                        </div> */}
+
+                        <div
+                            style={{
+                                position: 'absolute',
+                                top: 5,
+                                right: 20,
+                                zIndex: 10,
+                                width: 280,
+                                background: '#fff',
+                                padding: '12px 16px',
+                                borderRadius: 8,
+                                boxShadow: '0 2px 10px rgba(0,0,0,0.15)',
+                                fontSize: 13,
+                            }}
+                        >
+                            <div style={{ fontWeight: 600, marginBottom: 8 }}>Legend</div>
+
+                            <LegendRow color="#4CAF50" label="Resource object type" />
+                            <LegendRow color="#FF9800" label="Non-resource object type" />
+                            <LegendRow color="#2196F3" label="Activity" />
+                            <LegendRow color="#9C27B0" label="Special activity" />
+
+                            <div
+                                style={{
+                                    borderTop: '1px solid #eee',
+                                    marginTop: 12,
+                                    paddingTop: 12,
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        fontWeight: 600,
+                                        marginBottom: 6,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 6,
+                                    }}
+                                >
+                                    <span>ⓘ</span>
+                                    About special activities
+                                </div>
+
+                                <div
+                                    style={{
+                                        color: '#555',
+                                        lineHeight: 1.5,
+                                    }}
+                                >
+                                    A special activity is one where every related object type is divergent. Select which
+                                    to fix.
+                                </div>
+
+                                <div
+                                    style={{
+                                        marginTop: 6,
+                                        color: '#555',
+                                        lineHeight: 1.5,
+                                    }}
+                                >
+                                    <b>Fix</b> finds the smallest jointly non-divergent object-type combination, adds
+                                    silent objects for it, and creates a new log.
+                                </div>
+                            </div>
                         </div>
 
                         {selectedActivities.length > 0 && (
-                            <div
+                            <button
+                                onClick={handleRun}
+                                disabled={isPending}
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl"
+                                style={{
+                                    position: 'fixed',
+                                    bottom: 20,
+                                    right: 180,
+                                    zIndex: 9999,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                }}
+                            >
+                                {isPending && (
+                                    <span
+                                        style={{
+                                            width: '14px',
+                                            height: '14px',
+                                            border: '2px solid #ccc',
+                                            borderTop: '2px solid #333',
+                                            borderRadius: '50%',
+                                            animation: 'spin 1s linear infinite',
+                                        }}
+                                    />
+                                )}
+                                {isPending ? 'Fixing...' : `Fix (${selectedActivities.length})`}
+                            </button>
+                        )}
+                        {newFileId && (
+                            <button
+                                onClick={handleExportNode}
+                                disabled={isExporting}
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl"
                                 style={{
                                     position: 'fixed',
                                     bottom: 20,
                                     right: 20,
                                     zIndex: 9999,
-                                    background: '#fff',
-                                    padding: '12px 16px',
-                                    borderRadius: '8px',
-                                    boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
                                 }}
                             >
-                                <button
-                                    onClick={handleRun}
-                                    disabled={isPending}
-                                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                                >
-                                    {isPending && (
-                                        <span
-                                            style={{
-                                                width: '14px',
-                                                height: '14px',
-                                                border: '2px solid #ccc',
-                                                borderTop: '2px solid #333',
-                                                borderRadius: '50%',
-                                                animation: 'spin 1s linear infinite',
-                                            }}
-                                        />
-                                    )}
-                                    {isPending ? 'Fixing...' : `Fix (${selectedActivities.length})`}
-                                </button>
-                            </div>
+                                {isExporting && (
+                                    <span
+                                        style={{
+                                            width: '14px',
+                                            height: '14px',
+                                            border: '2px solid #ccc',
+                                            borderTop: '2px solid #333',
+                                            borderRadius: '50%',
+                                            animation: 'spin 1s linear infinite',
+                                        }}
+                                    />
+                                )}
+
+                                {isExporting ? 'Exporting...' : 'Export as Node'}
+                            </button>
                         )}
 
                         <svg
@@ -196,8 +334,8 @@ const ResourceGraphPage: React.FC<Props> = ({ fileId: initialFileId }) => {
                                 </defs>
 
                                 {data.object_not_resource_arcs.map((arc: any, i: number) => {
-                                    const source = getNode(arc.source_type);
-                                    const target = getNode(arc.target_type);
+                                    const source = gettNode(arc.source_type);
+                                    const target = gettNode(arc.target_type);
                                     if (!source || !target) return null;
 
                                     return (
@@ -258,6 +396,7 @@ const ResourceGraphPage: React.FC<Props> = ({ fileId: initialFileId }) => {
                                                         verticalAnchor="middle"
                                                         fill="white"
                                                         fontSize={12}
+                                                        style={{ pointerEvents: 'none' }}
                                                     >
                                                         {node.label}
                                                     </Text>
