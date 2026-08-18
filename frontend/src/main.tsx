@@ -12,12 +12,14 @@ import Explore from '~/routes/Explore';
 import FlowViewer from '~/routes/FlowViewer';
 import HistViz from '~/routes/Hist-Viz';
 import Home from '~/routes/Home';
+import KpiViewer from '~/routes/KpiViewer';
 import OcelViewer from '~/routes/OcelViewer';
 import OcpfViewer from '~/routes/OcpfViewer';
 import OcptViewer from '~/routes/OcptViewer';
 import Pipeline from '~/routes/Pipeline';
 import ResourceViewer from '~/routes/ResourceViewer';
 import Upload from '~/routes/Upload';
+import CaseClustering from './routes/CaseClustering';
 import OcpnViewer from './routes/OcpnViewer';
 
 // Create a client
@@ -105,10 +107,26 @@ const router = createBrowserRouter([
         ),
     },
     {
-        path: '/data/pipeline/explore/resource_graph/:nodeId',
+        path: '/data/pipeline/explore/kpi/:nodeId',
         element: (
             <RedirectErrorBoundary>
-                <ResourceViewer />
+                <KpiViewer />
+            </RedirectErrorBoundary>
+        ),
+    },
+    {
+        path: '/data/pipeline/explore/kpi/:nodeId',
+        element: (
+            <RedirectErrorBoundary>
+                <KpiViewer />
+            </RedirectErrorBoundary>
+        ),
+    },
+    {
+        path: '/data/pipeline/explore/caseclustering/:nodeId',
+        element: (
+            <RedirectErrorBoundary>
+                <CaseClustering />
             </RedirectErrorBoundary>
         ),
     },

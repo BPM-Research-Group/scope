@@ -52,9 +52,11 @@ export const getIdentityOcpt = async (fileId: string): Promise<GetOcptResponse> 
 };
 
 export const mineIdentityOcpt = async (ocelFileId: string, baseAlgorithm: string = 'DF2'): Promise<GetOcptResponse> => {
+    // Mine base OCPT
     const endpoint = baseAlgorithm.toLowerCase() === 'ocim' ? 'ocim' : 'df2';
     const baseResponse = await api.get(`v1/ocpt/${endpoint}/${ocelFileId}`);
     const baseFileId: string = baseResponse.data.file_id;
+    // Extend with identity relations using the same OCEL
     const extendedResponse = await api.get(`v1/ocpt/extend/${baseFileId}?ocel_id=${ocelFileId}`);
     return { file_id: extendedResponse.data.file_id, ocpt: extendedResponse.data.extended_ocpt };
 };
@@ -251,6 +253,15 @@ export const mineOcpt = async (fileId: string, algorithm: string = 'DF2'): Promi
     throw new Error(`Algorithm ${algorithm} not supported`);
 };
 
+export const mineKpi = async (fileId: string) => {
+    const response = await api.get(`/v1/kpi/case_ocel_metadata/${fileId}`);
+    return response.data;
+};
+export const kpiHistogramFilter = async (fileId: string, params: any) => {
+    const response = await api.post(`/v1/kpi/histogram_filter/${fileId}`, params);
+    return response.data;
+};
+
 export const mineOcpn = async (fileId: string): Promise<GetOcpnResponse> => {
     const response = await api.get(`/v1/ocpn/from_ocpt/${fileId}`);
     return response.data;
@@ -259,6 +270,35 @@ export const mineOcpn = async (fileId: string): Promise<GetOcpnResponse> => {
 export const getCaseNotions = async (cnFileId: string) => {
     const response = await api.get<GetCaseNotionsResponse>(`v1/case_notion/case_ocel/${cnFileId}`);
     return response.data;
+};
+
+export const attributeStats = async (fileId: string, params: any) => {
+    const response = await api.post(`/v1/kpi/attribute_combination/${fileId}`, params);
+    return response.data;
+};
+export const caseStats = async (fileId: string, params: any, caseType: string) => {
+    if (caseType === 'attribute_combination') {
+        const response = await api.post(`/v1/kpi/attribute_combination/${fileId}`, params);
+        return response.data;
+    }
+    if (caseType === 'case_attribute_event_type') {
+        const response = await api.get(`/v1/kpi/case_attribute_stats/${fileId}`, { params });
+        return response.data;
+    }
+    if (caseType === 'case_attribute_object_type') {
+        const response = await api.get(`/v1/kpi/case_attribute_stats/${fileId}`, { params });
+        return response.data;
+    }
+    if (caseType === 'case_duration') {
+        const response = await api.get(`/v1/kpi/case_duration/${fileId}`, { params });
+        return response.data;
+    }
+    if (caseType === 'activity_time') {
+        console.log('objectgdd');
+        const response = await api.get(`/v1/kpi/case_time_stats/${fileId}`, { params });
+        return response.data;
+    }
+    throw new Error(`Unsupported case type: ${caseType}`);
 };
 
 export type GetOcpnResponse = {
@@ -275,7 +315,31 @@ export const getLogGraphs = async (ocelFileId: string) => {
     const response = await api.get(`v1/log_graphs/ocel/${ocelFileId}`);
     return response.data;
 };
-
+export const caseClustering = async (fileId: string, metric: string, algorithm: string = 'dfg-typ', k: number) => {
+    if (algorithm === 'k-medoids') {
+        const response = await api.get(`/v1/clustering/cluster/${fileId}`, { params: { k, metric } });
+        return response.data;
+    } else if (algorithm === 'agglomerative') {
+        const response = await api.get(`/v1/clustering/agglomerative/${fileId}`, { params: { k, metric } });
+        return response.data;
+    }
+    throw new Error(`Algorithm ${algorithm} not supported`);
+};
+export const agglomerativeClustering = async (aggFileId: string, k: number) => {
+    const response = await api.get(`/v1/clustering/agglomerative/${aggFileId}/cut?k=${k}`);
+    return response.data;
+};
+export const materialiseClustering = async (
+    case_ocels_file_id: string,
+    case_assignments: any,
+    cluster_ids: number[]
+) => {
+    const response = await api.post(`/v1/clustering/materialize/${case_ocels_file_id}`, {
+        case_assignments,
+        cluster_ids,
+    });
+    return response;
+};
 export const getOcelCollection = async (ocelCollectionFileId: string): Promise<CaseOcelResponse> => {
     const response = await api.get(`v1/objects/ocel_collection/${ocelCollectionFileId}`);
     return response.data;

@@ -20,6 +20,7 @@ import {
     ShieldCheck,
     TreePine,
     Trees,
+    Ungroup,
     Waves,
     Waypoints,
     Workflow,
@@ -47,6 +48,7 @@ export const iconMap: Record<string, ComponentType<LucideProps>> = {
     waypoints: Waypoints,
     chartNetwork: ChartNetwork,
     radar: Radar,
+    ungroup: Ungroup,
     scanEye: ScanEye,
     shieldCheck: ShieldCheck,
     zap: Zap,
@@ -107,7 +109,7 @@ export const ASSET_TYPE_VISUALS: Record<AssetType, AssetTypeVisual> = {
     ocelCollectionFile: {
         icon: FileStack,
         color: 'text-green-500',
-        label: 'OCEL Collection',
+        label: 'Case Collection',
     },
     identityOcptAsset: {
         icon: FileText,
