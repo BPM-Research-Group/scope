@@ -28,6 +28,7 @@ import OcptStreamMinerNode from '~/components/explore/miner/OcptStreamMinerNode'
 import ResourceMinerNode from '~/components/explore/miner/ResourceMinerNode';
 import CaseClusteringMinerNode from '~/components/explore/miner/CaseClusteringMinerNode';
 import { RefocusProgressPanel } from '~/components/explore/RefocusProgressPanel';
+import { RestoreDraftPanel } from '~/components/explore/RestoreDraftPanel';
 import { useConnections } from '~/hooks/explore/useConnections';
 import { useDragDrop } from '~/hooks/explore/useDragDrop';
 import { useNodeOperations } from '~/hooks/explore/useNodeOperations';
@@ -94,6 +95,7 @@ const Explore: React.FC = () => {
                             <Background />
                             <Controls position="top-left" />
                             <RefocusProgressPanel />
+                            <RestoreDraftPanel />
                         </ReactFlow>
                     </div>
                 </SidebarInset>

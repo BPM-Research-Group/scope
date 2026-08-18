@@ -11,7 +11,10 @@ import { useExploreFlowStore } from '~/stores/exploreStore';
 const Pipeline: React.FC = () => {
     const navigate = useNavigate();
     const { clearFlow, getPipelineDraft, discardPipelineDraft } = useExploreFlowStore();
-    const [draft, setDraft] = useState(() => getPipelineDraft());
+    const [draft, setDraft] = useState(() => {
+        const stored = getPipelineDraft();
+        return stored && !stored.isSaved ? stored : null;
+    });
 
     const newPipelineHandler = () => {
         // Remove the old pipeline context
