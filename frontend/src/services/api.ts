@@ -309,3 +309,28 @@ export const saveOcpt = async (ocpt: any): Promise<{ file_id: string }> => {
     const response = await api.post('v1/event_stream/save', ocpt);
     return response.data;
 };
+
+// OCPN endpoints for the ocpn to ocpf
+
+export type OcpnGenerationMode = 'standard' | 'semantic' | 'optimized' | 'reference';
+
+export const mineOcpnFromProcessForest = async (
+    fileId: string,
+    mode: OcpnGenerationMode = 'standard'
+): Promise<GetOcpnResponse> => {
+    let url = `/v1/ocpn/from_process_forest/${fileId}`;
+
+    // Append the specific route based on the selected mode
+    if (mode === 'semantic') url += '/semantic';
+    else if (mode === 'optimized') url += '/optimized';
+    else if (mode === 'reference') url += '/reference';
+
+    const response = await api.get(url);
+    return response.data;
+};
+
+// new graph config for ocpn to ocgraphconf
+export const getOcpnAsOcgraphconf = async (ocpnId: string) => {
+    const response = await api.get(`/v1/ocpn/to_ocgraphconf/${ocpnId}`);
+    return response.data;
+};

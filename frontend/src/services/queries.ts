@@ -24,11 +24,14 @@ import {
     getOcpf,
     getOcpfByObject,
     getOcpn,
+    getOcpnAsOcgraphconf,
     getOcpt,
     mineIdentityOcpt,
     mineOcpn,
+    mineOcpnFromProcessForest,
     mineOcpt,
     mineProcessForest,
+    OcpnGenerationMode,
     postSpecialActivities,
 } from '~/services/api';
 import { CaseNotionApiResponse } from '~/types/case_notion.types';
@@ -304,5 +307,31 @@ export const useGetOcpf = (fileId: string | null, enabled: boolean = true) => {
         queryKey: ['getProcessForest', fileId],
         queryFn: () => getOcpf(fileId as string),
         enabled: !!fileId && enabled,
+    });
+};
+// --- NEW OCPN HOOKS ---
+
+export const useMineOcpnFromProcessForest = (
+    nodeId: string,
+    fileId: string | null,
+    mode: OcpnGenerationMode,
+    shouldFetch: boolean
+) => {
+    return useQuery({
+        // 💡 Including 'mode' in the queryKey ensures that when the user changes the dropdown
+        // in the node, React Query treats it as a new request and hits the new URL!
+        queryKey: ['mineOcpnFromProcessForest', nodeId, fileId, mode],
+        queryFn: () => mineOcpnFromProcessForest(fileId!, mode),
+        enabled: Boolean(fileId) && shouldFetch,
+        refetchOnWindowFocus: false,
+    });
+};
+
+export const useGetOcpnAsOcgraphconf = (ocpnId: string | null, enabled: boolean = true) => {
+    return useQuery({
+        queryKey: ['getOcpnAsOcgraphconf', ocpnId],
+        queryFn: () => getOcpnAsOcgraphconf(ocpnId!),
+        enabled: Boolean(ocpnId) && enabled,
+        refetchOnWindowFocus: false,
     });
 };
