@@ -16,6 +16,7 @@ import OcpnFileNode from '~/components/explore/file/OcpnFileNode';
 import OcptFileNode from '~/components/explore/file/OcptFileNode';
 import FileSelectionDialog from '~/components/explore/file/ui/FileSelectionDialog';
 import AbstractionMinerNode from '~/components/explore/miner/AbstractionMinerNode';
+import CaseClusteringMinerNode from '~/components/explore/miner/CaseClusteringMinerNode';
 import CaseNotionMinerNode from '~/components/explore/miner/CaseNotionMinerNode';
 import ConformanceMinerNode from '~/components/explore/miner/ConformanceMinerNode';
 import Df2StreamMinerNode from '~/components/explore/miner/Df2StreamMinerNode';
@@ -23,6 +24,7 @@ import ExtendWithIdentityNode from '~/components/explore/miner/ExtendWithIdentit
 import FlowMinerNode from '~/components/explore/miner/FlowMinerNode';
 import FlowVisualizationNode from '~/components/explore/miner/FlowVisualizationNode';
 import HistogramMinerNode from '~/components/explore/miner/HistogramMinerNode';
+import KpiBuilderNode from '~/components/explore/miner/KpiBuilderNode';
 import OcpfMinerNode from '~/components/explore/miner/OcpfMinerNode';
 import OcpnMinerNode from '~/components/explore/miner/OcpnMinerNode';
 import OcptMinerNode from '~/components/explore/miner/OcptMinerNode';
@@ -59,6 +61,8 @@ const nodeTypes = {
     df2StreamMinerNode: Df2StreamMinerNode,
     ocptStreamMinerNode: OcptStreamMinerNode,
     flowFileNode: FlowFileNode,
+    kpiBuilderNode: KpiBuilderNode,
+    caseClusteringMinerNode: CaseClusteringMinerNode,
 } satisfies Record<keyof typeof nodeRegistry, React.ComponentType<NodeProps<any>>>;
 
 const Explore: React.FC = () => {
@@ -72,7 +76,7 @@ const Explore: React.FC = () => {
 
     const handleDrop = useCallback((event: DragEvent<HTMLElement>) => onDrop(event, type), [onDrop, type]);
 
-    logger.debug('nodes updated', nodes);
+    logger.debug('nodes Updated', nodes);
 
     return (
         <>

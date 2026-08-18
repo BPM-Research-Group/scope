@@ -87,7 +87,7 @@ export const nodeRegistry = {
     // ── Miner nodes ────────────────────────────────────────────────────────────
     ocptMinerNode: {
         category: 'miner',
-        allowedAssetTypes: ['ocelFile'],
+        allowedAssetTypes: ['ocelFile', 'ocelCollectionFile'],
         sidebar: { label: 'OCPT Miner', icon: 'treePine', group: 'miners' },
     },
     histogramMinerNode: {
@@ -111,10 +111,17 @@ export const nodeRegistry = {
     },
     flowMinerNode: {
         category: 'miner',
-        allowedAssetTypes: ['ocptAsset', 'ocptFile', 'identityOcptAsset', 'ocelAsset', 'ocelFile'],
+        allowedAssetTypes: [
+            'ocptAsset',
+            'ocptFile',
+            'identityOcptAsset',
+            'ocelAsset',
+            'ocelFile',
+            'ocelCollectionFile',
+        ],
         inputs: [
             { label: 'Model', types: ['ocptAsset', 'ocptFile', 'identityOcptAsset'] },
-            { label: 'Log', types: ['ocelAsset', 'ocelFile'] },
+            { label: 'Log', types: ['ocelAsset', 'ocelFile', 'ocelCollectionFile'] },
         ],
         sidebar: { label: 'Flow Visualization', icon: 'zap', group: 'miners' },
     },
@@ -137,6 +144,11 @@ export const nodeRegistry = {
         category: 'miner',
         allowedAssetTypes: ['ocelFile'],
         sidebar: { label: 'Resource Miner', icon: 'waves', group: 'miners' },
+    },
+    kpiBuilderNode: {
+        category: 'miner',
+        allowedAssetTypes: ['ocelFile', 'ocelAsset', 'ocelCollectionFile'],
+        sidebar: { label: 'KPI Builder', icon: 'network', group: 'miners' },
     },
     conformanceMinerNode: {
         category: 'miner',
@@ -162,5 +174,10 @@ export const nodeRegistry = {
         category: 'miner',
         allowedAssetTypes: ['ocelFile'],
         sidebar: { label: 'OCPT Stream Miner', icon: 'treePine', group: 'miners' },
+    },
+    caseClusteringMinerNode: {
+        category: 'miner',
+        allowedAssetTypes: ['ocelCollectionFile'],
+        sidebar: { label: 'Clustering', icon: 'ungroup', group: 'miners' },
     },
 } satisfies Record<RegistrableNodeType, NodeRegistryEntry>;
