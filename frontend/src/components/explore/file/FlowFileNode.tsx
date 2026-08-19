@@ -2,13 +2,11 @@ import { memo } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import { Position } from '@xyflow/react';
 import { Zap } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '~/components/ui/button';
 import BaseFileNode from '~/components/explore/file/BaseFileNode';
+import ViewerLink from '~/components/explore/ui/ViewerLink';
 import { FileNode } from '~/types/explore/nodes';
 
 const FlowFileNode = memo<NodeProps<FileNode>>((props) => {
-    const navigate = useNavigate();
     const outputAsset = props.data.assets.find((a) => a.io === 'output');
 
     return (
@@ -24,15 +22,12 @@ const FlowFileNode = memo<NodeProps<FileNode>>((props) => {
         >
             {outputAsset && (
                 <div className="mt-2 border-t pt-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-start h-7 px-2 text-xs"
-                        onClick={() => navigate(`/data/pipeline/explore/flow/${props.id}`)}
-                    >
-                        <Zap className="mr-2 h-3.5 w-3.5 text-yellow-500" />
-                        View Animated Flow
-                    </Button>
+                    <ViewerLink
+                        to={`/data/pipeline/explore/flow/${props.id}`}
+                        icon={Zap}
+                        iconClassName="text-yellow-500"
+                        label="View Animated Flow"
+                    />
                 </div>
             )}
         </BaseFileNode>
