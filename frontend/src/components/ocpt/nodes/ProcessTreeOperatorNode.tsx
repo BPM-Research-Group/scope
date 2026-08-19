@@ -1,6 +1,7 @@
 import { Group } from '@visx/group';
 import { HierarchyPointNode } from '@visx/hierarchy/lib/types';
 import ProcessTreeOperatorSVG from '~/components/ocpt/nodes/ProcessTreeOperatorSVG';
+import { KIND_SYMBOLS } from '~/lib/identity_relations/kinds';
 import * as Ocpt from '~/types/ocpt/ocpt.types';
 
 interface ProcessTreeNodeProps {
@@ -68,6 +69,32 @@ const ProcessTreeOperatorNode: React.FC<ProcessTreeNodeProps> = ({
                 ry={25}
                 opacity={opacity}
             />
+            {identityKinds &&
+                identityKinds.length > 0 &&
+                (() => {
+                    const label = identityKinds.map((kind) => KIND_SYMBOLS[kind] ?? '?').join(' ');
+                    const badgeHeight = 16;
+                    const badgeWidth = Math.max(badgeHeight, label.length * 7 + 10);
+                    const cx = width / 2 + 4;
+                    const cy = -height / 2 - 4;
+                    return (
+                        <g opacity={opacity} style={{ pointerEvents: 'none' }}>
+                            <rect
+                                x={cx - badgeWidth / 2}
+                                y={cy - badgeHeight / 2}
+                                width={badgeWidth}
+                                height={badgeHeight}
+                                rx={badgeHeight / 2}
+                                fill="#eef2ff"
+                                stroke="#6366f1"
+                                strokeWidth={1}
+                            />
+                            <text x={cx} y={cy} dy=".32em" textAnchor="middle" fontSize={10} fill="#4f46e5">
+                                {label}
+                            </text>
+                        </g>
+                    );
+                })()}
             {(() => {
                 switch (operator) {
                     case 'sequence':

@@ -150,7 +150,7 @@ const ResourceGraphPage: React.FC<Props> = ({ fileId: initialFileId, nodeeId: no
                 io: 'output',
                 origin: 'mined',
                 type: 'ocelCollectionFile',
-                name: 'Fixed Special Activity',
+                name: 'Resource Miner',
             },
         ];
 

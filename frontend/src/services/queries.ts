@@ -2,10 +2,15 @@ import { useQuery } from '@tanstack/react-query';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     AbstractionSourceKind,
+    agglomerativeClustering,
+    attributeStats,
+    caseClustering,
+    caseStats,
     extendOcptWithIdentity,
     getAbstraction,
     getAbstractionById,
     getActivityResource,
+    getAdvancedCN,
     getCaseNotions,
     getConformanceAbstractionAbstraction,
     getConformanceExtendedOcptAbstraction,
@@ -14,6 +19,7 @@ import {
     getConformanceOcptAbstraction,
     getConformanceOcptOcel,
     getConformanceOcptOcpt,
+    getConnectedComponentsCN,
     getHistogramEventPersp,
     getHistogramObjectPersp,
     getIdentityOcpt,
@@ -24,11 +30,19 @@ import {
     getOcpf,
     getOcpfByObject,
     getOcpn,
+    getOcpnAsOcgraphconf,
+    getOcpnFromOcpt,
     getOcpt,
+    getTraditionalCN,
+    kpiHistogramFilter,
+    materialiseClustering,
     mineIdentityOcpt,
+    mineKpi,
     mineOcpn,
+    mineOcpnFromProcessForest,
     mineOcpt,
     mineProcessForest,
+    OcpnGenerationMode,
     postSpecialActivities,
 } from '~/services/api';
 import { CaseNotionApiResponse } from '~/types/case_notion.types';
@@ -76,6 +90,7 @@ export const usePostSpecialActivity = () => {
         mutationFn: ({ fileId, activities }: { fileId: string; activities: string[] }) =>
             postSpecialActivities(fileId, activities),
         onSuccess: (data, variables) => {
+            // 🔁 Refetch activity resource after POST
             queryClient.invalidateQueries({
                 queryKey: ['getActivityResource', variables.fileId],
             });
@@ -118,7 +133,42 @@ export const useMineOcpt = (nodeId: string, fileId: string | null, algorithm: st
         refetchOnWindowFocus: false,
     });
 };
+export const useMineKpi = (fileId: string | null) => {
+    return useQuery({
+        queryKey: ['mineKpi', fileId],
+        queryFn: () => mineKpi(fileId!),
+        enabled: Boolean(fileId),
+        refetchOnWindowFocus: false,
+    });
+};
 
+export const useKpiHistogramFilter = (fileId: string | null, params: any, options = {}) => {
+    return useQuery({
+        queryKey: ['kpiHistogramFilter', fileId, params],
+        queryFn: () => kpiHistogramFilter(fileId!, params),
+        enabled: Boolean(fileId),
+        // refetchOnWindowFocus: false,
+    });
+};
+export const useAttributeStats = (fileId: string | null, params: any, options = {}) => {
+    return useQuery({
+        queryKey: ['attributeStats', fileId, params],
+        queryFn: () => attributeStats(fileId!, params),
+        enabled: Boolean(fileId) && Boolean(params),
+        ...options,
+    });
+};
+export const useCaseStats = (fileId: string | null, params: any, caseType: string, options = {}) => {
+    return useQuery({
+        queryKey: ['caseStats', fileId, params, caseType],
+        queryFn: () => {
+            return caseStats(fileId!, params, caseType);
+        },
+
+        enabled: Boolean(fileId) && Boolean(params) && Boolean(caseType),
+        ...options,
+    });
+};
 export const useMineProcessForest = (nodeId: string, fileId: string | null, shouldFetch: boolean) => {
     return useQuery({
         queryKey: ['mineProcessForest', nodeId, fileId],
@@ -147,6 +197,7 @@ export const useMineIdentityOcpt = (nodeId: string, fileId: string | null, algor
 };
 
 export const useGetIdentityOcpt = (fileId: string | null, shouldFetch: boolean) => {
+    console.log('Api, file ID 2.2', fileId);
     return useQuery({
         queryKey: ['getIdentityOcpt', fileId],
         queryFn: () => getIdentityOcpt(fileId!),
@@ -268,7 +319,48 @@ export const useGetAbstractionById = (fileId: string | null) => {
         refetchOnWindowFocus: false,
     });
 };
+export const useCaseClustering = (
+    nodeId: string,
+    fileId: string | null,
+    metric: string,
+    algorithm: string,
+    numberOfClusters: number,
+    shouldFetch: boolean
+) => {
+    return useQuery({
+        queryKey: ['caseClustering', nodeId, fileId, metric, algorithm, numberOfClusters],
+        queryFn: () => caseClustering(fileId!, metric, algorithm, numberOfClusters),
+        enabled: Boolean(fileId) && shouldFetch,
+        refetchOnWindowFocus: false,
+    });
+};
 
+export const useAgglomerativeClustering = (
+    nodeId: string,
+    fileId: string | null,
+    numberOfClusters: number,
+    shouldFetch: boolean
+) => {
+    return useQuery({
+        queryKey: ['agglomerativeClustering', nodeId, fileId, numberOfClusters],
+        queryFn: () => agglomerativeClustering(fileId!, numberOfClusters),
+        enabled: Boolean(fileId) && shouldFetch,
+        refetchOnWindowFocus: false,
+    });
+};
+export const useMaterialiseClustering = (
+    case_ocels_file_id: string,
+    case_assignments: any,
+    cluster_ids: number[],
+    shouldFetch: boolean
+) => {
+    return useQuery({
+        queryKey: ['materialiseClustering', case_ocels_file_id, case_assignments, cluster_ids],
+        queryFn: () => materialiseClustering(case_ocels_file_id, case_assignments, cluster_ids),
+        enabled: Boolean(case_ocels_file_id) && shouldFetch,
+        refetchOnWindowFocus: false,
+    });
+};
 export const useGetAbstraction = (
     nodeId: string,
     fileId: string | null,
@@ -295,6 +387,7 @@ export const useGetOcpn = (fileId: string | null, enabled: boolean = true) => {
     return useQuery({
         queryKey: ['getOcpn', fileId],
         queryFn: () => getOcpn(fileId as string),
+        // This ensures it only runs if the fileId actually exists AND the component says it's okay to run
         enabled: !!fileId && enabled,
     });
 };
@@ -306,3 +399,27 @@ export const useGetOcpf = (fileId: string | null, enabled: boolean = true) => {
         enabled: !!fileId && enabled,
     });
 };
+// --- NEW OCPN HOOKS ---
+
+// export const useMineOcpnFromProcessForest = (
+//     nodeId: string,
+//     fileId: string | null,
+//     mode: OcpnGenerationMode,
+//     shouldFetch: boolean
+// ) => {
+//     return useQuery({
+//         queryKey: ['mineOcpnFromProcessForest', nodeId, fileId, mode],
+//         queryFn: () => mineOcpnFromProcessForest(fileId!, mode),
+//         enabled: Boolean(fileId) && shouldFetch,
+//         refetchOnWindowFocus: false,
+//     });
+// };
+
+// export const useGetOcpnAsOcgraphconf = (ocpnId: string | null, enabled: boolean = true) => {
+//     return useQuery({
+//         queryKey: ['getOcpnAsOcgraphconf', ocpnId],
+//         queryFn: () => getOcpnAsOcgraphconf(ocpnId!),
+//         enabled: Boolean(ocpnId) && enabled,
+//         refetchOnWindowFocus: false,
+//     });
+// };
