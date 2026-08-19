@@ -290,9 +290,9 @@ pub fn find_cut_sequence(
     }
 
     if is_sequence_cut_valid(local_data, global_data, &partition) {
-        return Some((partition, OCPTOperatorType::Sequence));
+        Some((partition, OCPTOperatorType::Sequence))
     } else {
-        return None;
+        None
     }
 }
 
@@ -401,7 +401,7 @@ mod tests {
         });
 
         // 2. Act: Run the OCIM algorithm
-        let ocpt = ocim_init(&vec![ocel.clone()]);
+        let ocpt = ocim_init(&[ocel.clone()]);
         dbg!(&ocpt);
 
         // 3. Assert: Check if the root node is a Sequence Operator

@@ -485,17 +485,16 @@ fn attach_silent_objects(
 
     // Attach silent IDs to ocel.events
     for (event, silent_id_opt) in ocel.events.iter_mut().zip(event_silent_ids) {
-        if let Some(silent_id) = silent_id_opt {
-            if !event
+        if let Some(silent_id) = silent_id_opt
+            && !event
                 .relationships
                 .iter()
                 .any(|rel| rel.object_id == silent_id)
-            {
-                event.relationships.push(OCELRelationship {
-                    object_id: silent_id,
-                    qualifier: "silent_object".to_string(),
-                });
-            }
+        {
+            event.relationships.push(OCELRelationship {
+                object_id: silent_id,
+                qualifier: "silent_object".to_string(),
+            });
         }
     }
 }

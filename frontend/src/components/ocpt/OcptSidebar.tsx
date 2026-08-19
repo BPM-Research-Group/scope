@@ -24,6 +24,8 @@ interface OcptSidebarProps {
     showDetails: boolean;
     onShowDetailsChange: (value: boolean) => void;
     onExport: () => void;
+    isForestMode?: boolean;
+    setIsForestMode?: (value: boolean) => void;
 }
 
 const OcptSidebar: React.FC<OcptSidebarProps> = ({
@@ -36,12 +38,33 @@ const OcptSidebar: React.FC<OcptSidebarProps> = ({
     showDetails,
     onShowDetailsChange,
     onExport,
+    isForestMode,
+    setIsForestMode,
 }) => {
     return (
         <Sidebar side="right">
             <SidebarContent>
+                {/* Mode Toggle (Renders only if setIsForestMode is passed) */}
+                {setIsForestMode && (
+                    <SidebarGroup>
+                        <SidebarGroupLabel>Viewing Mode</SidebarGroupLabel>
+                        <SidebarGroupContent>
+                            <SidebarMenu>
+                                <SidebarMenuItem className="ml-1 mt-2 mb-2">
+                                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                        <Switch checked={isForestMode} onCheckedChange={setIsForestMode} />
+                                        <span className={isForestMode ? 'font-semibold' : ''}>Process Forest Mode</span>
+                                    </label>
+                                </SidebarMenuItem>
+                            </SidebarMenu>
+                        </SidebarGroupContent>
+                    </SidebarGroup>
+                )}
+
                 <SidebarGroup>
-                    <SidebarGroupLabel>Project onto Object Type(s)</SidebarGroupLabel>
+                    <SidebarGroupLabel>
+                        {isForestMode ? 'Highlight Object Type(s)' : 'Project onto Object Type'}
+                    </SidebarGroupLabel>
                     <SidebarGroupContent>
                         <SidebarMenu>
                             <SidebarMenuItem className="ml-1">
@@ -51,11 +74,13 @@ const OcptSidebar: React.FC<OcptSidebarProps> = ({
                                     nodeId={nodeId}
                                     filteredObjectTypes={filteredObjectTypes}
                                     onFilteredObjectTypesChange={onFilteredObjectTypesChange}
+                                    isForestMode={isForestMode}
                                 />
                             </SidebarMenuItem>
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>
+
                 <SidebarGroup>
                     <SidebarGroupLabel>Display</SidebarGroupLabel>
                     <SidebarGroupContent>
@@ -75,6 +100,7 @@ const OcptSidebar: React.FC<OcptSidebarProps> = ({
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>
+
                 {conformanceData && (
                     <SidebarGroup>
                         <SidebarGroupLabel>Conformance</SidebarGroupLabel>

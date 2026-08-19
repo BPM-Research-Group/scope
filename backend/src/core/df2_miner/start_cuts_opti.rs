@@ -30,13 +30,13 @@ pub fn find_cuts_start(
         return forest;
     }
 
-    let filtered_dfg = filter_keep_dfg(&dfg, &all_activities);
+    let filtered_dfg = filter_keep_dfg(dfg, all_activities);
     let (start_activities, end_activities) =
-        get_start_and_end_activities(&dfg, &all_activities, &start_activities, &end_activities);
+        get_start_and_end_activities(dfg, all_activities, start_activities, end_activities);
 
     // ----- perform cuts--------
 
-    let (excl_set1, excl_set2) = find_exclusive_choice_cut(&filtered_dfg, &all_activities);
+    let (excl_set1, excl_set2) = find_exclusive_choice_cut(&filtered_dfg, all_activities);
     if !excl_set1.is_empty()
         && !excl_set2.is_empty()
         && is_exclusive_choice_cut_possible(&filtered_dfg, &excl_set1, &excl_set2)
@@ -47,13 +47,13 @@ pub fn find_cuts_start(
             children: Vec::new(),
         };
         node.children.extend(find_cuts_start(
-            &dfg,
+            dfg,
             &excl_set1,
             &start_activities,
             &end_activities,
         ));
         node.children.extend(find_cuts_start(
-            &dfg,
+            dfg,
             &excl_set2,
             &start_activities,
             &end_activities,
@@ -62,7 +62,7 @@ pub fn find_cuts_start(
         return forest;
     }
 
-    let (set1, set2) = find_sequence_cut(&filtered_dfg, &all_activities);
+    let (set1, set2) = find_sequence_cut(&filtered_dfg, all_activities);
     if !set1.is_empty() && !set2.is_empty() && is_sequence_cut_possible(&filtered_dfg, &set1, &set2)
     {
         info!("Sequence cut found: {:?} (->) {:?}", set1, set2);
@@ -71,13 +71,13 @@ pub fn find_cuts_start(
             children: Vec::new(),
         };
         node.children.extend(find_cuts_start(
-            &dfg,
+            dfg,
             &set1,
             &start_activities,
             &end_activities,
         ));
         node.children.extend(find_cuts_start(
-            &dfg,
+            dfg,
             &set2,
             &start_activities,
             &end_activities,
@@ -86,7 +86,7 @@ pub fn find_cuts_start(
         return forest;
     }
 
-    let (is_parallel, para_set1, para_set2) = find_parallel_cut(&filtered_dfg, &all_activities);
+    let (is_parallel, para_set1, para_set2) = find_parallel_cut(&filtered_dfg, all_activities);
     if is_parallel
         && !para_set1.is_empty()
         && !para_set2.is_empty()
@@ -98,13 +98,13 @@ pub fn find_cuts_start(
             children: Vec::new(),
         };
         node.children.extend(find_cuts_start(
-            &dfg,
+            dfg,
             &para_set1,
             &start_activities,
             &end_activities,
         ));
         node.children.extend(find_cuts_start(
-            &dfg,
+            dfg,
             &para_set2,
             &start_activities,
             &end_activities,
@@ -115,7 +115,7 @@ pub fn find_cuts_start(
 
     let (is_redo, redo_set1, redo_set2) = find_redo_cut(
         &filtered_dfg,
-        &all_activities,
+        all_activities,
         &start_activities,
         &end_activities,
     );
@@ -136,13 +136,13 @@ pub fn find_cuts_start(
             children: Vec::new(),
         };
         node.children.extend(find_cuts_start(
-            &dfg,
+            dfg,
             &redo_set1,
             &start_activities,
             &end_activities,
         ));
         node.children.extend(find_cuts_start(
-            &dfg,
+            dfg,
             &redo_set2,
             &start_activities,
             &end_activities,
@@ -175,7 +175,7 @@ fn find_exclusive_choice_cut(
     // Step 1: Convert to undirected adjacency list
     let mut undirected_graph: HashMap<String, HashSet<String>> = HashMap::new();
 
-    for ((from, to), _) in dfg {
+    for (from, to) in dfg.keys() {
         undirected_graph
             .entry(from.clone())
             .or_default()
@@ -276,13 +276,13 @@ fn find_sequence_cut(
     dfg: &HashMap<(String, String), usize>,
     all_activities: &HashSet<String>,
 ) -> (HashSet<String>, HashSet<String>) {
-    let sccs = strongly_connected_components(&dfg, &all_activities);
+    let sccs = strongly_connected_components(dfg, all_activities);
     // println!("SCCs:");
     // for (i, comp) in sccs.iter().enumerate() {
     //     println!("  SCC {}: {:?}", i, comp);
     // }
 
-    let (dag, _) = build_scc_dag(&sccs, &dfg);
+    let (dag, _) = build_scc_dag(&sccs, dfg);
     // println!("SCC DAG:");
     // for (from, tos) in &dag {
     //     for to in tos {
@@ -397,7 +397,7 @@ fn strongly_connected_components(
 
 /// Step 2: Build SCC DAG
 pub fn build_scc_dag(
-    sccs: &Vec<Vec<String>>,
+    sccs: &[Vec<String>],
     dfg: &HashMap<(String, String), usize>,
 ) -> (HashMap<usize, HashSet<usize>>, HashMap<String, usize>) {
     let mut node_to_scc = HashMap::new();
@@ -422,7 +422,7 @@ pub fn build_scc_dag(
 /// Step 3: Extract set1 and set2 SCCs and their activity sets
 pub fn partition_scc_sets(
     dag: &HashMap<usize, HashSet<usize>>,
-    sccs: &Vec<Vec<String>>,
+    sccs: &[Vec<String>],
 ) -> (HashSet<String>, HashSet<String>) {
     // Create set1 and set2
     let mut set1: HashSet<usize> = HashSet::new();
@@ -500,11 +500,11 @@ pub fn is_reachable_in_dag(
         if current == activity2 {
             return true;
         }
-        if visited.insert(current) {
-            if let Some(neighbors) = dag.get(&current) {
-                for &neighbor in neighbors {
-                    stack.push(neighbor);
-                }
+        if visited.insert(current)
+            && let Some(neighbors) = dag.get(&current)
+        {
+            for &neighbor in neighbors {
+                stack.push(neighbor);
             }
         }
     }
@@ -522,7 +522,7 @@ fn sequence_cut_condition_check(
         for b in set2 {
             let r1 = is_reachable(dfg, a, b);
             let r2 = is_reachable(dfg, b, a);
-            if !(r1 && !r2) {
+            if !r1 || r2 {
                 failures.push((a.clone(), b.clone(), r1, r2));
             }
         }
@@ -610,8 +610,10 @@ fn find_redo_cut(
             continue;
         }
 
-        let is_s1_redo = is_reachable_before_end_activity(start_activities, &x, end_activities, dfg);
-        let is_s2_redo = is_reachable_before_end_activity(end_activities, &x, start_activities, dfg);
+        let is_s1_redo =
+            is_reachable_before_end_activity(start_activities, &x, end_activities, dfg);
+        let is_s2_redo =
+            is_reachable_before_end_activity(end_activities, &x, start_activities, dfg);
 
         if is_s1_redo && !is_s2_redo {
             set1.insert(x.clone());
@@ -740,7 +742,7 @@ fn get_start_and_end_activities(
     let mut start_activities = HashSet::new();
     let mut end_activities = HashSet::new();
 
-    for ((a, b), _) in dfg {
+    for (a, b) in dfg.keys() {
         let a_in = filtered_activities.contains(a);
         let b_in = filtered_activities.contains(b);
 
@@ -796,10 +798,8 @@ pub fn is_reachable_before_end_activity(
         let mut keys: Vec<&(String, String)> = dfg.keys().collect();
         keys.sort();
         for (src, dst) in keys {
-            if src == current {
-                if dfs(dst, target, end_activities, dfg, visited) {
-                    return true;
-                }
+            if src == current && dfs(dst, target, end_activities, dfg, visited) {
+                return true;
             }
         }
 

@@ -5,6 +5,7 @@ import { CaseOcelResponse } from '~/types/api/ocel_collection.api';
 import { CaseNotionApiResponse } from '~/types/case_notion.types';
 import { ExtendedFile } from '~/types/files.types';
 import { OcptSchemaApi } from '~/types/ocpt/ocpt.types';
+import { ProcessForestResponse } from '~/types/processForest.types';
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_BACKEND_BASE_URL,
@@ -27,6 +28,9 @@ export const uploadFile = async (file: ExtendedFile) => {
         case 'ocpnFile':
             response = await api.post<any, AxiosResponse<any, any>, any>('/v1/upload/ocpn', formData);
             break;
+        case 'ocpfFile':
+            response = await api.post<any, AxiosResponse<any, any>, any>('/v1/upload/ocpf', formData);
+            break;
     }
 
     return response.data;
@@ -36,6 +40,7 @@ type GetOcptResponse = {
     ocpt: OcptSchemaApi;
     file_id: string;
 };
+
 export const getOcpt = async (fileId: string): Promise<GetOcptResponse> => {
     const response = await api.get(`/v1/objects/ocpt/${fileId}`);
     return response.data;
@@ -56,8 +61,14 @@ export const mineIdentityOcpt = async (ocelFileId: string, baseAlgorithm: string
     return { file_id: extendedResponse.data.file_id, ocpt: extendedResponse.data.extended_ocpt };
 };
 
-export const extendOcptWithIdentity = async (ocptFileId: string, ocelFileId: string, noiseThreshold: number): Promise<GetOcptResponse> => {
-    const response = await api.get(`v1/ocpt/extend/${ocptFileId}`, { params: { ocel_id: ocelFileId, noise_threshold: noiseThreshold } });
+export const extendOcptWithIdentity = async (
+    ocptFileId: string,
+    ocelFileId: string,
+    noiseThreshold: number
+): Promise<GetOcptResponse> => {
+    const response = await api.get(`v1/ocpt/extend/${ocptFileId}`, {
+        params: { ocel_id: ocelFileId, noise_threshold: noiseThreshold },
+    });
     return { file_id: response.data.file_id, ocpt: response.data.extended_ocpt };
 };
 
@@ -67,17 +78,14 @@ export const getOcel = async (fileId: string) => {
 };
 
 export const getActivityResource = async (fileId: string) => {
-   
     const response = await api.get(`/v1/resource_miner/${fileId}`);
-   
     return response.data;
 };
 
-export const postSpecialActivities= async (fileId : string, activities: string[]) => {
+export const postSpecialActivities = async (fileId: string, activities: string[]) => {
     const response = await api.post(`/v1/resource_miner/${fileId}/fix_multiple_special_activities`, { activities });
-   
     return response.data;
-}
+};
 
 export const getHistogramEventPersp = async (fileId: string) => {
     const response = await api.get(`/v1/event_object_frequencies/event_perspective_histogram/${fileId}`);
@@ -173,7 +181,9 @@ export const getConformanceExtendedOcptExtendedOcpt = async (
     extendedOcptId1: string,
     extendedOcptId2: string
 ): Promise<{ fitness: number; precision: number }> => {
-    const response = await api.get(`/v1/conformance/extended_ocpt_1/${extendedOcptId1}/extended_ocpt_2/${extendedOcptId2}`);
+    const response = await api.get(
+        `/v1/conformance/extended_ocpt_1/${extendedOcptId1}/extended_ocpt_2/${extendedOcptId2}`
+    );
     return response.data;
 };
 
@@ -243,6 +253,15 @@ export const mineOcpt = async (fileId: string, algorithm: string = 'DF2'): Promi
     throw new Error(`Algorithm ${algorithm} not supported`);
 };
 
+export const mineKpi = async (fileId: string) => {
+    const response = await api.get(`/v1/kpi/case_ocel_metadata/${fileId}`);
+    return response.data;
+};
+export const kpiHistogramFilter = async (fileId: string, params: any) => {
+    const response = await api.post(`/v1/kpi/histogram_filter/${fileId}`, params);
+    return response.data;
+};
+
 export const mineOcpn = async (fileId: string): Promise<GetOcpnResponse> => {
     const response = await api.get(`/v1/ocpn/from_ocpt/${fileId}`);
     return response.data;
@@ -253,14 +272,33 @@ export const getCaseNotions = async (cnFileId: string) => {
     return response.data;
 };
 
-export const getLogGraphs = async (ocelFileId: string) => {
-    const response = await api.get(`v1/log_graphs/ocel/${ocelFileId}`);
+export const attributeStats = async (fileId: string, params: any) => {
+    const response = await api.post(`/v1/kpi/attribute_combination/${fileId}`, params);
     return response.data;
 };
-
-export const getOcelCollection = async (ocelCollectionFileId: string): Promise<CaseOcelResponse> => {
-    const response = await api.get(`v1/objects/ocel_collection/${ocelCollectionFileId}`);
-    return response.data;
+export const caseStats = async (fileId: string, params: any, caseType: string) => {
+    if (caseType === 'attribute_combination') {
+        const response = await api.post(`/v1/kpi/attribute_combination/${fileId}`, params);
+        return response.data;
+    }
+    if (caseType === 'case_attribute_event_type') {
+        const response = await api.get(`/v1/kpi/case_attribute_stats/${fileId}`, { params });
+        return response.data;
+    }
+    if (caseType === 'case_attribute_object_type') {
+        const response = await api.get(`/v1/kpi/case_attribute_stats/${fileId}`, { params });
+        return response.data;
+    }
+    if (caseType === 'case_duration') {
+        const response = await api.get(`/v1/kpi/case_duration/${fileId}`, { params });
+        return response.data;
+    }
+    if (caseType === 'activity_time') {
+        console.log('objectgdd');
+        const response = await api.get(`/v1/kpi/case_time_stats/${fileId}`, { params });
+        return response.data;
+    }
+    throw new Error(`Unsupported case type: ${caseType}`);
 };
 
 export type GetOcpnResponse = {
@@ -273,18 +311,12 @@ export const getOcpn = async (fileId: string) => {
     return response.data;
 };
 
-export const getEventStreamInit = async (fileId: string): Promise<{ first_event: string; last_event: string; event_count: number }> => {
-    const response = await api.get(`v1/event_stream/init/${fileId}`);
+export const getLogGraphs = async (ocelFileId: string) => {
+    const response = await api.get(`v1/log_graphs/ocel/${ocelFileId}`);
     return response.data;
 };
-
-export const saveOcpt = async (ocpt: any): Promise<{ file_id: string }> => {
-    const response = await api.post('v1/event_stream/save', ocpt);
-    return response.data;
-};
-
 export const caseClustering = async (fileId: string, metric: string, algorithm: string = 'dfg-typ', k: number) => {
-    if(algorithm === 'k-medoids') {
+    if (algorithm === 'k-medoids') {
         const response = await api.get(`/v1/clustering/cluster/${fileId}`, { params: { k, metric } });
         return response.data;
     } else if (algorithm === 'agglomerative') {
@@ -293,13 +325,51 @@ export const caseClustering = async (fileId: string, metric: string, algorithm: 
     }
     throw new Error(`Algorithm ${algorithm} not supported`);
 };
-
 export const agglomerativeClustering = async (aggFileId: string, k: number) => {
     const response = await api.get(`/v1/clustering/agglomerative/${aggFileId}/cut?k=${k}`);
     return response.data;
 };
-
-export const materialiseClustering = async (case_ocels_file_id: string, case_assignments:any, cluster_ids: number[]) => {
-    const response= await api.post(`/v1/clustering/materialize/${case_ocels_file_id}`, {case_assignments, cluster_ids}); 
+export const materialiseClustering = async (
+    case_ocels_file_id: string,
+    case_assignments: any,
+    cluster_ids: number[]
+) => {
+    const response = await api.post(`/v1/clustering/materialize/${case_ocels_file_id}`, {
+        case_assignments,
+        cluster_ids,
+    });
     return response;
+};
+export const getOcelCollection = async (ocelCollectionFileId: string): Promise<CaseOcelResponse> => {
+    const response = await api.get(`v1/objects/ocel_collection/${ocelCollectionFileId}`);
+    return response.data;
+};
+
+export const getProcessForest = async (fileId: string): Promise<ProcessForestResponse> => {
+    const response = await api.get(`/v1/objects/process_forest/${fileId}`);
+    return response.data;
+};
+
+export const getOcpf = getProcessForest;
+
+export const getOcpfByObject = async (fileId: string, objectType: string) => {
+    const response = await api.get(`/v1/process_forest/${fileId}/projection/${objectType}`);
+    return response.data;
+};
+
+export const mineProcessForest = async (fileId: string): Promise<ProcessForestResponse> => {
+    const response = await api.get(`/v1/process_forest/${fileId}`);
+    return response.data;
+};
+
+export const getEventStreamInit = async (
+    fileId: string
+): Promise<{ first_event: string; last_event: string; event_count: number }> => {
+    const response = await api.get(`v1/event_stream/init/${fileId}`);
+    return response.data;
+};
+
+export const saveOcpt = async (ocpt: any): Promise<{ file_id: string }> => {
+    const response = await api.post('v1/event_stream/save', ocpt);
+    return response.data;
 };

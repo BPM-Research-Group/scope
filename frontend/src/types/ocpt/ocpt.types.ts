@@ -37,20 +37,27 @@ export interface SilentActivity extends Activity {
 }
 
 // Pre-projection operator shape from the Identity OCPT API.
-// Operators arrive as objects (not plain strings) and may carry identity relations.
 export interface IdentityOperatorApi {
     operator: OperatorType;
-    identity?: IdentityRelation[]; // Even if there is no identity, it will still be value: { operator: X }
+    identity?: IdentityRelation[];
 }
 
 export interface ExtendedOperator {
     operator: ExtendedOperatorType;
-    ots: ObjectType[]; // This is not in the paper but it is important for the projections!
+    ots: ObjectType[];
     identity?: IdentityRelation[];
 }
 
+// Process Forest Operator
+export interface ProcessForestOperator {
+    operators: Record<string, ExtendedOperatorType>; // e.g. { "item": "sequence", "employee": "loop" }
+    ots: ObjectType[];
+    identity?: IdentityRelation[];
+}
+
+// Added ProcessForestOperator to the value union
 export interface NodeWithoutId {
-    value: Activity | SilentActivity | OperatorType | IdentityOperatorApi | ExtendedOperator;
+    value: Activity | SilentActivity | OperatorType | IdentityOperatorApi | ExtendedOperator | ProcessForestOperator;
     isExpanded?: boolean;
     children: Node[];
 }

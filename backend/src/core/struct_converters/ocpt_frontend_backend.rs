@@ -61,7 +61,6 @@ pub fn backend_to_frontend(ocpt: &OCPT) -> OcptFE {
 /// It takes a frontend OCPT node as input and returns the corresponding backend OCPT node.
 ///
 /// The function recursively converts all child nodes until all nodes have been converted.
-
 fn frontend_node_to_backend(node: &HierarchyNode) -> Result<OCPTNode> {
     match node {
         HierarchyNode::Operator { value, children } => match value {
@@ -105,7 +104,6 @@ fn frontend_node_to_backend(node: &HierarchyNode) -> Result<OCPTNode> {
 /// - "exclusivechoice" or "xor" or "choice" -> OCPTOperatorType::ExclusiveChoice
 /// - "concurrency" or "parallel" or "and" or "par" -> OCPTOperatorType::Concurrency
 /// - "loop" -> OCPTOperatorType::Loop(None)
-
 fn parse_operator(s: &str) -> Result<OCPTOperatorType> {
     let k = s.trim().to_lowercase();
     Ok(match k.as_str() {
@@ -346,7 +344,6 @@ fn backend_identity_to_fe_parts(
 /// - If the leaf is an activity, its value is converted to an activity value with isSilent set to false and object types built from the leaf's related, divergent, convergent, and deficient object types
 ///
 /// The resulting activity value has its object types sorted alphabetically by object type name.
-
 fn backend_leaf_to_activity_value(leaf: &OCPTLeaf) -> ActivityValue {
     match &leaf.activity_label {
         OCPTLeafLabel::Tau => ActivityValue {

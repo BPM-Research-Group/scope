@@ -48,15 +48,12 @@ pub fn connected_components_notion(
 
             // Update E'
             for object_id in &o_prime {
-                match objects.get(object_id) {
-                    Some((_, related_events)) => {
-                        for event_id in related_events {
-                            if e_prime.insert(event_id.clone()) {
-                                added_flag = true;
-                            }
+                if let Some((_, related_events)) = objects.get(object_id) {
+                    for event_id in related_events {
+                        if e_prime.insert(event_id.clone()) {
+                            added_flag = true;
                         }
                     }
-                    None => {}
                 }
             }
             // Remove all objects that are already processed
@@ -66,18 +63,15 @@ pub fn connected_components_notion(
 
             // Update O'
             for event_id in &e_prime {
-                match events.get(event_id) {
-                    Some((_, related_objects)) => {
-                        for object_id in related_objects {
-                            if o_prime.insert(object_id.clone()) {
-                                // Insert returns true if the object_id was not already present
-                                // Therefore added_flag is only set to true if a new object_id was added
-                                added_flag = true;
-                            }
-                            // Remove the object from the object map so that it won't be processed again
+                if let Some((_, related_objects)) = events.get(event_id) {
+                    for object_id in related_objects {
+                        if o_prime.insert(object_id.clone()) {
+                            // Insert returns true if the object_id was not already present
+                            // Therefore added_flag is only set to true if a new object_id was added
+                            added_flag = true;
                         }
+                        // Remove the object from the object map so that it won't be processed again
                     }
-                    None => {}
                 }
             }
             // Remove all events that are already processed

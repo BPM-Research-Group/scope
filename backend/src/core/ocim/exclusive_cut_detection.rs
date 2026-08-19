@@ -44,7 +44,7 @@ fn check_exclusive_1(
             .copied()
             .unwrap_or(0);
         let divergent_both =
-            div_a.map_or(false, |d| d.contains(ot)) && div_b.map_or(false, |d| d.contains(ot));
+            div_a.is_some_and(|d| d.contains(ot)) && div_b.is_some_and(|d| d.contains(ot));
 
         if (ab > 0 || ba > 0) && !divergent_both {
             return true;
@@ -59,7 +59,7 @@ fn check_exclusive_1(
             && lookup_start
                 .get(a)
                 .and_then(|m| m.get(ot))
-                .map_or(false, |s| s.contains(b))
+                .is_some_and(|s| s.contains(b))
         {
             return true;
         }
@@ -69,7 +69,7 @@ fn check_exclusive_1(
             && lookup_end
                 .get(a)
                 .and_then(|m| m.get(ot))
-                .map_or(false, |s| s.contains(b))
+                .is_some_and(|s| s.contains(b))
         {
             return true;
         }
