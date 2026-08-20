@@ -1,4 +1,6 @@
-use super::context::{EventContext, case_contexts, related_types_by_activity};
+use super::context::{
+    EventContext, case_contexts, merge_event_contexts, related_types_by_activity,
+};
 use super::dbscan::dbscan;
 use super::distance::distance_matrix;
 use crate::models::activity_label_splitting::SplitInfo;
@@ -29,18 +31,38 @@ struct EventRef {
     event_idx: usize,
 }
 
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
+enum EventIdentity {
+    Id(String),
+    Occurrence { case_idx: usize, event_idx: usize },
+}
+
+fn event_identity(event_id: &str, case_idx: usize, event_idx: usize) -> EventIdentity {
+    if event_id.is_empty() {
+        EventIdentity::Occurrence {
+            case_idx,
+            event_idx,
+        }
+    } else {
+        EventIdentity::Id(event_id.to_string())
+    }
+}
+
 /// Split same-activity events by context into `"act [variant n]"`.
 /// If nothing splits, cases vec is empty.
 pub fn split_activity_labels(
     cases: &[OCEL],
     params: SplitParams,
 ) -> (Vec<OCEL>, Vec<SplitInfo>) {
-    // group events by activity name
-    let mut by_activity: BTreeMap<String, Vec<EventRef>> = BTreeMap::new();
+    let mut by_activity: BTreeMap<String, BTreeMap<EventIdentity, Vec<EventRef>>> =
+        BTreeMap::new();
     for (case_idx, case) in cases.iter().enumerate() {
         for (event_idx, event) in case.events.iter().enumerate() {
+            let key = event_identity(&event.id, case_idx, event_idx);
             by_activity
                 .entry(event.event_type.clone())
+                .or_default()
+                .entry(key)
                 .or_default()
                 .push(EventRef {
                     case_idx,
@@ -49,17 +71,16 @@ pub fn split_activity_labels(
         }
     }
 
-    // skip activities that appear only once
-    let candidates: Vec<(String, Vec<EventRef>)> = by_activity
+    // skip activities that appear only once as a unique event
+    let candidates: Vec<(String, Vec<Vec<EventRef>>)> = by_activity
         .into_iter()
-        .filter(|(_, refs)| refs.len() >= 2)
+        .filter(|(_, groups)| groups.len() >= 2)
+        .map(|(activity, groups)| (activity, groups.into_values().collect()))
         .collect();
 
     if candidates.is_empty() {
         return (Vec::new(), Vec::new());
     }
-
-    let related_by_activity = related_types_by_activity(cases);
 
     let all_object_types: Vec<String> = cases
         .iter()
@@ -67,12 +88,15 @@ pub fn split_activity_labels(
         .collect::<BTreeSet<_>>()
         .into_iter()
         .collect();
+    let related_by_activity = related_types_by_activity(cases, &all_object_types);
 
     // only build prefix/postfix for candidate events
     let mut needed: Vec<FxHashSet<usize>> = vec![FxHashSet::default(); cases.len()];
-    for (_, refs) in &candidates {
-        for r in refs {
-            needed[r.case_idx].insert(r.event_idx);
+    for (_, groups) in &candidates {
+        for refs in groups {
+            for r in refs {
+                needed[r.case_idx].insert(r.event_idx);
+            }
         }
     }
     let contexts: Vec<FxHashMap<usize, EventContext>> = cases
@@ -85,7 +109,7 @@ pub fn split_activity_labels(
     let mut to_delete: FxHashSet<(usize, usize)> = FxHashSet::default();
     let mut summaries: Vec<SplitInfo> = Vec::new();
 
-    for (activity, refs) in candidates {
+    for (activity, groups) in candidates {
         let Some(object_types) = related_by_activity.get(&activity) else {
             continue;
         };
@@ -93,31 +117,46 @@ pub fn split_activity_labels(
             continue;
         }
 
-        let event_contexts: Vec<&EventContext> = refs
-            .iter()
-            .filter_map(|r| contexts[r.case_idx].get(&r.event_idx))
-            .collect();
-        if event_contexts.len() != refs.len() {
+        let mut merged_contexts = Vec::with_capacity(groups.len());
+        let mut ok = true;
+        for refs in &groups {
+            let mut parts = Vec::with_capacity(refs.len());
+            for r in refs {
+                match contexts[r.case_idx].get(&r.event_idx) {
+                    Some(ctx) => parts.push(ctx.clone()),
+                    None => {
+                        ok = false;
+                        break;
+                    }
+                }
+            }
+            if !ok {
+                break;
+            }
+            merged_contexts.push(merge_event_contexts(parts));
+        }
+        if !ok || merged_contexts.len() != groups.len() {
             continue;
         }
 
+        let event_contexts: Vec<&EventContext> = merged_contexts.iter().collect();
         let matrix = distance_matrix(&event_contexts, object_types);
         let labels = dbscan(&matrix, params.eps, params.min_samples);
 
-        let mut groups: BTreeMap<i32, Vec<usize>> = BTreeMap::new();
+        let mut clusters: BTreeMap<i32, Vec<usize>> = BTreeMap::new();
         let mut noise_members: Vec<usize> = Vec::new();
         for (i, &label) in labels.iter().enumerate() {
             if label >= 0 {
-                groups.entry(label).or_default().push(i);
+                clusters.entry(label).or_default().push(i);
             } else if label == -1 {
                 noise_members.push(i);
             }
         }
-        if groups.len() < 2 {
+        if clusters.len() < 2 {
             continue;
         }
 
-        let mut ordered: Vec<(i32, Vec<usize>)> = groups.into_iter().collect();
+        let mut ordered: Vec<(i32, Vec<usize>)> = clusters.into_iter().collect();
         ordered.sort_by(|a, b| b.1.len().cmp(&a.1.len()).then_with(|| a.1[0].cmp(&b.1[0])));
 
         let mut event_counts = Vec::with_capacity(ordered.len());
@@ -125,19 +164,21 @@ pub fn split_activity_labels(
             let name = format!("{} [variant {}]", activity, variant + 1);
             event_counts.push(members.len());
             for &member in members {
-                let r = refs[member];
-                renames.insert((r.case_idx, r.event_idx), name.clone());
+                for r in &groups[member] {
+                    renames.insert((r.case_idx, r.event_idx), name.clone());
+                }
             }
         }
 
-        // noise: rename to [noise] or mark for deletion
+        // noise: rename to [noise] or mark for deletion 
         let noise_name = format!("{} [noise]", activity);
         for &member in &noise_members {
-            let r = refs[member];
-            if params.keep_noise {
-                renames.insert((r.case_idx, r.event_idx), noise_name.clone());
-            } else {
-                to_delete.insert((r.case_idx, r.event_idx));
+            for r in &groups[member] {
+                if params.keep_noise {
+                    renames.insert((r.case_idx, r.event_idx), noise_name.clone());
+                } else {
+                    to_delete.insert((r.case_idx, r.event_idx));
+                }
             }
         }
 
@@ -153,8 +194,8 @@ pub fn split_activity_labels(
         return (Vec::new(), summaries);
     }
 
-    let mut result = cases.to_vec();
-    for (case_idx, case) in result.iter_mut().enumerate() {
+    let mut result = Vec::new();
+    for (case_idx, mut case) in cases.iter().cloned().enumerate() {
         let schema: FxHashMap<String, Vec<OCELTypeAttribute>> = case
             .event_types
             .iter()
@@ -167,7 +208,10 @@ pub fn split_activity_labels(
             }
         }
 
-        if !to_delete.is_empty() {
+        let had_deletes = (0..case.events.len())
+            .any(|event_idx| to_delete.contains(&(case_idx, event_idx)));
+
+        if had_deletes {
             let mut keep = Vec::with_capacity(case.events.len());
             for (event_idx, event) in case.events.drain(..).enumerate() {
                 if !to_delete.contains(&(case_idx, event_idx)) {
@@ -175,29 +219,166 @@ pub fn split_activity_labels(
                 }
             }
             case.events = keep;
-            prune_unused_objects(case);
+            for mut part in split_case(case) {
+                sync_event_types(&mut part, &schema);
+                result.push(part);
+            }
+        } else {
+            sync_event_types(&mut case, &schema);
+            result.push(case);
         }
-
-        sync_event_types(case, &schema);
     }
 
     summaries.sort_by(|a, b| a.activity.cmp(&b.activity));
     (result, summaries)
 }
 
-fn prune_unused_objects(case: &mut OCEL) {
-    let used_objects: FxHashSet<String> = case
-        .events
-        .iter()
-        .flat_map(|e| e.relationships.iter().map(|r| r.object_id.clone()))
-        .collect();
-    case.objects.retain(|o| used_objects.contains(&o.id));
-    let used_types: FxHashSet<String> = case
+fn split_case(case: OCEL) -> Vec<OCEL> {
+    if case.events.is_empty() {
+        return Vec::new();
+    }
+
+    let n_events = case.events.len();
+    let n_objects = case.objects.len();
+    let mut uf = UnionFind::new(n_events + n_objects);
+
+    let object_index: FxHashMap<&str, usize> = case
         .objects
         .iter()
-        .map(|o| o.object_type.clone())
+        .enumerate()
+        .map(|(j, o)| (o.id.as_str(), j))
         .collect();
-    case.object_types.retain(|t| used_types.contains(&t.name));
+
+    for (i, event) in case.events.iter().enumerate() {
+        for rel in &event.relationships {
+            if let Some(&j) = object_index.get(rel.object_id.as_str()) {
+                uf.union(i, n_events + j);
+            }
+        }
+    }
+
+    for (j, object) in case.objects.iter().enumerate() {
+        for rel in &object.relationships {
+            if let Some(&k) = object_index.get(rel.object_id.as_str()) {
+                uf.union(n_events + j, n_events + k);
+            }
+        }
+    }
+
+    let mut events_by_root: BTreeMap<usize, Vec<usize>> = BTreeMap::new();
+    let mut objects_by_root: BTreeMap<usize, Vec<usize>> = BTreeMap::new();
+    for i in 0..n_events {
+        events_by_root.entry(uf.find(i)).or_default().push(i);
+    }
+    for j in 0..n_objects {
+        objects_by_root
+            .entry(uf.find(n_events + j))
+            .or_default()
+            .push(j);
+    }
+
+    let mut parts: Vec<(usize, Vec<usize>, Vec<usize>)> = events_by_root
+        .into_iter()
+        .map(|(root, event_indices)| {
+            let object_indices = objects_by_root.remove(&root).unwrap_or_default();
+            let first_event = event_indices[0];
+            (first_event, event_indices, object_indices)
+        })
+        .collect();
+    parts.sort_by_key(|(first_event, _, _)| *first_event);
+
+    parts
+        .into_iter()
+        .map(|(_, event_indices, object_indices)| {
+            extract_component(&case, &event_indices, &object_indices)
+        })
+        .collect()
+}
+
+fn extract_component(
+    case: &OCEL,
+    event_indices: &[usize],
+    object_indices: &[usize],
+) -> OCEL {
+    let kept_ids: FxHashSet<&str> = object_indices
+        .iter()
+        .map(|&j| case.objects[j].id.as_str())
+        .collect();
+
+    let events: Vec<_> = event_indices
+        .iter()
+        .map(|&i| {
+            let mut event = case.events[i].clone();
+            event
+                .relationships
+                .retain(|rel| kept_ids.contains(rel.object_id.as_str()));
+            event
+        })
+        .collect();
+
+    let objects: Vec<_> = object_indices
+        .iter()
+        .map(|&j| {
+            let mut object = case.objects[j].clone();
+            object
+                .relationships
+                .retain(|rel| kept_ids.contains(rel.object_id.as_str()));
+            object
+        })
+        .collect();
+
+    let used_object_types: FxHashSet<&str> =
+        objects.iter().map(|o| o.object_type.as_str()).collect();
+    let object_types = case
+        .object_types
+        .iter()
+        .filter(|t| used_object_types.contains(t.name.as_str()))
+        .cloned()
+        .collect();
+
+    OCEL {
+        events,
+        objects,
+        event_types: Vec::new(),
+        object_types,
+    }
+}
+
+struct UnionFind {
+    parent: Vec<usize>,
+    rank: Vec<u8>,
+}
+
+impl UnionFind {
+    fn new(n: usize) -> Self {
+        Self {
+            parent: (0..n).collect(),
+            rank: vec![0; n],
+        }
+    }
+
+    fn find(&mut self, mut x: usize) -> usize {
+        while self.parent[x] != x {
+            self.parent[x] = self.parent[self.parent[x]];
+            x = self.parent[x];
+        }
+        x
+    }
+
+    fn union(&mut self, a: usize, b: usize) {
+        let mut a = self.find(a);
+        let mut b = self.find(b);
+        if a == b {
+            return;
+        }
+        if self.rank[a] < self.rank[b] {
+            std::mem::swap(&mut a, &mut b);
+        }
+        self.parent[b] = a;
+        if self.rank[a] == self.rank[b] {
+            self.rank[a] += 1;
+        }
+    }
 }
 
 fn sync_event_types(case: &mut OCEL, schema: &FxHashMap<String, Vec<OCELTypeAttribute>>) {

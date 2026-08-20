@@ -20,6 +20,11 @@ pub fn dbscan(distances: &[Vec<f64>], eps: f64, min_samples: usize) -> Vec<i32> 
         }
 
         labels[i] = cluster_id;
+
+        let mut queued = vec![false; n];
+        for &j in &neighbors {
+            queued[j] = true;
+        }
         let mut seeds = neighbors;
         let mut seed_idx = 0;
         while seed_idx < seeds.len() {
@@ -37,7 +42,8 @@ pub fn dbscan(distances: &[Vec<f64>], eps: f64, min_samples: usize) -> Vec<i32> 
             let q_neighbors = region_query(distances, q, eps);
             if q_neighbors.len() >= min_samples {
                 for &j in &q_neighbors {
-                    if !seeds.contains(&j) {
+                    if !queued[j] {
+                        queued[j] = true;
                         seeds.push(j);
                     }
                 }
