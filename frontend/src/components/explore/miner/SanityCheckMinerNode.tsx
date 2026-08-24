@@ -3,15 +3,14 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { NodeProps } from '@xyflow/react';
 import { Position } from '@xyflow/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '~/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
 import BaseMinerNode from '~/components/explore/miner/BaseMinerNode';
 import { useInputAsset, useMinerOutput } from '~/hooks/explore/useMinerAssets';
 import { useLabelSplitting } from '~/services/queries';
 import { MinerNode } from '~/types/explore/nodes';
 
 const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
-    const queryClient = useQueryClient();
     const { assets } = node.data;
+    const queryClient = useQueryClient();
 
     const inputAsset = useInputAsset(assets);
     const fileId = inputAsset?.id ?? null;
@@ -30,7 +29,7 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
     const miner_output_id = queryData?.case_ocels_file_id ?? null;
     const loading = miner_output_id ? false : true;
 
-    useMinerOutput( node.id, miner_output_id, 's_' + (inputAsset?.name ?? ''), 'ocelCollectionFile', 'ocelCollectionNode');
+    useMinerOutput( node.id, miner_output_id, (inputAsset?.name ?? ''), 'ocelCollectionFile', 'ocelCollectionNode');
 
     const renderActions = () => {
         if (!fileId) return null;
@@ -74,8 +73,10 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
                 { id: 'source', position: Position.Right, type: 'source' as const },
             ]}
             dropdownOptions={[]}
-            customActions={[renderActions(), renderSettings()]}
+            customActions={renderActions()}
+            settings={renderSettings()}
             onReset={handleReset}
+            isLoading={false}
         >
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent className="w-fit max-w-[95vw] h-fit flex flex-col p-0 gap-0 overflow-hidden">
@@ -123,7 +124,7 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
                                         />
                                     </button>
                                 </div>
-                                {/* Beispielerklärung Boolean */}
+                                {/* Explanation for the noise */}
                                 <p className="text-xs text-gray-500 leading-relaxed">
                                     Decides if the noise from the ocel should be deleted.
                                 </p>
@@ -131,7 +132,7 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
                             {/* Parameter eps */}
                             <div className="flex flex-col gap-2 max-w-sm">
                                 <div className="flex justify-between items-center text-sm font-medium">
-                                    <label htmlFor="param-a">Parameter A</label>
+                                    <label htmlFor="param-a">Parameter A: episodes</label>
                                     <span className="text-gray-500 font-mono">{eps}</span>
                                 </div>
                                 <p className="text-xs text-gray-500 leading-relaxed">
@@ -153,7 +154,7 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
                             {/* Parameter min_samples */}
                             <div className="flex flex-col gap-2 max-w-sm">
                                 <div className="flex justify-between items-center text-sm font-medium">
-                                    <label htmlFor="param-b">Parameter B (Min: 2)</label>
+                                    <label htmlFor="param-b">Parameter B: max number (Min: 2)</label>
                                     <span className="text-gray-500 font-mono">{min_samples}</span>
                                 </div>
                                 <p className="text-xs text-gray-500 leading-relaxed">
