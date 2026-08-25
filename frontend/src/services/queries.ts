@@ -399,27 +399,18 @@ export const useGetOcpf = (fileId: string | null, enabled: boolean = true) => {
         enabled: !!fileId && enabled,
     });
 };
-// --- NEW OCPN HOOKS ---
 
-// export const useMineOcpnFromProcessForest = (
-//     nodeId: string,
-//     fileId: string | null,
-//     mode: OcpnGenerationMode,
-//     shouldFetch: boolean
-// ) => {
-//     return useQuery({
-//         queryKey: ['mineOcpnFromProcessForest', nodeId, fileId, mode],
-//         queryFn: () => mineOcpnFromProcessForest(fileId!, mode),
-//         enabled: Boolean(fileId) && shouldFetch,
-//         refetchOnWindowFocus: false,
-//     });
-// };
-
-// export const useGetOcpnAsOcgraphconf = (ocpnId: string | null, enabled: boolean = true) => {
-//     return useQuery({
-//         queryKey: ['getOcpnAsOcgraphconf', ocpnId],
-//         queryFn: () => getOcpnAsOcgraphconf(ocpnId!),
-//         enabled: Boolean(ocpnId) && enabled,
-//         refetchOnWindowFocus: false,
-//     });
-// };
+export const useMineOcpnFromProcessForest = (
+    nodeId: string,
+    fileId: string | null,
+    mode: OcpnGenerationMode,
+    objectTypes: string[],
+    shouldFetch: boolean
+) => {
+    return useQuery({
+        queryKey: ['mineOcpnFromProcessForest', nodeId, fileId, mode, objectTypes.join(',')],
+        queryFn: () => mineOcpnFromProcessForest(fileId!, mode, objectTypes),
+        enabled: Boolean(fileId) && shouldFetch,
+        refetchOnWindowFocus: false,
+    });
+};
