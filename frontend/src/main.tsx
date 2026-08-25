@@ -19,6 +19,8 @@ import OcptViewer from '~/routes/OcptViewer';
 import Pipeline from '~/routes/Pipeline';
 import ResourceViewer from '~/routes/ResourceViewer';
 import Upload from '~/routes/Upload';
+import { initPipelineAutosave } from '~/lib/explore/pipelineAutosave';
+import { hydrateDetachedViewerTab } from '~/lib/explore/viewerTabs';
 import CaseClustering from './routes/CaseClustering';
 import OcpnViewer from './routes/OcpnViewer';
 
@@ -131,6 +133,12 @@ const router = createBrowserRouter([
         ),
     },
 ]);
+
+hydrateDetachedViewerTab();
+
+// Mirror the pipeline being edited into localStorage so it survives navigating
+// away or reloading, and can be restored from the pipeline overview.
+initPipelineAutosave();
 
 createRoot(document.getElementById('root')!).render(
     <StrictMode>
