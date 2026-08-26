@@ -1,19 +1,8 @@
 import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { BaseEdge, Edge, EdgeProps, Handle, Node, NodeProps, Position, useReactFlow } from '@xyflow/react';
-import { ChevronDown } from 'lucide-react';
-import { Button } from '~/components/ui/button';
-import { Checkbox } from '~/components/ui/checkbox';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '~/components/ui/dropdown-menu';
+import { BaseEdge, Edge, EdgeProps, Handle, Node, NodeProps, Position } from '@xyflow/react';
 import BaseMinerNode from '~/components/explore/miner/BaseMinerNode';
 import { useInputAsset, useMinerOutput } from '~/hooks/explore/useMinerAssets';
-import { useExploreFlowStore } from '~/stores/exploreStore';
-import { OcpnGenerationMode } from '~/services/api';
 import { useMineOcpn, useMineOcpnFromProcessForest } from '~/services/queries';
 import { MinerNode } from '~/types/explore/nodes';
 
@@ -147,9 +136,6 @@ const OcpnMinerNode = memo<NodeProps<MinerNode>>((node) => {
     const { id, data: nodeData } = node;
     const { assets } = nodeData;
 
-    const { getEdges, getNode } = useReactFlow();
-
-    const [selectedMode, setSelectedMode] = useState<OcpnGenerationMode>('optimized');
     const [forceRemine, setForceRemine] = useState(false);
 
     const ocptAsset = useInputAsset(assets, 'ocptAsset');
@@ -162,30 +148,6 @@ const OcpnMinerNode = memo<NodeProps<MinerNode>>((node) => {
     const isOcpf = Boolean(ocpfAsset);
     const isOcpt = Boolean(ocptAsset);
 
-    const sourceColorMap = useMemo(() => {
-        const edges = getEdges();
-        const incomingEdge = edges.find((e) => e.target === id);
-        const sourceNode = incomingEdge ? getNode(incomingEdge.source) : null;
-
-        return (sourceNode?.data?.colorMap as Record<string, string>) || (inputAsset as any)?.metadata?.colorMap || {};
-    }, [getEdges, getNode, id, inputAsset]);
-
-    const availableObjectTypes = useMemo(() => {
-        let types = Object.keys(sourceColorMap);
-        if (types.length === 0) {
-            types = (inputAsset as any)?.metadata?.objectTypes || [];
-        }
-        return types;
-    }, [sourceColorMap, inputAsset]);
-
-    const [selectedObjectTypes, setSelectedObjectTypes] = useState<Set<string>>(new Set());
-
-    useEffect(() => {
-        if (availableObjectTypes.length > 0 && selectedObjectTypes.size === 0) {
-            setSelectedObjectTypes(new Set(availableObjectTypes));
-        }
-    }, [availableObjectTypes]);
-
     const hasMinedAsset = useMemo(() => {
         return assets.some((asset) => asset.io === 'output' && asset.origin === 'mined');
     }, [assets]);
@@ -195,8 +157,8 @@ const OcpnMinerNode = memo<NodeProps<MinerNode>>((node) => {
 
     const ocptQuery = useMineOcpn(id, inputFileId, shouldMineOcpt);
 
-    const objectTypesArray = Array.from(selectedObjectTypes);
-    const ocpfQuery = useMineOcpnFromProcessForest(id, inputFileId, selectedMode, objectTypesArray, shouldMineOcpf);
+    // optimized version always
+    const ocpfQuery = useMineOcpnFromProcessForest(id, inputFileId, 'optimized', [], shouldMineOcpf);
 
     const isLoading = ocptQuery.isLoading || ocpfQuery.isLoading;
     const isFetching = ocptQuery.isFetching || ocpfQuery.isFetching;
@@ -233,105 +195,7 @@ const OcpnMinerNode = memo<NodeProps<MinerNode>>((node) => {
             dropdownOptions={[{ label: 'Change Source', action: 'changeSourceFile' as const }]}
             isLoading={isLoading || isFetching}
             onReset={handleReset}
-        >
-            {isOcpf && (
-                <div className="px-3 pb-3 flex flex-col gap-2 mt-2 border-t border-slate-100 pt-3">
-                    <div className="flex flex-col gap-1">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                            Generation Mode
-                        </label>
-                        <select
-                            value={selectedMode}
-                            onChange={(e) => {
-                                setSelectedMode(e.target.value as OcpnGenerationMode);
-                                queryClient.removeQueries({ queryKey: ['mineOcpnFromProcessForest', id] });
-                                setForceRemine(true);
-                            }}
-                            disabled={isLoading || isFetching}
-                            className="w-full text-xs border border-slate-200 rounded-md p-1.5 bg-slate-50 text-slate-700 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 disabled:opacity-50 transition-all"
-                        >
-                            <option value="optimized">Optimized (Default)</option>
-                            <option value="reference">Reference (Unoptimized)</option>
-                            <option value="semantic">Semantic (Projected)</option>
-                        </select>
-                    </div>
-
-                    {selectedMode === 'semantic' && (
-                        <div className="flex flex-col gap-1 mt-1">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                Object Perspectives
-                            </label>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="w-full justify-between h-7 px-2 text-xs font-normal bg-white"
-                                        disabled={isLoading || isFetching}
-                                    >
-                                        <div className="flex items-center truncate">
-                                            {objectTypesArray.length > 0 ? (
-                                                <div className="flex items-center gap-1 mr-2">
-                                                    {objectTypesArray.slice(0, 3).map((ot) => (
-                                                        <div
-                                                            key={ot}
-                                                            className="h-2 w-2 rounded-full shrink-0"
-                                                            style={{ backgroundColor: sourceColorMap[ot] || '#94a3b8' }}
-                                                        />
-                                                    ))}
-                                                    {objectTypesArray.length > 3 && (
-                                                        <span className="text-[10px] text-slate-500">
-                                                            +{objectTypesArray.length - 3}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <span className="text-slate-400 mr-2">Select objects...</span>
-                                            )}
-                                        </div>
-                                        <ChevronDown className="h-3 w-3 opacity-50 shrink-0" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start" className="w-48 bg-white">
-                                    {availableObjectTypes.length > 0 ? (
-                                        availableObjectTypes.map((ot: string) => {
-                                            const color = sourceColorMap[ot] || '#94a3b8';
-                                            const isChecked = selectedObjectTypes.has(ot);
-                                            return (
-                                                <DropdownMenuItem key={ot} onSelect={(e) => e.preventDefault()}>
-                                                    <Checkbox
-                                                        checked={isChecked}
-                                                        onCheckedChange={() => {
-                                                            const next = new Set(selectedObjectTypes);
-                                                            if (next.has(ot)) next.delete(ot);
-                                                            else next.add(ot);
-                                                            setSelectedObjectTypes(next);
-
-                                                            queryClient.removeQueries({
-                                                                queryKey: ['mineOcpnFromProcessForest', id],
-                                                            });
-                                                            setForceRemine(true);
-                                                        }}
-                                                        className="mr-2"
-                                                        style={{
-                                                            borderColor: color,
-                                                            backgroundColor: isChecked ? color : 'transparent',
-                                                        }}
-                                                    />
-                                                    <span className="truncate text-xs">{ot}</span>
-                                                </DropdownMenuItem>
-                                            );
-                                        })
-                                    ) : (
-                                        <div className="p-2 text-xs text-slate-400 italic">No object types found.</div>
-                                    )}
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        </div>
-                    )}
-                </div>
-            )}
-        </BaseMinerNode>
+        />
     );
 });
 
