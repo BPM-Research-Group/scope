@@ -132,7 +132,7 @@ export const nodeRegistry = {
     },
     ocpnMinerNode: {
         category: 'miner',
-        allowedAssetTypes: ['ocptFile', 'ocptAsset'],
+        allowedAssetTypes: ['ocptFile', 'ocptAsset', 'ocpfFile', 'ocpfAsset'],
         sidebar: { label: 'OCPN Miner', icon: 'waypoints', group: 'miners' },
     },
     ocpfMinerNode: {
