@@ -41,7 +41,7 @@ pub(crate) fn measure_value(measures: &[CaseMeasure], target: &str) -> Option<f6
     measures.iter().find(|m| m.name == target).map(|m| m.value)
 }
 
-pub fn calculate_measures(
+pub fn   calculate_measures(
     case_notion: &FxHashSet<(Vec<String>, Vec<String>, Vec<(String, String)>)>,
     event_identifiers: &FxHashMap<
         String,
@@ -69,6 +69,7 @@ pub fn calculate_measures(
         20,
     );
     let absolute_simplicity = absolute_simplicity_of_case_notion(case_notion, 0.8, 10);
+    let absolute_size_measure = absolute_size_measure_of_case_notion(case_notion);
     let correctness = correctness_of_case_notion(
         case_notion,
         arches,
@@ -96,6 +97,10 @@ pub fn calculate_measures(
             value: absolute_simplicity,
         },
         CaseMeasure {
+            name: "Absolute Size Measure".to_string(),
+            value: absolute_size_measure,
+        },
+        CaseMeasure {
             name: "Correctness".to_string(),
             value: correctness,
         },
@@ -112,6 +117,23 @@ pub fn calculate_measures(
             value: strict_homogeneity,
         },
     ]
+}
+
+pub fn absolute_size_measure_of_case_notion(
+    case_notion: &FxHashSet<(Vec<String>, Vec<String>, Vec<(String, String)>)>,
+) -> f64 {
+    let count_cases = case_notion.len();
+    if count_cases == 0 {
+        return 0.0;
+    }
+
+    let (count_events, count_objects) = case_notion
+        .iter()
+        .fold((0, 0), |acc, (events, objects, _)| {
+            (acc.0 + events.len(), acc.1 + objects.len())
+        });
+
+    (count_events + count_objects) as f64 / count_cases as f64
 }
 
 pub fn average_score(measures: &[CaseMeasure]) -> f64 {
