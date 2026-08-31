@@ -3,6 +3,7 @@ use serde_json::json;
 use std::io::ErrorKind;
 use tokio::fs;
 
+use crate::handlers::case_input::resolve_case_input;
 use crate::models::abstraction::{
     EnrichedOCLanguageAbstraction, OCLanguageAbstraction, identity_relations_from_ocpt,
 };
@@ -25,11 +26,14 @@ fn abstraction_payload(
 }
 
 pub(crate) async fn compute_ocel_abstraction(
-    ocel: OCEL,
+    ocels: Vec<OCEL>,
 ) -> Result<OCLanguageAbstraction, (StatusCode, String)> {
     tokio::task::spawn_blocking(move || {
-        let locel = IndexLinkedOCEL::from_ocel(ocel);
-        OCLanguageAbstraction::create_from_ocel(&locel)
+        let locels = ocels
+            .into_iter()
+            .map(|ocel| IndexLinkedOCEL::from_ocel(ocel.remove_orphan_objects()))
+            .collect::<Vec<_>>();
+        OCLanguageAbstraction::create_from_ocels(locels.iter())
     })
     .await
     .map_err(|err| {
@@ -56,12 +60,13 @@ pub(crate) async fn compute_ocpt_abstraction(
 }
 
 pub async fn get_ocel_abstraction(AxumPath(source_file_id): AxumPath<String>) -> impl IntoResponse {
-    let ocel = match OCEL::import_from_path(&source_file_id).await {
-        Ok(ocel) => ocel,
+    let resolved = match resolve_case_input(&source_file_id).await {
+        Ok(resolved) => resolved,
         Err((status, message)) => return (status, message).into_response(),
     };
+    let case_ocels_file_id = resolved.case_ocels_file_id;
 
-    let abstraction = match compute_ocel_abstraction(ocel).await {
+    let abstraction = match compute_ocel_abstraction(resolved.collection.ocels).await {
         Ok(abstraction) => abstraction,
         Err((status, message)) => return (status, message).into_response(),
     };
@@ -71,13 +76,13 @@ pub async fn get_ocel_abstraction(AxumPath(source_file_id): AxumPath<String>) ->
         Err((status, message)) => return (status, message).into_response(),
     };
 
-    Json(abstraction_payload(
-        &file_id,
-        &source_file_id,
-        "ocel",
-        &enriched,
-    ))
-    .into_response()
+    let mut payload = abstraction_payload(&file_id, &source_file_id, "ocel", &enriched);
+    payload
+        .as_object_mut()
+        .expect("abstraction payload is an object")
+        .insert("case_ocels_file_id".to_string(), json!(case_ocels_file_id));
+
+    Json(payload).into_response()
 }
 
 pub async fn get_ocpt_abstraction(AxumPath(source_file_id): AxumPath<String>) -> impl IntoResponse {
@@ -178,5 +183,42 @@ pub async fn delete_abstraction(AxumPath(file_id): AxumPath<String>) -> impl Int
             format!("Failed to delete abstraction: {}", e),
         )
             .into_response(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use process_mining::ocel;
+
+    #[tokio::test]
+    async fn collection_abstraction_does_not_infer_cross_case_deficiency() {
+        let with_item = ocel!(
+            events:
+            ("pack", ["o:1", "i:1"]),
+            o2o:
+        );
+        let without_item = ocel!(
+            events:
+            ("pack", ["o:1"]),
+            o2o:
+        );
+
+        let abstraction = compute_ocel_abstraction(vec![with_item, without_item])
+            .await
+            .unwrap();
+
+        assert!(
+            !abstraction
+                .deficient_ev_type_per_ob_type
+                .get("i")
+                .is_some_and(|activities| activities.contains("pack"))
+        );
+        assert!(
+            abstraction
+                .related_ev_type_per_ob_type
+                .get("i")
+                .is_some_and(|activities| activities.contains("pack"))
+        );
     }
 }

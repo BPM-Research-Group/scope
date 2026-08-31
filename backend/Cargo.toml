@@ -18,7 +18,7 @@ log = "0.4.27"
 nalgebra = "0.34.1"
 ordered-float = "5.0.0"
 petgraph = "0.8.3"
-process_mining = { git = "https://github.com/BPM-Research-Group/rust4pm_BPM.git", package = "process_mining" }
+process_mining = { git = "https://github.com/BPM-Research-Group/rust4pm_BPM.git", package = "process_mining", rev = "71555d726078c722f4a3ea65673b834b17d55883" }
 ocgraphconf_process_mining = { git = "https://github.com/BPM-Research-Group/ocgraphconf_BPM.git", package = "process_mining" }
 rayon = "1.11.0"
 rand = "0.8"
