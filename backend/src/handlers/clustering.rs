@@ -10,6 +10,7 @@ use crate::core::clustering::k_medoids::{
     cluster_ocels_with_metric_seeded_and_distances, ensure_parent_dir_exists,
     run_k_sweep_save_jsonl, summarize_cluster_assignments_with_distance,
 };
+use crate::handlers::case_input::resolve_case_input;
 use crate::models::clustering::{CaseClusterPoint, EmbeddingStress, LinkageRow};
 use crate::models::ocel_collection::OCELCollection;
 use crate::traits::import_export::ImportableFromPath;
@@ -55,6 +56,7 @@ pub struct AgglomerativeCutParams {
 #[derive(Serialize)]
 pub struct ClusteringResult {
     pub file_id: String,
+    pub case_ocels_file_id: String,
     pub case_assignments: Vec<(String, usize)>,
     pub case_points: Vec<CaseClusterPoint>,
     pub run: RunResult,
@@ -66,6 +68,7 @@ pub struct ClusteringResult {
 #[derive(Serialize)]
 pub struct SweepResultResponse {
     pub json_file_id: String,
+    pub case_ocels_file_id: String,
     pub k_min: usize,
     pub k_max: usize,
     pub metric: String,
@@ -75,6 +78,7 @@ pub struct SweepResultResponse {
 #[derive(Serialize)]
 pub struct SampleSweepResultResponse {
     pub json_file_id: String,
+    pub case_ocels_file_id: String,
     pub k: usize,
     pub metric: String,
     pub base_seed: u64,
@@ -86,6 +90,7 @@ pub struct SampleSweepResultResponse {
 #[derive(Serialize)]
 pub struct AgglomerativeClusteringResponse {
     pub file_id: String,
+    pub case_ocels_file_id: String,
     pub source_case_ocels_file_id: String,
     pub metric: String,
     pub linkage_method: String,
@@ -135,6 +140,7 @@ pub struct MaterializedClusterResponse {
 
 #[derive(Serialize)]
 pub struct MaterializeClusteredCasesResponse {
+    pub case_ocels_file_id: String,
     pub source_case_ocels_file_id: String,
     pub total_cases: usize,
     pub materialized_clusters: Vec<MaterializedClusterResponse>,
@@ -273,6 +279,7 @@ fn agglomerative_response(
 
     AgglomerativeClusteringResponse {
         file_id: artifact.file_id.clone(),
+        case_ocels_file_id: artifact.source_case_ocels_file_id.clone(),
         source_case_ocels_file_id: artifact.source_case_ocels_file_id.clone(),
         metric: artifact.metric.clone(),
         linkage_method: artifact.linkage_method.clone(),
@@ -556,10 +563,12 @@ pub async fn materialize_clustered_case_ocels(
             .into_response();
     }
 
-    let collection = match OCELCollection::import_from_path(&case_ocels_file_id).await {
-        Ok(collection) => collection,
+    let resolved = match resolve_case_input(&case_ocels_file_id).await {
+        Ok(resolved) => resolved,
         Err(response) => return response.into_response(),
     };
+    let case_ocels_file_id = resolved.case_ocels_file_id;
+    let collection = resolved.collection;
 
     if collection.ocels.is_empty() {
         return (
@@ -679,6 +688,7 @@ pub async fn materialize_clustered_case_ocels(
     (
         StatusCode::OK,
         Json(MaterializeClusteredCasesResponse {
+            case_ocels_file_id: case_ocels_file_id.clone(),
             source_case_ocels_file_id: case_ocels_file_id,
             total_cases: collection.ocels.len(),
             materialized_clusters,
@@ -699,10 +709,12 @@ pub async fn agglomerative_cluster_case_ocels(
             .into_response();
     }
 
-    let collection = match OCELCollection::import_from_path(&case_ocels_file_id).await {
-        Ok(collection) => collection,
+    let resolved = match resolve_case_input(&case_ocels_file_id).await {
+        Ok(resolved) => resolved,
         Err(response) => return response.into_response(),
     };
+    let case_ocels_file_id = resolved.case_ocels_file_id;
+    let collection = resolved.collection;
 
     let case_ocels = match collection_to_values(collection) {
         Ok(case_ocels) => case_ocels,
@@ -955,10 +967,12 @@ pub async fn cluster_case_ocels(
             .into_response();
     }
 
-    let collection = match OCELCollection::import_from_path(&case_ocels_file_id).await {
-        Ok(collection) => collection,
+    let resolved = match resolve_case_input(&case_ocels_file_id).await {
+        Ok(resolved) => resolved,
         Err(response) => return response.into_response(),
     };
+    let case_ocels_file_id = resolved.case_ocels_file_id;
+    let collection = resolved.collection;
 
     let case_ocels = match collection_to_values(collection) {
         Ok(case_ocels) => case_ocels,
@@ -1035,6 +1049,7 @@ pub async fn cluster_case_ocels(
             StatusCode::OK,
             Json(SampleSweepResultResponse {
                 json_file_id,
+                case_ocels_file_id: case_ocels_file_id.clone(),
                 k,
                 metric: metric_str.to_string(),
                 base_seed,
@@ -1093,6 +1108,7 @@ pub async fn cluster_case_ocels(
             StatusCode::OK,
             Json(SweepResultResponse {
                 json_file_id,
+                case_ocels_file_id: case_ocels_file_id.clone(),
                 k_min,
                 k_max,
                 metric: metric_str.to_string(),
@@ -1165,6 +1181,7 @@ pub async fn cluster_case_ocels(
     let file_id = Uuid::new_v4().to_string();
     let result = ClusteringResult {
         file_id: file_id.clone(),
+        case_ocels_file_id,
         case_assignments,
         case_points,
         run,

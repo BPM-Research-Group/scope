@@ -3,6 +3,62 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use std::collections::BTreeSet;
 use std::default::Default;
 
+use crate::core::case_notion::generic::build_case;
+use crate::core::case_notion::main::CaseNotionContext;
+use process_mining::OCEL;
+
+/// Split an OCEL into one deterministic OCEL per connected component.
+///
+/// The original event and object identifiers are preserved. Components and
+/// their contents are sorted so repeated conversions have stable case indices.
+pub fn connected_component_ocels(log: &OCEL) -> Vec<OCEL> {
+    let context = CaseNotionContext::new(log);
+    let notions = connected_components_notion(
+        context.cleaned_event_identifiers().clone(),
+        context.object_identifiers().clone(),
+    );
+
+    let mut notions = notions.into_iter().collect::<Vec<_>>();
+    notions.sort_by(|left, right| {
+        let mut left_events = left.0.clone();
+        let mut right_events = right.0.clone();
+        let mut left_objects = left.1.clone();
+        let mut right_objects = right.1.clone();
+        left_events.sort_unstable();
+        right_events.sort_unstable();
+        left_objects.sort_unstable();
+        right_objects.sort_unstable();
+        (left_events, left_objects).cmp(&(right_events, right_objects))
+    });
+
+    notions
+        .into_iter()
+        .map(|(event_ids, object_ids, _)| {
+            let events = event_ids.iter().collect::<FxHashSet<_>>();
+            let objects = object_ids.iter().collect::<FxHashSet<_>>();
+            let mut case = build_case(
+                log,
+                &events,
+                &objects,
+                context.event_lookup(),
+                context.object_lookup(),
+            );
+            case.events.sort_by(|left, right| left.id.cmp(&right.id));
+            for object in &mut case.objects {
+                object
+                    .relationships
+                    .retain(|relationship| objects.contains(&relationship.object_id));
+            }
+            case.objects.sort_by(|left, right| left.id.cmp(&right.id));
+            case.event_types
+                .sort_by(|left, right| left.name.cmp(&right.name));
+            case.object_types
+                .sort_by(|left, right| left.name.cmp(&right.name));
+            case
+        })
+        .collect()
+}
+
 /*
     Connected Components case notion: iterative add adjacent object & event nodes to case.
     @param events: FxHashMap<
@@ -125,4 +181,88 @@ pub fn connected_components_notion(
         ));
     }
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::ocel::{OCELEvent, OCELObject, OCELRelationship, OCELType};
+    use chrono::{FixedOffset, TimeZone};
+
+    fn sample_ocel() -> OCEL {
+        let timezone = FixedOffset::east_opt(0).unwrap();
+        let timestamp = timezone.with_ymd_and_hms(2026, 8, 24, 12, 0, 0).unwrap();
+        OCEL {
+            event_types: vec![OCELType {
+                name: "Create".to_string(),
+                attributes: Vec::new(),
+            }],
+            object_types: vec![
+                OCELType {
+                    name: "Order".to_string(),
+                    attributes: Vec::new(),
+                },
+                OCELType {
+                    name: "Item".to_string(),
+                    attributes: Vec::new(),
+                },
+            ],
+            events: vec![
+                OCELEvent::new(
+                    "e2",
+                    "Create",
+                    timestamp,
+                    Vec::new(),
+                    vec![OCELRelationship::new("O2", "order")],
+                ),
+                OCELEvent::new(
+                    "e1",
+                    "Create",
+                    timestamp,
+                    Vec::new(),
+                    vec![
+                        OCELRelationship::new("O1", "order"),
+                        OCELRelationship::new("I1", "item"),
+                    ],
+                ),
+            ],
+            objects: vec![
+                OCELObject {
+                    id: "O2".to_string(),
+                    object_type: "Order".to_string(),
+                    attributes: Vec::new(),
+                    relationships: Vec::new(),
+                },
+                OCELObject {
+                    id: "I1".to_string(),
+                    object_type: "Item".to_string(),
+                    attributes: Vec::new(),
+                    relationships: Vec::new(),
+                },
+                OCELObject {
+                    id: "O1".to_string(),
+                    object_type: "Order".to_string(),
+                    attributes: Vec::new(),
+                    relationships: Vec::new(),
+                },
+            ],
+        }
+    }
+
+    #[test]
+    fn connected_component_ocels_preserve_multi_object_events_and_order_cases() {
+        let cases = connected_component_ocels(&sample_ocel());
+
+        assert_eq!(cases.len(), 2);
+        assert_eq!(cases[0].events[0].id, "e1");
+        assert_eq!(
+            cases[0].events[0]
+                .relationships
+                .iter()
+                .map(|relationship| relationship.object_id.as_str())
+                .collect::<BTreeSet<_>>(),
+            BTreeSet::from(["I1", "O1"])
+        );
+        assert_eq!(cases[1].events[0].id, "e2");
+    }
 }
