@@ -70,6 +70,11 @@ pub fn   calculate_measures(
     );
     let absolute_simplicity = absolute_simplicity_of_case_notion(case_notion, 0.8, 10);
     let absolute_size_measure = absolute_size_measure_of_case_notion(case_notion);
+    let relative_size_measure = relative_size_measure_of_case_notion(
+        case_notion,
+        total_number_of_objects,
+        total_number_of_events,
+    );
     let correctness = correctness_of_case_notion(
         case_notion,
         arches,
@@ -84,38 +89,42 @@ pub fn   calculate_measures(
         strict_homogeneity_of_case_notion(case_notion, event_identifiers, object_identifiers);
 
     vec![
-        CaseMeasure {
-            name: "Normal Simplicity".to_string(),
-            value: normal_simplicity,
-        },
-        CaseMeasure {
-            name: "Extended Simplicity".to_string(),
-            value: extended_simplicity,
-        },
-        CaseMeasure {
-            name: "Absolute Simplicity".to_string(),
-            value: absolute_simplicity,
-        },
+        //CaseMeasure {
+        //    name: "Normal Simplicity".to_string(),
+        //    value: normal_simplicity,
+        //},
+        //CaseMeasure {
+        //    name: "Extended Simplicity".to_string(),
+        //    value: extended_simplicity,
+        //},
+        //CaseMeasure {
+        //    name: "Absolute Simplicity".to_string(),
+        //    value: absolute_simplicity,
+        //},
         CaseMeasure {
             name: "Absolute Size Measure".to_string(),
             value: absolute_size_measure,
         },
         CaseMeasure {
-            name: "Correctness".to_string(),
-            value: correctness,
+            name: "Relative Size Measure".to_string(),
+            value: relative_size_measure,
         },
-        CaseMeasure {
-            name: "Fuzzy Homogeneity".to_string(),
-            value: fuzzy_homogeneity,
-        },
-        CaseMeasure {
-            name: "Fuzzy Homogeneity V2".to_string(),
-            value: fuzzy_homogeneity_v2,
-        },
-        CaseMeasure {
-            name: "Strict Homogeneity".to_string(),
-            value: strict_homogeneity,
-        },
+        //CaseMeasure {
+        //    name: "Correctness".to_string(),
+        //    value: correctness,
+        //},
+        //CaseMeasure {
+        //    name: "Fuzzy Homogeneity".to_string(),
+        //    value: fuzzy_homogeneity,
+        //},
+        //CaseMeasure {
+        //    name: "Fuzzy Homogeneity V2".to_string(),
+        //    value: fuzzy_homogeneity_v2,
+        //},
+        //CaseMeasure {
+        //    name: "Strict Homogeneity".to_string(),
+        //    value: strict_homogeneity,
+        //},
     ]
 }
 
@@ -134,6 +143,21 @@ pub fn absolute_size_measure_of_case_notion(
         });
 
     (count_events + count_objects) as f64 / count_cases as f64
+}
+
+pub fn relative_size_measure_of_case_notion(
+    case_notion: &FxHashSet<(Vec<String>, Vec<String>, Vec<(String, String)>)>,
+    total_number_of_objects: usize,
+    total_number_of_events: usize,
+) -> f64 {
+    let absolute_size_measure = absolute_size_measure_of_case_notion(case_notion);
+    let total_size = total_number_of_objects + total_number_of_events;
+
+    if total_size == 0 {
+        return 0.0;
+    }
+
+    absolute_size_measure / total_size as f64
 }
 
 pub fn average_score(measures: &[CaseMeasure]) -> f64 {
