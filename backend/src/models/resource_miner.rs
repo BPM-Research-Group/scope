@@ -19,7 +19,6 @@ pub struct ResourceMinerResponse {
 #[derive(Debug, Serialize)]
 pub struct NonDivergingCombination {
     pub object_types: Vec<String>,
-    // Maximal shared activity set A for this first minimal identifier.
     pub activities: Vec<String>,
 }
 
@@ -29,18 +28,14 @@ pub struct SpecialActivityCombinationResponse {
     pub combinations: Vec<NonDivergingCombination>,
 }
 
-// Info about a single successfully fixed activity, included in the multi-fix response.
 #[derive(Debug, Serialize)]
 pub struct FixedActivityInfo {
     pub activity: String,
     pub combination: Vec<String>,
-    // Complete discovered activity set A. Silent instances are attached only to these
-    // activities; other members can consequently be resolved by cascade.
     pub activities: Vec<String>,
     pub silent_object_type: String,
 }
 
-// Request body for the multi-fix endpoint.
 #[derive(Debug, Deserialize)]
 pub struct FixMultipleActivitiesRequest {
     pub activities: Vec<String>,

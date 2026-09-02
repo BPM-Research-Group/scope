@@ -1,5 +1,3 @@
-// Silent-object repair for special activities.
-
 use crate::core::resource_miner::{
     build_object_id_to_type, is_special_activity, validate_special_activity_and_related,
 };
@@ -10,34 +8,24 @@ use crate::models::resource_miner::{
 };
 use crate::traits::import_export::ExportableToPath;
 use axum::http::StatusCode;
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 use std::collections::{BTreeMap, BTreeSet};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
-type Signature = Vec<(String, BTreeSet<String>)>;
-type SignatureSet = BTreeSet<Signature>;
+pub(crate) type Signature = Vec<(String, BTreeSet<String>)>;
+pub(crate) type SignatureSet = BTreeSet<Signature>;
 
 #[derive(Clone, Debug)]
-struct ActivityEventProfile {
+pub(crate) struct ActivityEventProfile {
     objects_by_type: BTreeMap<String, BTreeSet<String>>,
 }
 
-#[derive(Clone, Debug)]
-struct PlannedFix {
-    requested_activity: String,
-    combination: Vec<String>,
-    activities: BTreeSet<String>,
-    silent_object_type: String,
-    signatures: SignatureSet,
-}
-
-
-struct SilentObjectRegistry {
+pub(crate) struct SilentObjectRegistry {
     per_type: BTreeMap<String, (BTreeMap<Signature, String>, usize)>,
 }
 
 impl SilentObjectRegistry {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             per_type: BTreeMap::new(),
         }
@@ -98,12 +86,10 @@ pub fn list_combinations(
         .map(Vec::as_slice)
         .unwrap_or_default();
 
-    let visible_footprints = type_footprints(ocel, &object_id_to_type);
     let selected = find_identifier(
         activity_profiles,
         &related_types_sorted,
         &profiles_by_activity,
-        &visible_footprints,
     )
     .map(|(object_types, _signatures, activities)| NonDivergingCombination {
         object_types,
@@ -121,46 +107,31 @@ pub async fn fix_special_activities(
     source_file_id: &str,
     requested_activities: &[String],
 ) -> Result<FixMultipleSpecialActivitiesResponse, (StatusCode, String)> {
-    let (initial_divergence, _initial_convergence, initial_related, _initial_deficiency) =
-        catch_unwind(AssertUnwindSafe(|| ocel.get_interaction_patterns())).map_err(|_| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Failed to compute interaction patterns".to_string(),
-            )
-        })?;
-
-    let initially_special: FxHashSet<String> = initial_related
+    let (mut divergence, mut related) = compute_related_patterns(ocel)?;
+    let initially_special: FxHashSet<String> = related
         .keys()
-        .filter(|activity| {
-            is_special_activity(&initial_divergence, &initial_related, activity)
-        })
+        .filter(|activity| is_special_activity(&divergence, &related, activity))
         .cloned()
         .collect();
 
-    let object_id_to_type = build_object_id_to_type(ocel);
+    let mut object_id_to_type = build_object_id_to_type(ocel);
     let profiles_by_activity = group_profiles(ocel, &object_id_to_type);
-    let visible_footprints = type_footprints(ocel, &object_id_to_type);
 
     let mut skipped_not_special = Vec::new();
     let mut no_combination_found = Vec::new();
-    let mut planned_fixes: Vec<PlannedFix> = Vec::new();
-    let mut planned_keys: BTreeSet<(Vec<String>, Vec<String>)> = BTreeSet::new();
+    let mut fixed = Vec::new();
     let mut seen_requests = BTreeSet::new();
+    let mut registry = SilentObjectRegistry::new();
 
     for activity in requested_activities {
         if !seen_requests.insert(activity.clone()) {
             continue;
         }
 
-        if !initially_special.contains(activity) {
-            skipped_not_special.push(activity.clone());
-            continue;
-        }
-
-        if planned_fixes
-            .iter()
-            .any(|planned| planned.activities.contains(activity))
-        {
+        if !is_special_activity(&divergence, &related, activity) {
+            if !initially_special.contains(activity) {
+                skipped_not_special.push(activity.clone());
+            }
             continue;
         }
 
@@ -172,23 +143,9 @@ pub async fn fix_special_activities(
             }
         };
 
-        let mut related_types: Vec<String> = initial_related
-            .get(activity)
-            .into_iter()
-            .flat_map(|types| types.iter())
-            .filter(|object_type| !is_silent_type(object_type))
-            .cloned()
-            .collect();
-        related_types.sort();
-        related_types.dedup();
-
+        let related_types = visible_related_types(&related, activity);
         let (combination, signatures, activity_set) =
-            match find_identifier(
-                profiles,
-                &related_types,
-                &profiles_by_activity,
-                &visible_footprints,
-            ) {
+            match find_identifier(profiles, &related_types, &profiles_by_activity) {
                 Some(selected) => selected,
                 None => {
                     no_combination_found.push(activity.clone());
@@ -196,71 +153,61 @@ pub async fn fix_special_activities(
                 }
             };
 
-        let activity_vec: Vec<String> = activity_set.iter().cloned().collect();
-        let key = (combination.clone(), activity_vec);
-        if !planned_keys.insert(key) {
-            continue;
-        }
-
-        let silent_object_type = silent_type_name(&combination, &activity_set);
-        planned_fixes.push(PlannedFix {
-            requested_activity: activity.clone(),
-            combination,
-            activities: activity_set,
-            silent_object_type,
-            signatures,
-        });
-    }
-
-    let mut registry = SilentObjectRegistry::new();
-    let mut fixed = Vec::new();
-
-    for planned in &planned_fixes {
-        ensure_silent_type(ocel, &planned.silent_object_type);
+        let silent_object_type = silent_type_name(&combination);
+        ensure_silent_type(ocel, &silent_object_type);
         attach_silent_objects(
             ocel,
-            &planned.combination,
-            &planned.activities,
-            &planned.signatures,
-            &planned.silent_object_type,
+            &combination,
+            &activity_set,
+            &signatures,
+            &silent_object_type,
             &object_id_to_type,
             &mut registry,
         );
 
         fixed.push(FixedActivityInfo {
-            activity: planned.requested_activity.clone(),
-            combination: planned.combination.clone(),
-            activities: planned.activities.iter().cloned().collect(),
-            silent_object_type: planned.silent_object_type.clone(),
+            activity: activity.clone(),
+            combination,
+            activities: activity_set.iter().cloned().collect(),
+            silent_object_type,
         });
+
+        let patterns = compute_related_patterns(ocel)?;
+        divergence = patterns.0;
+        related = patterns.1;
+        object_id_to_type = build_object_id_to_type(ocel);
     }
 
-    let (final_divergence, _final_convergence, final_related, _final_deficiency) =
-        catch_unwind(AssertUnwindSafe(|| ocel.get_interaction_patterns())).map_err(|_| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Failed to compute final interaction patterns".to_string(),
-            )
-        })?;
+    skipped_not_special.sort();
+    skipped_not_special.dedup();
+    no_combination_found.sort();
+    no_combination_found.dedup();
+
+    if fixed.is_empty() {
+        return Ok(FixMultipleSpecialActivitiesResponse {
+            source_file_id: source_file_id.to_string(),
+            new_file_id: source_file_id.to_string(),
+            fixed: Vec::new(),
+            skipped_not_special,
+            resolved_by_cascade: Vec::new(),
+            no_combination_found,
+        });
+    }
 
     let fixed_set: FxHashSet<&str> = fixed.iter().map(|item| item.activity.as_str()).collect();
     let mut resolved_by_cascade: Vec<String> = initially_special
         .iter()
         .filter(|activity| {
             !fixed_set.contains(activity.as_str())
-                && !is_special_activity(&final_divergence, &final_related, activity)
+                && !is_special_activity(&divergence, &related, activity)
         })
         .cloned()
         .collect();
 
-    let resolved_set: BTreeSet<&str> =
-        resolved_by_cascade.iter().map(String::as_str).collect();
+    let resolved_set: BTreeSet<&str> = resolved_by_cascade.iter().map(String::as_str).collect();
     no_combination_found.retain(|activity| !resolved_set.contains(activity.as_str()));
 
-    skipped_not_special.sort();
-    skipped_not_special.dedup();
     no_combination_found.sort();
-    no_combination_found.dedup();
     resolved_by_cascade.sort();
 
     let new_file_id = ocel.export_to_path().await?;
@@ -274,11 +221,46 @@ pub async fn fix_special_activities(
     })
 }
 
-fn is_silent_type(object_type: &str) -> bool {
+pub(crate) fn is_silent_type(object_type: &str) -> bool {
     object_type.starts_with("silent_")
 }
 
-fn group_profiles(
+fn compute_related_patterns(
+    ocel: &OCEL,
+) -> Result<
+    (
+        FxHashMap<String, FxHashSet<String>>,
+        FxHashMap<String, FxHashSet<String>>,
+    ),
+    (StatusCode, String),
+> {
+    let (divergence, _convergence, related, _deficiency) =
+        catch_unwind(AssertUnwindSafe(|| ocel.get_interaction_patterns())).map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to compute interaction patterns".to_string(),
+            )
+        })?;
+    Ok((divergence, related))
+}
+
+fn visible_related_types(
+    related: &FxHashMap<String, FxHashSet<String>>,
+    activity: &str,
+) -> Vec<String> {
+    let mut related_types: Vec<String> = related
+        .get(activity)
+        .into_iter()
+        .flat_map(|types| types.iter())
+        .filter(|object_type| !is_silent_type(object_type))
+        .cloned()
+        .collect();
+    related_types.sort();
+    related_types.dedup();
+    related_types
+}
+
+pub(crate) fn group_profiles(
     ocel: &OCEL,
     object_id_to_type: &BTreeMap<String, String>,
 ) -> BTreeMap<String, Vec<ActivityEventProfile>> {
@@ -318,7 +300,7 @@ fn group_profiles(
         .collect()
 }
 
-fn is_unique(profiles: &[ActivityEventProfile], combination: &[String]) -> bool {
+pub(crate) fn is_unique(profiles: &[ActivityEventProfile], combination: &[String]) -> bool {
     if profiles.len() < 2 || combination.is_empty() {
         return false;
     }
@@ -329,7 +311,7 @@ fn is_unique(profiles: &[ActivityEventProfile], combination: &[String]) -> bool 
     signatures.len() == profiles.len()
 }
 
-fn collect_signatures(
+pub(crate) fn collect_signatures(
     profiles: &[ActivityEventProfile],
     combination: &[String],
 ) -> Option<SignatureSet> {
@@ -347,7 +329,6 @@ fn find_identifier(
     profiles: &[ActivityEventProfile],
     related_types: &[String],
     profiles_by_activity: &BTreeMap<String, Vec<ActivityEventProfile>>,
-    visible_footprints: &BTreeMap<String, BTreeSet<String>>,
 ) -> Option<(Vec<String>, SignatureSet, BTreeSet<String>)> {
     if profiles.len() < 2 {
         return None;
@@ -364,7 +345,7 @@ fn find_identifier(
             let activities =
                 shared_activities(profiles_by_activity, &combination, &signatures);
 
-            if activities.is_empty() || is_redundant(&activities, visible_footprints) {
+            if activities.is_empty() {
                 continue;
             }
 
@@ -410,36 +391,6 @@ fn shared_activities(
         .collect()
 }
 
-fn type_footprints(
-    ocel: &OCEL,
-    object_id_to_type: &BTreeMap<String, String>,
-) -> BTreeMap<String, BTreeSet<String>> {
-    let mut footprints: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
-    for event in &ocel.events {
-        for relation in &event.relationships {
-            let Some(object_type) = object_id_to_type.get(&relation.object_id) else {
-                continue;
-            };
-            if !is_silent_type(object_type) {
-                footprints
-                    .entry(object_type.clone())
-                    .or_default()
-                    .insert(event.event_type.clone());
-            }
-        }
-    }
-    footprints
-}
-
-fn is_redundant(
-    activities: &BTreeSet<String>,
-    visible_footprints: &BTreeMap<String, BTreeSet<String>>,
-) -> bool {
-    visible_footprints
-        .values()
-        .any(|footprint| footprint == activities)
-}
-
 fn gather_combos(
     types: &[String],
     target_size: usize,
@@ -465,7 +416,7 @@ fn gather_combos(
     }
 }
 
-fn combos_of_size(types: &[String], size: usize) -> Vec<Vec<String>> {
+pub(crate) fn combos_of_size(types: &[String], size: usize) -> Vec<Vec<String>> {
     if size == 0 || size > types.len() {
         return Vec::new();
     }
@@ -489,24 +440,16 @@ fn normalize_part(input: &str) -> String {
     }
 }
 
-fn silent_type_name(
-    combination: &[String],
-    activities: &BTreeSet<String>,
-) -> String {
+pub(crate) fn silent_type_name(combination: &[String]) -> String {
     let combination_part = combination
         .iter()
         .map(|part| normalize_part(part))
         .collect::<Vec<_>>()
         .join("_");
-    let activity_part = activities
-        .iter()
-        .map(|part| normalize_part(part))
-        .collect::<Vec<_>>()
-        .join("_");
-    format!("silent_{}__{}", combination_part, activity_part)
+    format!("silent_{}", combination_part)
 }
 
-fn ensure_silent_type(ocel: &mut OCEL, silent_object_type: &str) {
+pub(crate) fn ensure_silent_type(ocel: &mut OCEL, silent_object_type: &str) {
     if ocel
         .object_types
         .iter()
@@ -536,7 +479,7 @@ fn event_signature(
     Some(signature)
 }
 
-fn attach_silent_objects(
+pub(crate) fn attach_silent_objects(
     ocel: &mut OCEL,
     combination: &[String],
     activities: &BTreeSet<String>,
