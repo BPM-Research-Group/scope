@@ -3,6 +3,7 @@ import { StateCreator } from 'zustand';
 import { ExploreFlowStore } from '~/stores/exploreStore';
 import { getDeterministicColor } from '~/lib/colors';
 import { isFileNode } from '~/lib/explore/exploreNodes.utils';
+import { clearPipelineDraft } from '~/lib/explore/pipelineDraft';
 import { BaseExploreNodeAsset } from '~/types/explore/nodeData/baseNodeData';
 import { FileExploreNodeData, HistogramState } from '~/types/explore/nodeData/fileNodeData';
 import { ExploreNode } from '~/types/explore/nodes';
@@ -99,7 +100,11 @@ export const createGraphSlice: StateCreator<ExploreFlowStore, [], [], GraphSlice
     getNode: (nodeId) => {
         return get().nodes.find((node) => node.id === nodeId);
     },
-    clearFlow: () => set({ nodes: [], edges: [], currentPipeline: { id: null, name: null }, refocusQueue: [] }),
+    clearFlow: () => {
+        // Starting from scratch is deliberate, so the autosaved draft goes too.
+        clearPipelineDraft();
+        set({ nodes: [], edges: [], currentPipeline: { id: null, name: null }, refocusQueue: [] });
+    },
     refocusQueue: [],
     setRefocusQueue: (queue) => set({ refocusQueue: queue }),
     // ─── Color Logic (Fixed to Sync with Store) ──────────────────────────

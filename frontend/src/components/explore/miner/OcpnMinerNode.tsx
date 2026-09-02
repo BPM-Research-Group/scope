@@ -1,9 +1,9 @@
-import React, { memo, useCallback, useEffect, useMemo } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { BaseEdge, Edge, EdgeProps, Handle, Node, NodeProps, Position } from '@xyflow/react';
 import BaseMinerNode from '~/components/explore/miner/BaseMinerNode';
 import { useInputAsset, useMinerOutput } from '~/hooks/explore/useMinerAssets';
-import { useMineOcpn } from '~/services/queries';
+import { useMineOcpn, useMineOcpnFromProcessForest } from '~/services/queries';
 import { MinerNode } from '~/types/explore/nodes';
 
 export type MinerPlaceNode = Node<{
@@ -123,38 +123,65 @@ export const ArcEdge = ({
             style={{
                 ...style,
                 stroke: data?.color,
-                // Make special arcs slightly thicker so the dots are highly visible
                 strokeWidth: data?.variable ? 2.5 : 1.5,
-                //'6 4' creates the dotted effect for special arcs
-                strokeDasharray: data?.variable ? '6 4' : 'none', 
+                strokeDasharray: data?.variable ? '6 4' : 'none',
                 strokeOpacity: 0.8,
             }}
         />
     );
 };
+
 const OcpnMinerNode = memo<NodeProps<MinerNode>>((node) => {
     const queryClient = useQueryClient();
     const { id, data: nodeData } = node;
     const { assets } = nodeData;
 
-    const inputAsset = useInputAsset(assets, 'ocptAsset');
+    const [forceRemine, setForceRemine] = useState(false);
+
+    const ocptAsset = useInputAsset(assets, 'ocptAsset');
+    const ocpfAsset = useInputAsset(assets, 'ocpfAsset');
+
+    const inputAsset = ocpfAsset || ocptAsset;
     const inputFileId = inputAsset?.id ?? null;
     const fileName = inputAsset?.name ?? 'OCPN_Model';
+
+    const isOcpf = Boolean(ocpfAsset);
+    const isOcpt = Boolean(ocptAsset);
 
     const hasMinedAsset = useMemo(() => {
         return assets.some((asset) => asset.io === 'output' && asset.origin === 'mined');
     }, [assets]);
 
-    const { isLoading, isFetching, data } = useMineOcpn(id, inputFileId, !hasMinedAsset);
+    const shouldMineOcpt = isOcpt && (!hasMinedAsset || forceRemine);
+    const shouldMineOcpf = isOcpf && (!hasMinedAsset || forceRemine);
 
-    useMinerOutput(id, data?.file_id, fileName, 'ocpnAsset', 'ocpnFileNode');
+    const ocptQuery = useMineOcpn(id, inputFileId, shouldMineOcpt);
+
+    // optimized version always
+    const ocpfQuery = useMineOcpnFromProcessForest(id, inputFileId, 'optimized', [], shouldMineOcpf);
+
+    const isLoading = ocptQuery.isLoading || ocpfQuery.isLoading;
+    const isFetching = ocptQuery.isFetching || ocpfQuery.isFetching;
+    const minedData = isOcpf ? ocpfQuery.data : ocptQuery.data;
+
+    useEffect(() => {
+        if (ocpfQuery.isSuccess || ocptQuery.isSuccess) {
+            setForceRemine(false);
+        }
+    }, [ocpfQuery.isSuccess, ocptQuery.isSuccess]);
+
+    useMinerOutput(id, minedData?.file_id, fileName, 'ocpnAsset', 'ocpnFileNode');
 
     const handleReset = useCallback(() => {
         if (inputFileId) {
             queryClient.cancelQueries({ queryKey: ['mineOcpn', inputFileId] });
             queryClient.removeQueries({ queryKey: ['mineOcpn', inputFileId] });
+            queryClient.cancelQueries({ queryKey: ['mineOcpnFromProcessForest', id] });
+            queryClient.removeQueries({ queryKey: ['mineOcpnFromProcessForest', id] });
+
+            setForceRemine(true);
         }
-    }, [inputFileId, queryClient]);
+    }, [inputFileId, queryClient, id]);
 
     return (
         <BaseMinerNode
