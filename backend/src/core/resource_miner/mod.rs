@@ -1,24 +1,20 @@
-// Shared helpers and public API re-exports for the resource_miner module.
-//
-// Sub-modules:
-//   - main.rs   : classifies object types as resource / non-resource and detects if there are special activities
-//   - special.rs: finds non-diverging object type combinations and creates/attaches silent objects
-
 use crate::models::ocel::{OCEL, OCELUtils};
 use axum::http::StatusCode;
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::collections::BTreeMap;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
+mod case_ocel;
 mod main;
 mod special;
 
+pub use case_ocel::{
+    build_case_ocel_resource_miner_response, fix_case_ocel_special_activities,
+    list_case_ocel_combinations,
+};
 pub use main::build_resource_miner_response;
-pub use special::{build_non_diverging_combinations_response, fix_multiple_special_activities};
+pub use special::{fix_special_activities, list_combinations};
 
-// (divergence map, related map) pair returned by get_interaction_patterns.
-// divergence: activity -> object types that are divergent for that activity
-// related   : activity -> object types that appear in at least one of its events
 pub(crate) type InteractionPatterns = (
     FxHashMap<String, FxHashSet<String>>,
     FxHashMap<String, FxHashSet<String>>,
@@ -43,9 +39,6 @@ pub(crate) fn is_special_activity(
     }
 }
 
-// Confirms the activity exists, has related object types, and is special.
-// Returns the interaction patterns and sorted related type names on success.
-// Errors: 404 if no related types, 400 if not a special activity.
 pub(crate) fn validate_special_activity_and_related(
     ocel: &OCEL,
     activity: &str,
@@ -77,8 +70,6 @@ pub(crate) fn validate_special_activity_and_related(
     Ok(((divergence, related), related_object_types))
 }
 
-// Builds a map from object ID to its type name.
-// Used to resolve the type of objects referenced in event relationships.
 pub(crate) fn build_object_id_to_type(ocel: &OCEL) -> BTreeMap<String, String> {
     ocel.objects
         .iter()

@@ -1,15 +1,8 @@
-// Classifies all object types and activities in the OCEL into resource / non-resource categories.
-//
-// Definitions:
-//   resource     : an object type that is divergent in every activity it participates in
-//   non-resource : an object type that is NOT divergent in at least one activity
-//   special activity: an activity where ALL related object types are divergent
-
 use crate::core::resource_miner::is_special_activity;
 use crate::models::ocel::{OCEL, OCELUtils};
 use crate::models::resource_miner::{ObjectNotResourceArc, ResourceMinerResponse};
 use axum::http::StatusCode;
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
 pub fn build_resource_miner_response(
@@ -27,7 +20,20 @@ pub fn build_resource_miner_response(
     let all_object_types: Vec<String> =
         ocel.object_types.iter().map(|ot| ot.name.clone()).collect();
 
-    // Object type is a resource only if it is divergent in every activity it appears in.
+    Ok(classify_from_patterns(
+        &divergence,
+        &related,
+        all_activities,
+        all_object_types,
+    ))
+}
+
+pub(crate) fn classify_from_patterns(
+    divergence: &FxHashMap<String, FxHashSet<String>>,
+    related: &FxHashMap<String, FxHashSet<String>>,
+    all_activities: Vec<String>,
+    all_object_types: Vec<String>,
+) -> ResourceMinerResponse {
     let mut object_resource: FxHashSet<String> = FxHashSet::default();
     for object_type in &all_object_types {
         let related_activities: Vec<&String> = related
@@ -57,7 +63,6 @@ pub fn build_resource_miner_response(
         }
     }
 
-    // Each (object_type, activity) pair where the type is non-divergent becomes an arc.
     let mut object_type_not_resource: FxHashSet<String> = FxHashSet::default();
     let mut object_not_resource_arcs: Vec<ObjectNotResourceArc> = Vec::new();
 
@@ -81,11 +86,10 @@ pub fn build_resource_miner_response(
 
     let mut special_activity: Vec<String> = all_activities
         .iter()
-        .filter(|activity| is_special_activity(&divergence, &related, activity))
+        .filter(|activity| is_special_activity(divergence, related, activity))
         .cloned()
         .collect();
 
-    // Activities where every related object type is a non-resource.
     let mut event_types_without_object_resource: Vec<String> = all_activities
         .iter()
         .filter(|activity| {
@@ -121,12 +125,12 @@ pub fn build_resource_miner_response(
             .then(left.target_type.cmp(&right.target_type))
     });
 
-    Ok(ResourceMinerResponse {
+    ResourceMinerResponse {
         object_type_not_resource,
         object_resource,
         non_special_event_types,
         event_types_without_object_resource,
         object_not_resource_arcs,
         special_activities: special_activity,
-    })
+    }
 }
