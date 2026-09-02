@@ -2,7 +2,7 @@
 //
 // Sub-modules:
 //   - main.rs   : classifies object types as resource / non-resource and detects if there are special activities
-//   - special.rs: finds non-diverging object type combinations and creates/attaches silent objects
+//   - special.rs: finds an identifier, discovers shared activities, attaches silent objects
 
 use crate::models::ocel::{OCEL, OCELUtils};
 use axum::http::StatusCode;
@@ -14,7 +14,7 @@ mod main;
 mod special;
 
 pub use main::build_resource_miner_response;
-pub use special::{build_non_diverging_combinations_response, fix_multiple_special_activities};
+pub use special::{fix_special_activities, list_combinations};
 
 // (divergence map, related map) pair returned by get_interaction_patterns.
 // divergence: activity -> object types that are divergent for that activity

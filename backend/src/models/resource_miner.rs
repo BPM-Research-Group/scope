@@ -19,6 +19,8 @@ pub struct ResourceMinerResponse {
 #[derive(Debug, Serialize)]
 pub struct NonDivergingCombination {
     pub object_types: Vec<String>,
+    // Maximal shared activity set A for this first minimal identifier.
+    pub activities: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -32,6 +34,9 @@ pub struct SpecialActivityCombinationResponse {
 pub struct FixedActivityInfo {
     pub activity: String,
     pub combination: Vec<String>,
+    // Complete discovered activity set A. Silent instances are attached only to these
+    // activities; other members can consequently be resolved by cascade.
+    pub activities: Vec<String>,
     pub silent_object_type: String,
 }
 
@@ -41,13 +46,6 @@ pub struct FixMultipleActivitiesRequest {
     pub activities: Vec<String>,
 }
 
-// Response for fixing multiple special activities in one pass.
-// fixed                : activities that were successfully fixed
-// skipped_not_special  : requested activities that were not special in the original OCEL at all
-// resolved_by_cascade  : activities that were originally special but became non-special as a
-//                        side-effect of fixing other activities — whether or not they appeared
-//                        in the request list
-// no_combination_found : activities that are still special but have no jointly non-diverging combination
 #[derive(Debug, Serialize)]
 pub struct FixMultipleSpecialActivitiesResponse {
     pub source_file_id: String,
