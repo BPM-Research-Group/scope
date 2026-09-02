@@ -20,7 +20,7 @@ pub fn get_divergence_free_graph_v2(
     for relation in relations {
         grouped_relations
             .entry(relation.3.clone()) // oid is at index 3
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(relation);
     }
 

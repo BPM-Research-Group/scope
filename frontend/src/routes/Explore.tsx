@@ -11,10 +11,12 @@ import EventStreamNode from '~/components/explore/file/EventStreamNode';
 import FlowFileNode from '~/components/explore/file/FlowFileNode';
 import OcelCollectionNode from '~/components/explore/file/OcelCollectionNode';
 import OcelFileNode from '~/components/explore/file/OcelFileNode';
+import OcpfFileNode from '~/components/explore/file/OcpfFileNode';
 import OcpnFileNode from '~/components/explore/file/OcpnFileNode';
 import OcptFileNode from '~/components/explore/file/OcptFileNode';
 import FileSelectionDialog from '~/components/explore/file/ui/FileSelectionDialog';
 import AbstractionMinerNode from '~/components/explore/miner/AbstractionMinerNode';
+import CaseClusteringMinerNode from '~/components/explore/miner/CaseClusteringMinerNode';
 import CaseNotionMinerNode from '~/components/explore/miner/CaseNotionMinerNode';
 import ConformanceMinerNode from '~/components/explore/miner/ConformanceMinerNode';
 import Df2StreamMinerNode from '~/components/explore/miner/Df2StreamMinerNode';
@@ -22,12 +24,14 @@ import ExtendWithIdentityNode from '~/components/explore/miner/ExtendWithIdentit
 import FlowMinerNode from '~/components/explore/miner/FlowMinerNode';
 import FlowVisualizationNode from '~/components/explore/miner/FlowVisualizationNode';
 import HistogramMinerNode from '~/components/explore/miner/HistogramMinerNode';
+import KpiBuilderNode from '~/components/explore/miner/KpiBuilderNode';
+import OcpfMinerNode from '~/components/explore/miner/OcpfMinerNode';
 import OcpnMinerNode from '~/components/explore/miner/OcpnMinerNode';
 import OcptMinerNode from '~/components/explore/miner/OcptMinerNode';
 import OcptStreamMinerNode from '~/components/explore/miner/OcptStreamMinerNode';
 import ResourceMinerNode from '~/components/explore/miner/ResourceMinerNode';
-import CaseClusteringMinerNode from '~/components/explore/miner/CaseClusteringMinerNode';
 import { RefocusProgressPanel } from '~/components/explore/RefocusProgressPanel';
+import { RestoreDraftPanel } from '~/components/explore/RestoreDraftPanel';
 import { useConnections } from '~/hooks/explore/useConnections';
 import { useDragDrop } from '~/hooks/explore/useDragDrop';
 import { useNodeOperations } from '~/hooks/explore/useNodeOperations';
@@ -40,9 +44,11 @@ const nodeTypes = {
     ocptFileNode: OcptFileNode,
     ocelFileNode: OcelFileNode,
     ocpnFileNode: OcpnFileNode,
+    ocpfFileNode: OcpfFileNode,
     ocelCollectionNode: OcelCollectionNode,
     ocptMinerNode: OcptMinerNode,
     ocpnMinerNode: OcpnMinerNode,
+    ocpfMinerNode: OcpfMinerNode,
     histogramMinerNode: HistogramMinerNode,
     caseNotionMinerNode: CaseNotionMinerNode,
     identityExtendMinerNode: ExtendWithIdentityNode,
@@ -56,8 +62,8 @@ const nodeTypes = {
     df2StreamMinerNode: Df2StreamMinerNode,
     ocptStreamMinerNode: OcptStreamMinerNode,
     flowFileNode: FlowFileNode,
+    kpiBuilderNode: KpiBuilderNode,
     caseClusteringMinerNode: CaseClusteringMinerNode,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } satisfies Record<keyof typeof nodeRegistry, React.ComponentType<NodeProps<any>>>;
 
 const Explore: React.FC = () => {
@@ -71,7 +77,7 @@ const Explore: React.FC = () => {
 
     const handleDrop = useCallback((event: DragEvent<HTMLElement>) => onDrop(event, type), [onDrop, type]);
 
-    logger.debug('nodes updated', nodes);
+    logger.debug('nodes Updated', nodes);
 
     return (
         <>
@@ -94,6 +100,7 @@ const Explore: React.FC = () => {
                             <Background />
                             <Controls position="top-left" />
                             <RefocusProgressPanel />
+                            <RestoreDraftPanel />
                         </ReactFlow>
                     </div>
                 </SidebarInset>

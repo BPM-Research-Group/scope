@@ -1,4 +1,5 @@
 import { Edge } from '@xyflow/react';
+import { PipelineDraft } from '~/lib/explore/pipelineDraft';
 import { ExploreNode } from '~/types/explore/nodes';
 
 export interface SavedPipeline {
@@ -18,4 +19,10 @@ export interface PipelineSlice {
     loadPipeline: (pipelineId: string) => void;
     getSavedPipelines: () => SavedPipeline[];
     deletePipeline: (pipelineId: string) => void;
+
+    /** The auto-saved snapshot of the pipeline the user last worked on. */
+    getPipelineDraft: () => PipelineDraft | null;
+    /** Loads the draft into the flow. Returns false when there is no draft. */
+    restorePipelineDraft: () => boolean;
+    discardPipelineDraft: () => void;
 }

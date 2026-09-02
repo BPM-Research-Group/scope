@@ -66,7 +66,7 @@ pub fn split_log(
                     LocalData::new(new_oc_log_list, Some(local_data.expected_objects.clone()))
                 })
                 .collect();
-            return result;
+            result
         }
         OCPTOperatorType::ExclusiveChoice => {
             let result: Vec<LocalData> = partition
@@ -129,7 +129,7 @@ pub fn split_log(
                     LocalData::new(new_oc_log_list, Some(new_expected_objects))
                 })
                 .collect();
-            return result;
+            result
         }
         OCPTOperatorType::Loop(_repetitions) => {
             // BEWARE: THIS AI GENERATED CODE THAT NEEDS REVIEW AND TESTING BEFORE USE
@@ -182,12 +182,10 @@ pub fn split_log(
                             }
 
                             if let Some((_, start_counts, end_counts)) = local_data.dfgs.get(otype)
+                                && start_counts.get(&e2.event_type).is_some()
+                                && end_counts.get(&e1.event_type).is_some()
                             {
-                                if start_counts.get(&e2.event_type).is_some()
-                                    && end_counts.get(&e1.event_type).is_some()
-                                {
-                                    continue;
-                                }
+                                continue;
                             }
 
                             let divergent_types = get_divergent_types(
@@ -279,16 +277,16 @@ pub fn split_log(
                 }
             }
 
-            return result_sublogs
+            result_sublogs
                 .into_iter()
                 .filter(|log_list| !log_list.is_empty())
                 .map(|oc_log_list| {
                     LocalData::new(oc_log_list, Some(local_data.expected_objects.clone()))
                 })
-                .collect();
+                .collect()
         }
         OCPTOperatorType::IdentityRelation(_) => {
-            return vec![local_data.clone()];
+            vec![local_data.clone()]
         }
     }
 }

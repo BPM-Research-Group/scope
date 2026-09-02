@@ -14,7 +14,7 @@ fn sort_hashmap_values(map: HashMap<String, HashSet<String>>) -> HashMap<String,
 }
 
 pub fn get_interaction_patterns(
-    relations: &Vec<Relation>,
+    relations: &[Relation],
     _ocel: &OcelJson,
 ) -> (
     HashMap<String, Vec<String>>, // divergent (sorted)
@@ -140,13 +140,12 @@ pub fn get_interaction_patterns(
         let events_with_otype: Vec<(&String, &(Vec<String>, String))> = identifiers
             .iter()
             .filter(|(event_id, _)| {
-                event_object_type_sets
+                !event_object_type_sets
                     .get(*event_id)
                     .unwrap()
                     .get(otype)
                     .unwrap()
-                    .len()
-                    > 0
+                    .is_empty()
             })
             .collect();
 

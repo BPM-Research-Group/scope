@@ -1,4 +1,5 @@
 pub mod abstractions;
+pub mod activity_label_splitting;
 pub mod case_notion;
 pub mod clustering;
 pub mod conformance;
@@ -39,4 +40,5 @@ pub fn router() -> Router {
         .nest("/event_stream", event_stream_mining::router())
         .nest("/resource_miner", resource_miner::router())
         .nest("/kpi", kpi::router())
+        .nest("/activity_label_splitting", activity_label_splitting::router())
 }

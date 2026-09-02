@@ -96,7 +96,7 @@ const OcptNode: React.FC<OcptNodeProps> = ({ node, key, setHoveredNode, colorSca
                 onMouseEnter={() => setHoveredNode(node)}
                 onMouseMove={() => setHoveredNode(node)}
                 onMouseLeave={() => setHoveredNode(null)}
-                onClick={onOperatorClick ? () => onOperatorClick(node) : undefined}
+                onClick={onOperatorClick && value.identity?.length ? () => onOperatorClick(node) : undefined}
             />
         );
     }

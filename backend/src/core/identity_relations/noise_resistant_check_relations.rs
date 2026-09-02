@@ -496,7 +496,6 @@ fn check_subset_overlap_event_sets(
 fn check_implication_event_sets(event_sets: &[EventSets], violation_threshold: f64) -> bool {
     let event_sets: Vec<&EventSets> = event_sets
         .iter()
-        .into_iter()
         .filter(|event| !event.ot1_set.is_empty())
         .collect();
 

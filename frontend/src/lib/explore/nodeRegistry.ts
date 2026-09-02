@@ -53,6 +53,11 @@ export const nodeRegistry = {
         allowedAssetTypes: ['ocpnFile'],
         sidebar: { label: 'OCPN File', icon: 'fileTree', group: 'files' },
     },
+    ocpfFileNode: {
+        category: 'file',
+        allowedAssetTypes: ['ocpfFile'],
+        sidebar: { label: 'OCPF File', icon: 'trees', group: 'files' },
+    },
     ocelCollectionNode: {
         category: 'file',
         allowedAssetTypes: ['ocelCollectionFile'],
@@ -82,7 +87,7 @@ export const nodeRegistry = {
     // ── Miner nodes ────────────────────────────────────────────────────────────
     ocptMinerNode: {
         category: 'miner',
-        allowedAssetTypes: ['ocelFile'],
+        allowedAssetTypes: ['ocelFile', 'ocelCollectionFile'],
         sidebar: { label: 'OCPT Miner', icon: 'treePine', group: 'miners' },
     },
     histogramMinerNode: {
@@ -106,10 +111,17 @@ export const nodeRegistry = {
     },
     flowMinerNode: {
         category: 'miner',
-        allowedAssetTypes: ['ocptAsset', 'ocptFile', 'identityOcptAsset', 'ocelAsset', 'ocelFile'],
+        allowedAssetTypes: [
+            'ocptAsset',
+            'ocptFile',
+            'identityOcptAsset',
+            'ocelAsset',
+            'ocelFile',
+            'ocelCollectionFile',
+        ],
         inputs: [
             { label: 'Model', types: ['ocptAsset', 'ocptFile', 'identityOcptAsset'] },
-            { label: 'Log', types: ['ocelAsset', 'ocelFile'] },
+            { label: 'Log', types: ['ocelAsset', 'ocelFile', 'ocelCollectionFile'] },
         ],
         sidebar: { label: 'Flow Visualization', icon: 'zap', group: 'miners' },
     },
@@ -120,13 +132,23 @@ export const nodeRegistry = {
     },
     ocpnMinerNode: {
         category: 'miner',
-        allowedAssetTypes: ['ocptFile', 'ocptAsset'],
+        allowedAssetTypes: ['ocptFile', 'ocptAsset', 'ocpfFile', 'ocpfAsset'],
         sidebar: { label: 'OCPN Miner', icon: 'waypoints', group: 'miners' },
+    },
+    ocpfMinerNode: {
+        category: 'miner',
+        allowedAssetTypes: ['ocelFile', 'ocelAsset'],
+        sidebar: { label: 'OCPF Miner', icon: 'trees', group: 'miners' },
     },
     resourceMinerNode: {
         category: 'miner',
         allowedAssetTypes: ['ocelFile'],
         sidebar: { label: 'Resource Miner', icon: 'waves', group: 'miners' },
+    },
+    kpiBuilderNode: {
+        category: 'miner',
+        allowedAssetTypes: ['ocelFile', 'ocelAsset', 'ocelCollectionFile'],
+        sidebar: { label: 'KPI Builder', icon: 'network', group: 'miners' },
     },
     conformanceMinerNode: {
         category: 'miner',
