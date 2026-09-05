@@ -5,7 +5,7 @@ use crate::core::case_notion::connected_component::connected_components_notion;
 use crate::core::case_notion::generic::{build_case, generic_case_notion};
 use crate::core::case_notion::log_graphs::build_log_graph_type_level;
 use crate::core::case_notion::main::{CaseMeasure, CaseNotionContext, CaseNotionEvaluation};
-use crate::core::case_notion::measures::calculate_measures;
+use crate::core::case_notion::measures::{calculate_measures, calculate_total_score};
 use crate::core::case_notion::traditional::{
     traditional_case_notion, traditional_case_notion_type_level,
 };
@@ -76,6 +76,17 @@ impl ImportableFromPath for PersistedCaseNotion {
         let path = format!("./temp/case_notion_{}.json", file_id);
         Self::from_json_file(&path).await
     }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct WeightsChangedRequest {
+    pub measurements: Vec<CaseMeasure>,
+    pub weights: Vec<f64>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ChangeWeightsResponse {
+    pub measurements: Vec<CaseMeasure>,
 }
 
 struct LoadedCaseNotion {
@@ -480,6 +491,24 @@ pub async fn get_traditional_case_notion(
     };
 
     (StatusCode::OK, Json(response)).into_response()
+}
+
+pub async fn post_measurement_weights_change(
+    Path(file_id): Path<String>,
+    Json(payload): Json<WeightsChangedRequest>,
+) -> (StatusCode, Json<ChangeWeightsResponse>){
+    let mut updated_measurements = payload.measurements.clone();
+    updated_measurements.retain(|m| m.name != "Total Score");
+    let new_total_score = calculate_total_score(&payload.measurements, &payload.weights);
+    updated_measurements.push(CaseMeasure {
+        name: "Total Score".to_string(),
+        value: new_total_score,
+    });
+
+    let response_body = ChangeWeightsResponse {
+        measurements: updated_measurements,
+    };
+    (StatusCode::OK, Json(response_body))
 }
 
 pub async fn post_generic_case_notion(
