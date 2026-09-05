@@ -666,3 +666,11 @@ pub fn correctness_of_case_notion(
 
     (a_c as f64 / a as f64 + o_c as f64 / o as f64 + e_c as f64 / e as f64) / 3.0
 }
+
+pub fn calculate_total_score(measures: &[CaseMeasure], weights: &[f64]) -> f64 {
+    measures
+        .iter()
+        .zip(weights.iter())
+        .map(|(measure, weight)| measure.value * weight)
+        .sum()
+}
