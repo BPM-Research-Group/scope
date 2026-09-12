@@ -2,8 +2,8 @@ use crate::core::df2_miner::ocpt_generator::generate_ocpt_from_ocels;
 use crate::core::struct_converters::ocpt_frontend_backend::{
     backend_to_frontend, frontend_to_backend,
 };
+use crate::handlers::case_input::resolve_case_input;
 use crate::models::ocel::OCEL;
-use crate::models::ocel_collection::OCELCollection;
 use crate::models::ocel_sid_df2_miner::OcelJson;
 use crate::models::ocpt::{OCPT, OcptFE};
 use crate::traits::import_export::ImportableFromPath;
@@ -23,7 +23,14 @@ pub async fn apply_df2(
         ));
     }
 
-    let ocels = load_df2_ocels(&file_id).await?;
+    let resolved = resolve_case_input(&file_id).await?;
+    let case_ocels_file_id = resolved.case_ocels_file_id;
+    let ocels = resolved
+        .collection
+        .ocels
+        .into_iter()
+        .map(ocel_to_df2_json)
+        .collect::<Result<Vec<_>, _>>()?;
     if ocels.is_empty() {
         return Err((
             StatusCode::BAD_REQUEST,
@@ -93,25 +100,11 @@ pub async fn apply_df2(
     let ocpt_frontend = backend_to_frontend(&ocpt_backend);
     let payload = json!({
         "file_id": generated_id,
+        "case_ocels_file_id": case_ocels_file_id,
         "ocpt": ocpt_frontend
     });
 
     Ok(Json(payload))
-}
-
-async fn load_df2_ocels(file_id: &str) -> Result<Vec<OcelJson>, (StatusCode, String)> {
-    match OCEL::import_from_path(file_id).await {
-        Ok(ocel) => Ok(vec![ocel_to_df2_json(ocel)?]),
-        Err((StatusCode::NOT_FOUND, _)) => match OCELCollection::import_from_path(file_id).await {
-            Ok(collection) => collection
-                .ocels
-                .into_iter()
-                .map(ocel_to_df2_json)
-                .collect::<Result<Vec<_>, _>>(),
-            Err(e) => Err(e),
-        },
-        Err(e) => Err(e),
-    }
 }
 
 fn ocel_to_df2_json(ocel: OCEL) -> Result<OcelJson, (StatusCode, String)> {

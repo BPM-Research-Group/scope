@@ -1,9 +1,8 @@
 use crate::core::identity_relations::get_extended_ocpt as extend_ocpt_with_identity_relations;
 use crate::core::struct_converters::ocpt_frontend_backend::backend_to_frontend;
 use crate::core::utils::relations::build_relations_from_ocels;
+use crate::handlers::case_input::resolve_case_input;
 use crate::handlers::ocpt::ensure_temp_dir;
-use crate::models::ocel::OCEL;
-use crate::models::ocel_collection::OCELCollection;
 use crate::models::ocpt::OCPT;
 use crate::traits::import_export::ImportableFromPath;
 use axum::extract::{Path, Query};
@@ -18,22 +17,6 @@ use uuid::Uuid;
 pub struct ExtendOcptQuery {
     pub ocel_id: Option<String>,
     pub noise_threshold: Option<f64>,
-}
-
-async fn load_source_ocels(ocel_id: &str) -> Result<Vec<OCEL>, (StatusCode, String)> {
-    match OCEL::import_from_path(ocel_id).await {
-        Ok(ocel) => Ok(vec![ocel]),
-        Err(ocel_err) => match OCELCollection::import_from_path(ocel_id).await {
-            Ok(collection) => Ok(collection.ocels),
-            Err(collection_err) => Err((
-                collection_err.0,
-                format!(
-                    "Failed to load OCEL source '{}'. OCEL error: {}; OCEL collection error: {}",
-                    ocel_id, ocel_err.1, collection_err.1
-                ),
-            )),
-        },
-    }
 }
 
 async fn persist_extended_ocpt(ocpt: &OCPT) -> Result<String, (StatusCode, String)> {
@@ -99,7 +82,9 @@ pub async fn apply_extended_ocpt(
         ));
     }
 
-    let source_ocels = load_source_ocels(ocel_id).await?;
+    let resolved = resolve_case_input(ocel_id).await?;
+    let case_ocels_file_id = resolved.case_ocels_file_id;
+    let source_ocels = resolved.collection.ocels;
     let relations = build_relations_from_ocels(&source_ocels);
     ocpt.root =
         extend_ocpt_with_identity_relations(ocpt.root, &relations, None, violation_threshold);
@@ -107,6 +92,7 @@ pub async fn apply_extended_ocpt(
     let new_file_id = persist_extended_ocpt(&ocpt).await?;
     let payload = json!({
         "file_id": new_file_id,
+        "case_ocels_file_id": case_ocels_file_id,
         "extended_ocpt": backend_to_frontend(&ocpt)
     });
 
