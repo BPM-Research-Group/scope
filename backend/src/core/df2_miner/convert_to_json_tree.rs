@@ -110,13 +110,13 @@ pub fn convert_tree(
             .into_iter()
             .map(|ot| {
                 let mut exhibits = Vec::new();
-                if con.get(&activity).map_or(false, |v| v.contains(&ot)) {
+                if con.get(&activity).is_some_and(|v| v.contains(&ot)) {
                     exhibits.push("con".to_string());
                 }
-                if defi.get(&activity).map_or(false, |v| v.contains(&ot)) {
+                if defi.get(&activity).is_some_and(|v| v.contains(&ot)) {
                     exhibits.push("def".to_string());
                 }
-                if div.get(&activity).map_or(false, |v| v.contains(&ot)) {
+                if div.get(&activity).is_some_and(|v| v.contains(&ot)) {
                     exhibits.push("div".to_string());
                 }
 

@@ -34,11 +34,11 @@ pub fn find_cuts(
 
             let combined_activites: HashSet<String> =
                 combo_set.union(&complement_set).cloned().collect();
-            let filtered_dfg = filter_keep_dfg(&dfg, &combined_activites);
+            let filtered_dfg = filter_keep_dfg(dfg, &combined_activites);
 
             let (filtered_start_activites, filtered_end_activites) =
                 get_start_and_end_activities_v2(
-                    &dfg,
+                    dfg,
                     &combined_activites,
                     start_activities,
                     end_activities,
@@ -58,18 +58,18 @@ pub fn find_cuts(
                     children: Vec::new(),
                 };
                 node.children.extend(find_cuts(
-                    &dfg,
+                    dfg,
                     &filtered_dfg,
                     combo_set,
-                    &start_activities,
-                    &end_activities,
+                    start_activities,
+                    end_activities,
                 ));
                 node.children.extend(find_cuts(
-                    &dfg,
+                    dfg,
                     &filtered_dfg,
                     complement_set,
-                    &start_activities,
-                    &end_activities,
+                    start_activities,
+                    end_activities,
                 ));
                 forest.push(node);
                 return forest; // Return early if you only want the first valid cut
@@ -86,18 +86,18 @@ pub fn find_cuts(
                     children: Vec::new(),
                 };
                 node.children.extend(find_cuts(
-                    &dfg,
+                    dfg,
                     &filtered_dfg,
                     combo_set,
-                    &start_activities,
-                    &end_activities,
+                    start_activities,
+                    end_activities,
                 ));
                 node.children.extend(find_cuts(
-                    &dfg,
+                    dfg,
                     &filtered_dfg,
                     complement_set,
-                    &start_activities,
-                    &end_activities,
+                    start_activities,
+                    end_activities,
                 ));
                 forest.push(node);
                 return forest; // Return early if you only want the first valid cut
@@ -120,18 +120,18 @@ pub fn find_cuts(
                     children: Vec::new(),
                 };
                 node.children.extend(find_cuts(
-                    &dfg,
+                    dfg,
                     &filtered_dfg,
                     combo_set,
-                    &start_activities,
-                    &end_activities,
+                    start_activities,
+                    end_activities,
                 ));
                 node.children.extend(find_cuts(
-                    &dfg,
+                    dfg,
                     &filtered_dfg,
                     complement_set,
-                    &start_activities,
-                    &end_activities,
+                    start_activities,
+                    end_activities,
                 ));
                 forest.push(node);
                 return forest; // Return early if you only want the first valid cut
@@ -151,18 +151,18 @@ pub fn find_cuts(
                     children: Vec::new(),
                 };
                 node.children.extend(find_cuts(
-                    &dfg,
+                    dfg,
                     &filtered_dfg,
                     combo_set,
-                    &start_activities,
-                    &end_activities,
+                    start_activities,
+                    end_activities,
                 ));
                 node.children.extend(find_cuts(
-                    &dfg,
+                    dfg,
                     &filtered_dfg,
                     complement_set,
-                    &start_activities,
-                    &end_activities,
+                    start_activities,
+                    end_activities,
                 ));
                 forest.push(node);
                 return forest; // Return early if you only want the first valid cut
@@ -196,7 +196,7 @@ pub fn is_reachable(
         }
 
         if visited.insert(current.clone()) {
-            for ((from, to), _) in dfg {
+            for (from, to) in dfg.keys() {
                 if from == &current {
                     stack.push(to.clone());
                 }
@@ -409,7 +409,7 @@ fn get_start_and_end_activities(
 
     // info!("Getting start and end activities based on filtered set...");
 
-    for ((from, to), _) in dfg {
+    for (from, to) in dfg.keys() {
         let from_in = filtered_activities.contains(from);
         let to_in = filtered_activities.contains(to);
 
@@ -439,7 +439,7 @@ fn get_start_and_end_activities_v2(
     let mut start_activities = HashSet::new();
     let mut end_activities = HashSet::new();
 
-    for ((a, b), _) in dfg {
+    for (a, b) in dfg.keys() {
         let a_in = filtered_activities.contains(a);
         let b_in = filtered_activities.contains(b);
 

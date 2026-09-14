@@ -97,7 +97,7 @@ fn build_event_perspective_histograms(log: &OCEL) -> Vec<HistogramEntry> {
         for otype in log.object_types.iter() {
             if relations
                 .get(event.event_type.as_str())
-                .map_or(false, |obj_types| obj_types.contains(otype.name.as_str()))
+                .is_some_and(|obj_types| obj_types.contains(otype.name.as_str()))
             {
                 objects_by_type.insert(otype.name.as_str(), 0);
             }
@@ -111,7 +111,7 @@ fn build_event_perspective_histograms(log: &OCEL) -> Vec<HistogramEntry> {
 
         for (otype, count) in objects_by_type {
             let key = (event.event_type.clone(), otype.to_string());
-            let histogram = stats.entry(key).or_insert_with(HashMap::new);
+            let histogram = stats.entry(key).or_default();
             *histogram.entry(count).or_insert(0) += 1;
         }
     }
@@ -168,9 +168,7 @@ fn build_object_perspective_histograms(log: &OCEL) -> Vec<HistogramEntry> {
         for etype in log.event_types.iter() {
             if relations
                 .get(etype.name.as_str())
-                .map_or(false, |obj_types| {
-                    obj_types.contains(object.object_type.as_str())
-                })
+                .is_some_and(|obj_types| obj_types.contains(object.object_type.as_str()))
             {
                 events_by_type.insert(etype.name.as_str(), 0);
             }
@@ -184,7 +182,7 @@ fn build_object_perspective_histograms(log: &OCEL) -> Vec<HistogramEntry> {
 
         for (etype, count) in events_by_type {
             let key = (object.object_type.clone(), etype.to_string());
-            let histogram = stats.entry(key).or_insert_with(HashMap::new);
+            let histogram = stats.entry(key).or_default();
             *histogram.entry(count).or_insert(0) += 1;
         }
     }

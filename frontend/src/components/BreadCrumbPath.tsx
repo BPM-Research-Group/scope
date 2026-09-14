@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { BreadcrumbItem, BreadcrumbPage, BreadcrumbSeparator } from '~/components/ui/breadcrumb';
 
 // Route segments that are always the last meaningful crumb (followed by a nodeId param)
-const VIEWER_ROUTES = new Set(['ocpt', 'ocel', 'abstraction', 'deviations', 'flow', 'hist-viz', 'caseclustering']);
+const VIEWER_ROUTES = new Set(['ocpt', 'ocel', 'abstraction', 'deviations', 'flow', 'hist-viz', 'caseclustering', 'kpi', 'resource_graph']);
 
 interface BreadCrumbPathProps {
     pathnames: string[];

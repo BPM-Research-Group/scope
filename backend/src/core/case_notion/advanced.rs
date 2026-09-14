@@ -90,15 +90,12 @@ pub fn advanced_case_notion_for_ot(
             // New version (looking at only those event who are related to the last iteration of added object nodes (edge based approach))#
             // Greatly reduces the runtime, since a lot fewer nodes must be checked
             for object_id in &o_double_prime {
-                match objects.get(object_id) {
-                    Some((_, related_events)) => {
-                        for event_id in related_events {
-                            if !e_prime.contains(event_id) {
-                                e_double_prime.insert(event_id.clone());
-                            }
+                if let Some((_, related_events)) = objects.get(object_id) {
+                    for event_id in related_events {
+                        if !e_prime.contains(event_id) {
+                            e_double_prime.insert(event_id.clone());
                         }
                     }
-                    None => {}
                 }
             }
 
@@ -132,28 +129,24 @@ pub fn advanced_case_notion_for_ot(
 
             // New version with edge based approach.
             for event_id in &e_double_prime {
-                match events.get(event_id) {
-                    Some((activity, related_objects)) => {
-                        for object_id in related_objects.iter().filter(|id| !o_prime.contains(*id))
+                if let Some((activity, related_objects)) = events.get(event_id) {
+                    for object_id in related_objects.iter().filter(|id| !o_prime.contains(*id)) {
+                        // Skip missing objects; events may reference objects filtered out earlier
+                        if let Some((obj_type, _)) = objects.get(object_id)
+                            && obj_type != &given_object_type
                         {
-                            // Skip missing objects; events may reference objects filtered out earlier
-                            if let Some((obj_type, _)) = objects.get(object_id) {
-                                if obj_type != &given_object_type {
-                                    let diverges = divergence_map
-                                        .get(activity)
-                                        .map(|set| set.contains(obj_type))
-                                        .unwrap_or(false);
+                            let diverges = divergence_map
+                                .get(activity)
+                                .map(|set| set.contains(obj_type))
+                                .unwrap_or(false);
 
-                                    if diverges {
-                                        o_triple_prime.insert(object_id.clone());
-                                    } else {
-                                        o_double_prime.insert(object_id.clone());
-                                    }
-                                }
+                            if diverges {
+                                o_triple_prime.insert(object_id.clone());
+                            } else {
+                                o_double_prime.insert(object_id.clone());
                             }
                         }
                     }
-                    None => {}
                 }
             }
 

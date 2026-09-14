@@ -82,7 +82,7 @@ pub fn detect_tau_cases(
                     && !global_data
                         .divergence
                         .get(a)
-                        .map_or(false, |div| div.contains(ot))
+                        .is_some_and(|div| div.contains(ot))
             })
         } else {
             false

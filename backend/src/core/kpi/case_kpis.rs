@@ -83,10 +83,10 @@ fn collect_case_attribute_values(
                 continue;
             }
             for attr in &obj.attributes {
-                if attr.name == attribute {
-                    if let Some(v) = attr_to_f64(&attr.value) {
-                        values.push(v);
-                    }
+                if attr.name == attribute
+                    && let Some(v) = attr_to_f64(&attr.value)
+                {
+                    values.push(v);
                 }
             }
         }
@@ -96,10 +96,10 @@ fn collect_case_attribute_values(
                 continue;
             }
             for attr in &event.attributes {
-                if attr.name == attribute {
-                    if let Some(v) = attr_to_f64(&attr.value) {
-                        values.push(v);
-                    }
+                if attr.name == attribute
+                    && let Some(v) = attr_to_f64(&attr.value)
+                {
+                    values.push(v);
                 }
             }
         }
@@ -242,8 +242,7 @@ fn collect_case_time_transition_durations(
             let mut j = i + 1;
             while j < timeline.len() {
                 if timeline[j].1 == to_activity {
-                    let secs =
-                        (timeline[j].0 - from_time).num_milliseconds() as f64 / 1000.0;
+                    let secs = (timeline[j].0 - from_time).num_milliseconds() as f64 / 1000.0;
                     durations.push(secs);
                     i = j + 1;
                     break;

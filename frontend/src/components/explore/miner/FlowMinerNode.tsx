@@ -6,9 +6,8 @@ import { useInputAsset, useMinerOutput } from '~/hooks/explore/useMinerAssets';
 import { MinerNode } from '~/types/explore/nodes';
 
 const FlowMinerNode = memo<NodeProps<MinerNode>>((node) => {
-    // Model can only be an OCPT (regular or identity); Log can only be an OCEL.
     const ocptAsset = useInputAsset(node.data.assets, 'ocptAsset', 'ocptFile', 'identityOcptAsset');
-    const ocelAsset = useInputAsset(node.data.assets, 'ocelAsset', 'ocelFile');
+    const ocelAsset = useInputAsset(node.data.assets, 'ocelAsset', 'ocelFile', 'ocelCollectionFile');
 
     const ready = Boolean(ocptAsset && ocelAsset);
 
@@ -27,7 +26,7 @@ const FlowMinerNode = memo<NodeProps<MinerNode>>((node) => {
                 { id: 'source', position: Position.Right, type: 'source' as const },
             ]}
             secondaryHandles={[
-                { id: 'flowTargetSecondary', label: 'Log', hintTypes: ['ocelAsset', 'ocelFile'] },
+                { id: 'flowTargetSecondary', label: 'Log', hintTypes: ['ocelAsset', 'ocelFile', 'ocelCollectionFile'] },
             ]}
             dropdownOptions={[]}
             isLoading={false}

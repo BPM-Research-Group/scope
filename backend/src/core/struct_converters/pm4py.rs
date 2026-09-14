@@ -227,7 +227,7 @@ fn add_identity_relation_property(
     node: &mut Pm4pyProcessTreeNode,
     relation: &crate::models::ocpt::IdentityRelation,
 ) {
-    let relation_value = serde_json::to_value(relation).unwrap_or_else(|_| Value::Null);
+    let relation_value = serde_json::to_value(relation).unwrap_or(Value::Null);
     match node.properties.get_mut("identity_relations") {
         Some(Value::Array(existing)) => existing.push(relation_value),
         _ => {
@@ -433,15 +433,14 @@ fn petri_net_double_arcs_on_activity(petri_net: &Pm4pyPetriNet) -> BTreeMap<Stri
         if !arc.variable {
             continue;
         }
-        if let Some(transition_id) = arc_endpoint_transition_id(arc) {
-            if let Some(label) = petri_net
+        if let Some(transition_id) = arc_endpoint_transition_id(arc)
+            && let Some(label) = petri_net
                 .transitions
                 .iter()
                 .find(|transition| transition.id == transition_id)
                 .and_then(|transition| transition.label.clone())
-            {
-                double_arcs.insert(label, true);
-            }
+        {
+            double_arcs.insert(label, true);
         }
     }
     double_arcs
@@ -563,9 +562,6 @@ mod tests {
         assert_eq!(order_net.arcs.len(), 2);
         assert_eq!(order_net.initial_marking["1"], 1);
         assert_eq!(order_net.final_marking["2"], 1);
-        assert_eq!(
-            document.payload.double_arcs_on_activity["order"]["Create Order"],
-            true
-        );
+        assert!(document.payload.double_arcs_on_activity["order"]["Create Order"]);
     }
 }

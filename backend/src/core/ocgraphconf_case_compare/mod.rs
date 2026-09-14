@@ -119,7 +119,13 @@ mod tests {
         assert_eq!(response.fitness, 1.0);
         assert_eq!(response.void_node_count, 0);
         assert_eq!(response.void_edge_count, 0);
-        assert!(response.alignment_details.is_some());
+        assert_eq!(response.left_nodes, left_graph.nodes.len());
+        assert_eq!(response.right_nodes, right_graph.nodes.len());
+        let details = response.alignment_details.unwrap();
+        assert_eq!(details.left_graph_nodes.len(), left_graph.nodes.len());
+        assert_eq!(details.left_graph_edges.len(), left_graph.edges.len());
+        assert_eq!(details.right_graph_nodes.len(), right_graph.nodes.len());
+        assert_eq!(details.right_graph_edges.len(), right_graph.edges.len());
     }
 
     #[test]
@@ -155,5 +161,6 @@ mod tests {
         assert_eq!(response.alignment_cost, 3.0);
         assert!((response.fitness - (2.0 / 3.0)).abs() < f64::EPSILON);
         assert!(response.void_node_count > 0 || response.void_edge_count > 0);
+        assert!(response.alignment_details.is_none());
     }
 }

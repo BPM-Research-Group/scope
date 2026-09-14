@@ -26,18 +26,28 @@ pub struct OcgraphconfModelCaseConformanceResponse {
     pub alignment_cost: f64,
     pub fitness: f64,
     pub precision: Option<f64>,
-    pub case_nodes: usize,
-    pub case_edges: usize,
-    pub model_case_nodes: usize,
-    pub model_case_edges: usize,
-    pub case_size: usize,
-    pub model_case_size: usize,
+    /// Node count for the selected log case (`case_nodes` in domain terms).
+    pub left_nodes: usize,
+    /// Edge count for the selected log case (`case_edges` in domain terms).
+    pub left_edges: usize,
+    /// Node count for the generated model case (`model_case_nodes` in domain terms).
+    pub right_nodes: usize,
+    /// Edge count for the generated model case (`model_case_edges` in domain terms).
+    pub right_edges: usize,
+    /// Total node and edge count for the selected log case (`case_size`).
+    pub left_size: usize,
+    /// Total node and edge count for the generated model case (`model_case_size`).
+    pub right_size: usize,
     pub matched_node_count: usize,
     pub matched_edge_count: usize,
-    pub case_unmatched_node_count: usize,
-    pub model_case_unmatched_node_count: usize,
-    pub case_unmatched_edge_count: usize,
-    pub model_case_unmatched_edge_count: usize,
+    /// Unmatched nodes in the selected log case.
+    pub left_unmatched_node_count: usize,
+    /// Unmatched nodes in the generated model case.
+    pub right_unmatched_node_count: usize,
+    /// Unmatched edges in the selected log case.
+    pub left_unmatched_edge_count: usize,
+    /// Unmatched edges in the generated model case.
+    pub right_unmatched_edge_count: usize,
     pub void_node_count: usize,
     pub void_edge_count: usize,
     #[serde(skip_serializing_if = "Option::is_none")]

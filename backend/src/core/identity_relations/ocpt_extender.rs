@@ -557,10 +557,10 @@ mod tests {
         match node {
             OCPTNode::Leaf(_) => false,
             OCPTNode::Operator(op) => {
-                if let OCPTOperatorType::IdentityRelation(rel) = &op.operator_type {
-                    if &rel.kind == expected {
-                        return true;
-                    }
+                if let OCPTOperatorType::IdentityRelation(rel) = &op.operator_type
+                    && &rel.kind == expected
+                {
+                    return true;
                 }
                 op.children
                     .iter()

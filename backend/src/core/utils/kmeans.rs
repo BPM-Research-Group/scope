@@ -14,7 +14,7 @@ fn squared_distance(left: &[f64], right: &[f64]) -> f64 {
 fn fit_once(data: &[Vec<f64>], first: usize, second: usize, max_iterations: usize) -> Vec<usize> {
     let n = data.len();
     let dim = data.first().map(|row| row.len()).unwrap_or(0);
-    let mut centroids = vec![data[first].clone(), data[second].clone()];
+    let mut centroids = [data[first].clone(), data[second].clone()];
     let mut labels = vec![0usize; n];
 
     for _ in 0..max_iterations {

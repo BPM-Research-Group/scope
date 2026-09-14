@@ -256,13 +256,13 @@ pub fn build_o2o_map(
         for rel in &o.relationships {
             if let Some(tgt_type) = type_of.get(rel.object_id.as_str()) {
                 // (ω(o), ω(o′)) ∈ rel ?
-                if let Some(allowed_sources) = allowed.get(tgt_type) {
-                    if allowed_sources.contains(&o_type) {
-                        o2o_map
-                            .entry(rel.object_id.clone()) // key = o'
-                            .or_default()
-                            .push(o.id.clone()); // value = o
-                    }
+                if let Some(allowed_sources) = allowed.get(tgt_type)
+                    && allowed_sources.contains(&o_type)
+                {
+                    o2o_map
+                        .entry(rel.object_id.clone()) // key = o'
+                        .or_default()
+                        .push(o.id.clone()); // value = o
                 }
             }
         }
@@ -304,13 +304,13 @@ pub fn build_e2o_map(
         // Check if this event type has allowed object types
         if let Some(allowed_objs) = allowed.get(evt_type) {
             for rel in &e.relationships {
-                if let Some(obj_type) = type_of.get(rel.object_id.as_str()) {
-                    if allowed_objs.contains(obj_type) {
-                        e2o_map
-                            .entry(e.id.clone())
-                            .or_default()
-                            .push(rel.object_id.clone());
-                    }
+                if let Some(obj_type) = type_of.get(rel.object_id.as_str())
+                    && allowed_objs.contains(obj_type)
+                {
+                    e2o_map
+                        .entry(e.id.clone())
+                        .or_default()
+                        .push(rel.object_id.clone());
                 }
             }
         }
@@ -350,15 +350,14 @@ pub fn build_o2e_map(
         let evt_type = e.event_type.as_str();
 
         for rel in &e.relationships {
-            if let Some(obj_type) = type_of.get(rel.object_id.as_str()) {
-                if let Some(allowed_evts) = allowed.get(obj_type) {
-                    if allowed_evts.contains(&evt_type) {
-                        o2e_map
-                            .entry(rel.object_id.clone())
-                            .or_default()
-                            .push(e.id.clone());
-                    }
-                }
+            if let Some(obj_type) = type_of.get(rel.object_id.as_str())
+                && let Some(allowed_evts) = allowed.get(obj_type)
+                && allowed_evts.contains(&evt_type)
+            {
+                o2e_map
+                    .entry(rel.object_id.clone())
+                    .or_default()
+                    .push(e.id.clone());
             }
         }
     }

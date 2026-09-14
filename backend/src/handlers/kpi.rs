@@ -16,6 +16,7 @@ use crate::models::kpi::{
 };
 use crate::models::ocel::OCEL;
 use crate::models::ocel_collection::OCELCollection;
+use crate::handlers::case_input::resolve_case_input;
 use crate::traits::import_export::ImportableFromPath;
 use axum::{
     Json,
@@ -32,6 +33,7 @@ use uuid::Uuid;
 // where every case is a self-contained OCEL. KPIs are computed directly on those
 // per-case OCELs (`collection.ocels`).
 struct KpiLoaded {
+    case_ocels_file_id: String,
     collection: OCELCollection,
     origin_file_id_ocel: String,
     case_notion_type: String,
@@ -47,20 +49,10 @@ fn collection_attr_string(attributes: &HashMap<String, Value>, key: &str) -> Opt
 async fn load_kpi_context(
     case_ocels_file_id: &str,
 ) -> Result<KpiLoaded, axum::response::Response> {
-    let collection = match OCELCollection::import_from_path(case_ocels_file_id).await {
-        Ok(collection) => collection,
-        Err((status, _)) if status == StatusCode::NOT_FOUND => {
-            return Err((
-                StatusCode::NOT_FOUND,
-                format!(
-                    "No stored case OCEL collection found for fileId: {}",
-                    case_ocels_file_id
-                ),
-            )
-                .into_response());
-        }
-        Err((status, message)) => return Err((status, message).into_response()),
-    };
+    let resolved = resolve_case_input(case_ocels_file_id)
+        .await
+        .map_err(|error| error.into_response())?;
+    let collection = resolved.collection;
 
     let origin_file_id_ocel =
         collection_attr_string(&collection.attributes, "origin_file_id_ocel").unwrap_or_default();
@@ -68,6 +60,7 @@ async fn load_kpi_context(
         collection_attr_string(&collection.attributes, "case_notion_type").unwrap_or_default();
 
     Ok(KpiLoaded {
+        case_ocels_file_id: resolved.case_ocels_file_id,
         collection,
         origin_file_id_ocel,
         case_notion_type,
@@ -108,7 +101,7 @@ pub async fn get_case_ocel_metadata(
     (
         StatusCode::OK,
         Json(CaseOcelMetadataResponse {
-            case_ocels_file_id,
+            case_ocels_file_id: ctx.case_ocels_file_id,
             total_events: meta.total_events,
             total_objects: meta.total_objects,
             object_types: meta.object_types,
@@ -163,7 +156,7 @@ pub async fn get_case_attribute_stats(
     let (bins_used, histogram) = optional_histogram(&result.values, query.histogram);
 
     (StatusCode::OK, Json(CaseAttributeStatsResponse {
-        case_ocels_file_id,
+        case_ocels_file_id: ctx.case_ocels_file_id,
         origin_file_id_ocel: ctx.origin_file_id_ocel,
         case_notion_type: ctx.case_notion_type,
         attribute: query.attribute,
@@ -229,7 +222,7 @@ pub async fn post_attribute_combination(
     (
         StatusCode::OK,
         Json(CaseAttributeCombinationStatsResponse {
-            case_ocels_file_id,
+            case_ocels_file_id: ctx.case_ocels_file_id,
             origin_file_id_ocel: ctx.origin_file_id_ocel,
             case_notion_type: ctx.case_notion_type,
             operation: payload.operation,
@@ -270,7 +263,7 @@ pub async fn get_case_time_stats(
     let (bins_used, histogram) = optional_histogram(&result.values, query.histogram);
 
     (StatusCode::OK, Json(CaseTimeStatsResponse {
-        case_ocels_file_id,
+        case_ocels_file_id: ctx.case_ocels_file_id,
         origin_file_id_ocel: ctx.origin_file_id_ocel,
         case_notion_type: ctx.case_notion_type,
         object_type: query.object_type,
@@ -305,7 +298,7 @@ pub async fn get_activity_successors(
     (
         StatusCode::OK,
         Json(ActivitySuccessorsResponse {
-            case_ocels_file_id,
+            case_ocels_file_id: ctx.case_ocels_file_id,
             case_notion_type: ctx.case_notion_type,
             successors,
         }),
@@ -328,7 +321,7 @@ pub async fn get_case_duration(
     let (bins_used, histogram) = optional_histogram(&result.values, query.histogram);
 
     (StatusCode::OK, Json(CaseDurationResponse {
-        case_ocels_file_id,
+        case_ocels_file_id: ctx.case_ocels_file_id,
         origin_file_id_ocel: ctx.origin_file_id_ocel,
         case_notion_type: ctx.case_notion_type,
         cases_with_duration: result.values.len(),
@@ -409,7 +402,13 @@ pub async fn post_kpi_histogram_filter(
             Err(message) => return (StatusCode::BAD_REQUEST, message).into_response(),
         };
 
-    match persist_filtered_case_ocels(&ctx.collection, &kept_indices, &case_ocels_file_id).await {
+    match persist_filtered_case_ocels(
+        &ctx.collection,
+        &kept_indices,
+        &ctx.case_ocels_file_id,
+    )
+    .await
+    {
         Ok(id) => (StatusCode::OK, Json(id)).into_response(),
         Err((status, message)) => (status, message).into_response(),
     }

@@ -124,10 +124,10 @@ pub fn filter_ocel_histograms(log: &OCEL, filters_json: &str) -> Result<Vec<OCEL
 
                     let mut object_count = 0;
                     for rel in &event.relationships {
-                        if let Some(&otype) = object_index.get(rel.object_id.as_str()) {
-                            if otype == filter.object_type {
-                                object_count += 1;
-                            }
+                        if let Some(&otype) = object_index.get(rel.object_id.as_str())
+                            && otype == filter.object_type
+                        {
+                            object_count += 1;
                         }
                     }
 
@@ -174,10 +174,10 @@ pub fn filter_ocel_histograms(log: &OCEL, filters_json: &str) -> Result<Vec<OCEL
                         .get(&object.id.as_str())
                         .unwrap_or(&FxHashSet::default())
                     {
-                        if let Some(etype) = event_index.get(event_id) {
-                            if etype == &filter.event_type {
-                                event_count += 1;
-                            }
+                        if let Some(etype) = event_index.get(event_id)
+                            && etype == &filter.event_type
+                        {
+                            event_count += 1;
                         }
                     }
 

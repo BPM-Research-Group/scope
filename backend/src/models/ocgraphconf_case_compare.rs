@@ -25,12 +25,18 @@ pub struct OcgraphconfCaseCompareResponse {
     pub alignment_cost: f64,
     pub fitness: f64,
     pub precision: Option<f64>,
-    pub left_case_nodes: usize,
-    pub left_case_edges: usize,
-    pub right_case_nodes: usize,
-    pub right_case_edges: usize,
-    pub left_case_size: usize,
-    pub right_case_size: usize,
+    /// Node count for the case selected by `left_case_index`.
+    pub left_nodes: usize,
+    /// Edge count for the case selected by `left_case_index`.
+    pub left_edges: usize,
+    /// Node count for the case selected by `right_case_index`.
+    pub right_nodes: usize,
+    /// Edge count for the case selected by `right_case_index`.
+    pub right_edges: usize,
+    /// Total node and edge count for the case selected by `left_case_index`.
+    pub left_size: usize,
+    /// Total node and edge count for the case selected by `right_case_index`.
+    pub right_size: usize,
     pub matched_node_count: usize,
     pub matched_edge_count: usize,
     pub left_unmatched_node_count: usize,
@@ -44,9 +50,35 @@ pub struct OcgraphconfCaseCompareResponse {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct NodeDetail {
+    pub id: usize,
+    pub label: String,
+    /// Graph element kind: `event` or `object`.
+    pub element_type: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct EdgeDetail {
+    pub id: usize,
+    pub source_id: usize,
+    pub target_id: usize,
+    /// Graph edge kind: `df` or `e2o`.
+    pub element_type: String,
+    pub label: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct CaseAlignmentDetails {
     pub matched_nodes: Vec<NodeMatch>,
     pub matched_edges: Vec<EdgeMatch>,
+    /// All nodes in the graph represented by the response's `left_*` fields.
+    pub left_graph_nodes: Vec<NodeDetail>,
+    /// All edges in the graph represented by the response's `left_*` fields.
+    pub left_graph_edges: Vec<EdgeDetail>,
+    /// All nodes in the graph represented by the response's `right_*` fields.
+    pub right_graph_nodes: Vec<NodeDetail>,
+    /// All edges in the graph represented by the response's `right_*` fields.
+    pub right_graph_edges: Vec<EdgeDetail>,
     pub left_unmatched_node_ids: Vec<usize>,
     pub right_unmatched_node_ids: Vec<usize>,
     pub left_unmatched_edge_ids: Vec<usize>,

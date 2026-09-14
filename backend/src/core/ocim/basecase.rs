@@ -159,7 +159,7 @@ mod tests {
         });
 
         // 2. Act: Run the OCIM algorithm
-        let ocpt = ocim_init(&vec![ocel.clone()]);
+        let ocpt = ocim_init(&[ocel.clone()]);
         dbg!(&ocpt);
 
         // 3. Assert: Check if the result is a single LeafNode
@@ -221,7 +221,7 @@ mod tests {
         });
 
         // 2. Act: Run the OCIM algorithm
-        let ocpt = ocim_init(&vec![ocel.clone()]);
+        let ocpt = ocim_init(&[ocel.clone()]);
         dbg!(&ocpt);
 
         // 3. Assert: Check if the result is a Loop OperatorNode
@@ -233,49 +233,4 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_not_a_base_case() {
-        // 1. Setup: Create an OCEL with more than one activity type.
-        let mut ocel = new_empty_ocel();
-        let event1 = OCELEvent {
-            id: "e1".to_string(),
-            event_type: "a".to_string(),
-            time: Utc::now().into(),
-            attributes: Vec::new(),
-            relationships: vec![],
-        };
-        let event2 = OCELEvent {
-            id: "e2".to_string(),
-            event_type: "b".to_string(),
-            time: Utc::now().into(),
-            attributes: Vec::new(),
-            relationships: vec![],
-        };
-        ocel.events.push(event1);
-        ocel.events.push(event2);
-        ocel.event_types.push(OCELType {
-            name: "a".to_string(),
-            attributes: Vec::new(),
-        });
-        ocel.event_types.push(OCELType {
-            name: "b".to_string(),
-            attributes: Vec::new(),
-        });
-
-        // 2. Act: Run the OCIM algorithm
-        let ocpt = ocim_init(&vec![ocel.clone()]);
-        dbg!(&ocpt);
-
-        // 3. Assert: Check that `basecase` was not called and we have a placeholder from the stubbed cut logic.
-        // This assertion depends on the stub implementation in `algorithm.rs`.
-        if let OCPTNode::Leaf(leaf) = ocpt.root {
-            if let OCPTLeafLabel::Activity(activity) = &leaf.activity_label {
-                assert_eq!(activity, "NO_CUT_FOUND");
-            } else {
-                panic!("Expected activity leaf, found Tau leaf");
-            }
-        } else {
-            panic!("Expected a LeafNode for 'NO_CUT_FOUND', but found an OperatorNode");
-        }
-    }
 }

@@ -1,3 +1,6 @@
+// Retained as a reference implementation for the original strict relation checks.
+// Runtime extension uses `noise_resistant_check_relations` instead.
+#[allow(dead_code)]
 mod check_relation;
 mod noise_resistant_check_relations;
 mod ocpt_extender;

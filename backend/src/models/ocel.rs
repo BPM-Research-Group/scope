@@ -23,7 +23,7 @@ use uuid::Uuid;
 
 pub trait OCELUtils {
     fn detect_diverging_object_types(&self) -> FxHashMap<String, FxHashSet<String>>; // ! WRONG ORDER (required by df2)
-    fn _get_related_object_types_for_activity(&self, activity: &String) -> FxHashSet<String>;
+    fn _get_related_object_types_for_activity(&self, activity: &str) -> FxHashSet<String>;
     // if more than one pattern is to be detected, return as tuple for better efficiency
     fn get_interaction_patterns(
         &self,
@@ -47,19 +47,13 @@ impl OCELUtils for OCEL {
         let event_identifiers =
             build_event_identifiers(&self.events, &obj_id_to_type, &unique_object_types);
 
-        let divergence_map = detect_diverging_object_types(
-            &event_identifiers,
-            &unique_object_types,
-            &unique_activities,
-        );
-        divergence_map
+        detect_diverging_object_types(&event_identifiers, &unique_object_types, &unique_activities)
     }
 
-    fn _get_related_object_types_for_activity(&self, activity: &String) -> FxHashSet<String> {
-        let related_ot = self
-            .events
+    fn _get_related_object_types_for_activity(&self, activity: &str) -> FxHashSet<String> {
+        self.events
             .iter()
-            .filter(|e| &e.event_type == activity)
+            .filter(|e| e.event_type == activity)
             .flat_map(|e| {
                 e.relationships.iter().filter_map(|rel| {
                     self.objects
@@ -68,9 +62,7 @@ impl OCELUtils for OCEL {
                         .map(|obj| obj.object_type.clone())
                 })
             })
-            .collect();
-
-        related_ot
+            .collect()
     }
 
     fn get_interaction_patterns(
@@ -243,12 +235,12 @@ impl OCELUtils for OCEL {
             reversed
         }
 
-        return (
+        (
             reverse_map(&divergent_ev_type_per_ob_type),
             reverse_map(&convergent_ev_type_per_ob_type),
             reverse_map(&related_ev_type_per_ob_type),
             reverse_map(&deficient_ev_type_per_ob_type),
-        );
+        )
     }
 
     // incomplete implementation for all patterns
@@ -429,21 +421,17 @@ fn detect_diverging_object_types(
                     BTreeMap::new();
 
                 // filter and group evetns with current activity and current object type.
-                for (
-                    _event_id,
-                    (event_event_activity, event_all_objects, event_type_specific_map),
-                ) in event_identifiers
+                for (event_event_activity, event_all_objects, event_type_specific_map) in
+                    event_identifiers.values()
                 {
-                    if event_event_activity == activity_ref {
-                        if let Some(specific_objects) = event_type_specific_map.get(object_type_ref)
-                        {
-                            if !specific_objects.is_empty() {
-                                groups
-                                    .entry(specific_objects.clone())
-                                    .or_insert_with(FxHashSet::default)
-                                    .insert(event_all_objects.clone());
-                            }
-                        }
+                    if event_event_activity == activity_ref
+                        && let Some(specific_objects) = event_type_specific_map.get(object_type_ref)
+                        && !specific_objects.is_empty()
+                    {
+                        groups
+                            .entry(specific_objects.clone())
+                            .or_default()
+                            .insert(event_all_objects.clone());
                     }
                 }
 
@@ -541,7 +529,7 @@ pub fn map_object_id_to_events(events: &[OCELEvent]) -> FxHashMap<String, Vec<St
         for relationship in &event.relationships {
             // TODO: Maybe iterate over references
             map.entry(relationship.object_id.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(event.id.clone());
         }
     }
@@ -641,7 +629,7 @@ pub fn is_divergent_locel(
         .for_each(|&&(ev_index, ob_index)| {
             object_index_to_event_indices
                 .entry(ob_index)
-                .or_insert_with(|| FxHashSet::default())
+                .or_insert_with(FxHashSet::default)
                 .insert(ev_index);
         });
 

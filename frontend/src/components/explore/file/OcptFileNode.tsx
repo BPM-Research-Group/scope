@@ -5,7 +5,6 @@ import type { NodeProps } from '@xyflow/react';
 import { Position } from '@xyflow/react';
 import { schemeSet1 } from 'd3-scale-chromatic';
 import { ChevronDown, TreePine } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '~/components/ui/button';
 import { Checkbox } from '~/components/ui/checkbox';
@@ -16,6 +15,7 @@ import {
     DropdownMenuTrigger,
 } from '~/components/ui/dropdown-menu';
 import BaseFileNode from '~/components/explore/file/BaseFileNode';
+import ViewerLink from '~/components/explore/ui/ViewerLink';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { exportOcptPm4py } from '~/services/api';
 import { useGetIdentityOcpt, useGetOcpt } from '~/services/queries';
@@ -26,7 +26,6 @@ import { FileNode } from '~/types/explore/nodes';
 
 const OcptFileNode = memo<NodeProps<FileNode>>((props) => {
     const [fileId, setFileId] = useState<null | string>(null);
-    const navigate = useNavigate();
     const { updateNodeData } = useExploreFlowStore();
     const { id, data: nodeData } = props;
     const { processedData, assets } = nodeData;
@@ -122,9 +121,10 @@ const OcptFileNode = memo<NodeProps<FileNode>>((props) => {
         [exportMutation]
     );
 
-    const visualize = (filter?: string) => {
-        navigate(`/data/pipeline/explore/ocpt/${id}${filter ? `?filter=${filter}` : ''}`);
-    };
+    const ocptViewerPath = useMemo(() => {
+        const filter = viewState.filteredObjectTypes.join(',');
+        return `/data/pipeline/explore/ocpt/${id}${filter ? `?filter=${encodeURIComponent(filter)}` : ''}`;
+    }, [id, viewState.filteredObjectTypes]);
 
     const handleObjectTypeToggle = (objectType: string) => {
         if (viewState) {
@@ -171,15 +171,12 @@ const OcptFileNode = memo<NodeProps<FileNode>>((props) => {
                 <div className="mt-2 border-t pt-2">
                     <p className="text-xs font-semibold text-gray-500 mb-2">Visualizations</p>
                     <div className="flex flex-col gap-1">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full justify-start h-7 px-2 text-xs"
-                            onClick={() => visualize(viewState.filteredObjectTypes.join(',') ?? [])}
-                        >
-                            <TreePine className="mr-2 h-3.5 w-3.5 text-green-600" />
-                            Process Tree
-                        </Button>
+                        <ViewerLink
+                            to={ocptViewerPath}
+                            icon={TreePine}
+                            iconClassName="text-green-600"
+                            label="Process Tree"
+                        />
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button

@@ -1,7 +1,7 @@
 use crate::core::utils::kmeans::kmeans_2;
-use crate::models::ocel::{OCEL, OCELEvent, OCELObject, OCELRelationship, OCELType};
+use crate::models::ocel::OCEL;
 use crate::models::ocpt::{
-    OCPT, OCPTLeaf, OCPTLeafLabel, OCPTNode, OCPTOperator, OCPTOperatorType,
+    OCPT, OCPTLeaf, OCPTNode, OCPTOperator, OCPTOperatorType,
 };
 use crate::models::process_forest::{ProcessForest, ProcessForestNode, ProcessForestOperator};
 use std::collections::{BTreeMap, BTreeSet, HashSet};
@@ -1071,6 +1071,8 @@ fn project_node_to_ocpt(node: &ProcessForestNode, object_type: &str) -> OCPTNode
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::ocel::{OCELEvent, OCELObject, OCELRelationship, OCELType};
+    use crate::models::ocpt::OCPTLeafLabel;
     use chrono::{TimeZone, Utc};
     use serde_json::Value;
     use std::path::PathBuf;

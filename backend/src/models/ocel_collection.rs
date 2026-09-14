@@ -21,7 +21,7 @@ impl ImportableFromPath for OCELCollection {
         let path_str = format!("./temp/case_ocels_{}.json", file_id);
         let path = Path::new(&path_str);
 
-        let file = File::open(&path).map_err(|err| {
+        let file = File::open(path).map_err(|err| {
             if err.kind() == ErrorKind::NotFound {
                 (
                     StatusCode::NOT_FOUND,

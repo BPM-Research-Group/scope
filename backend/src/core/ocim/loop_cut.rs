@@ -10,7 +10,7 @@ pub fn is_loop_cut_valid(
     global_data: &GlobalData,
     partition_list: &[Vec<String>],
 ) -> bool {
-    let body = match partition_list.get(0) {
+    let body = match partition_list.first() {
         Some(p) => p,
         None => return false,
     };

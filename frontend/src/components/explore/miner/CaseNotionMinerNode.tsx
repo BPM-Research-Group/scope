@@ -116,10 +116,10 @@ const CaseNotionMinerNode = memo<NodeProps<MinerNode>>((node) => {
         setHasUnminedChanges(true);
     };
 
-    const handleGenericPayloadChange = (val: any) => {
+    const handleGenericPayloadChange = useCallback((val: unknown) => {
         setGenericPayload(val);
         setHasUnminedChanges(true);
-    };
+    }, []);
 
     const renderActions = () => {
         if (!fileId) return null;

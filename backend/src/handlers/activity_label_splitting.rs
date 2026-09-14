@@ -74,7 +74,7 @@ Use the original (pre-split) collection instead."
         }
     };
 
-    if summaries.is_empty() {
+    if split_ocels.is_empty() {
         return (
             StatusCode::OK,
             Json(SplitResponse {

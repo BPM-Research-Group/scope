@@ -498,9 +498,9 @@ pub async fn post_generic_case_notion(
     let context = CaseNotionContext::new(&ocel);
     let measures = calculate_measures(
         &case_notion,
-        &context.event_identifiers_ref(),
-        &context.object_identifiers_ref(),
-        &context.arches_ref(),
+        context.event_identifiers_ref(),
+        context.object_identifiers_ref(),
+        context.arches_ref(),
         *context.total_number_of_objects_ref(),
         *context.total_number_of_events_ref(),
     );

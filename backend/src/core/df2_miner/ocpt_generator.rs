@@ -118,7 +118,7 @@ fn aggregate_divergence_free_graphs(
 
 fn filter_dfg(
     dfg: &HashMap<(String, String), usize>,
-    remove_list: &Vec<String>,
+    remove_list: &[String],
 ) -> HashMap<(String, String), usize> {
     dfg.iter()
         .filter(|((from, to), _)| !remove_list.contains(from) && !remove_list.contains(to))
@@ -126,7 +126,7 @@ fn filter_dfg(
         .collect()
 }
 
-fn filter_activities(all_activities: &Vec<String>, remove_list: &Vec<String>) -> HashSet<String> {
+fn filter_activities(all_activities: &[String], remove_list: &[String]) -> HashSet<String> {
     all_activities
         .iter()
         .filter(|activity| !remove_list.contains(*activity))

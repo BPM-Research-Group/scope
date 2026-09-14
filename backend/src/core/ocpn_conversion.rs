@@ -1678,7 +1678,7 @@ mod tests {
             ocel_1_ocel_2_converter::convert_ocel1_value_to_ocel(&raw).unwrap()
         };
 
-        let ocpt = ocim_init(&vec![ocel]);
+        let ocpt = ocim_init(&[ocel]);
         let rust_ocpn = convert_ocpt_to_ocpn(&ocpt).unwrap();
         let rust_snapshot = snapshot_ocpn(&rust_ocpn);
 

@@ -200,7 +200,7 @@ pub fn strict_homogeneity_of_case_notion(
     let count_unique_cases = reduced_arches_set.len();
     // println!("Count cases: {}", count_cases);
     // println!("Count unique cases: {}", count_unique_cases);
-    1 as f64 - (count_unique_cases as f64 / count_cases as f64)
+    1_f64 - (count_unique_cases as f64 / count_cases as f64)
 }
 
 /*
@@ -271,7 +271,7 @@ pub fn fuzzy_homogeneity_of_case_notion(
     let count_unique_pairs = activity_object_pairs.len();
     // If each case had a unique combination of activities and object types, the homogeneity would be 0.
     // Therefore, we divide the number of unique pairs by the total number of cases and subtract this ratio from 1 to obtain the homogeneity score.
-    1 as f64 - (count_unique_pairs as f64 / count_cases as f64)
+    1_f64 - (count_unique_pairs as f64 / count_cases as f64)
 }
 
 /*
@@ -392,9 +392,8 @@ pub fn normal_simplicity_of_case_notion(
     // println!("Total number of events: {}", total_number_of_events);
     // println!("Total number of objects: {}", total_number_of_objects);
     let average_case_size = (count_events + count_objects) as f64 / count_cases as f64;
-    let simplicity = 1 as f64
-        - (average_case_size as f64 / (total_number_of_events + total_number_of_objects) as f64);
-    simplicity
+
+    1_f64 - (average_case_size / (total_number_of_events + total_number_of_objects) as f64)
 }
 
 pub fn perform_extended_simplicity_analysis(
@@ -618,6 +617,6 @@ pub fn correctness_of_case_notion(
     // println!("e_c/e: {}", e_c as f64 / e as f64);
 
     // Compute correctness score (mean of A_c/A, O_c/O, E_c/E)
-    let correctness = (a_c as f64 / a as f64 + o_c as f64 / o as f64 + e_c as f64 / e as f64) / 3.0;
-    correctness
+
+    (a_c as f64 / a as f64 + o_c as f64 / o as f64 + e_c as f64 / e as f64) / 3.0
 }

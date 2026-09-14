@@ -13,9 +13,8 @@ import ZoomButtons from '~/components/ocpt/ui/ZoomButtons';
 import { isExtendedProcessTreeOperatorNode, isIdentityOperatorApi } from '~/lib/ocpt/ocptGuards';
 import { type Node } from '~/types/ocpt/ocpt.types';
 
-// Cast needed due to @visx/zoom + @types/react@18 incompatibility
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const TypedZoom = Zoom as any; // We need to do this as there is some issue with the React version and visx
+const TypedZoom = Zoom as any;
 
 export type OCPTProps = {
     width?: number;
@@ -27,6 +26,7 @@ export type OCPTProps = {
     showDetails?: boolean;
     isIdentityOcpt?: boolean;
     onExportReady?: (exportFn: () => void) => void;
+    isForestMode?: boolean; // for the process forest mode toggle
 };
 
 const defaultMargin = { top: 30, left: 30, right: 30, bottom: 70 };
@@ -46,6 +46,7 @@ const OCPTContent: React.FC<OCPTContentProps> = ({
     showDetails,
     isIdentityOcpt,
     onExportReady,
+    isForestMode,
 }) => {
     const [hoveredNode, setHoveredNode] = useState<HierarchyPointNode<Node> | null>(null);
     const [clickedNode, setClickedNode] = useState<HierarchyPointNode<Node> | null>(null);
@@ -107,8 +108,6 @@ const OCPTContent: React.FC<OCPTContentProps> = ({
         const svgEl = treeGroup.closest('svg');
         if (!svgEl) return;
 
-        // getBBox() returns coords in the group's local space.
-        // The group has translate(margin.left, margin.top), so offset
         const bbox = treeGroup.getBBox();
         const padding = 20;
         const x = bbox.x + margin.left;
@@ -116,7 +115,6 @@ const OCPTContent: React.FC<OCPTContentProps> = ({
 
         const cloned = svgEl.cloneNode(true) as SVGSVGElement;
 
-        // Remove the zoom transform s.t. the tree is fully in the image
         const zoomG = cloned.querySelector('g');
         if (zoomG) {
             zoomG.removeAttribute('transform');
@@ -149,19 +147,13 @@ const OCPTContent: React.FC<OCPTContentProps> = ({
     if (width === 0 || height === 0) return null;
 
     const scale = 0.8;
-    // innerWidth calculation can use the responsive width
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
 
-    // Center of the content (relative to the top-left of the SVG, before zoom)
     const centerX = margin.left + innerWidth / 2;
     const centerY = margin.top + innerHeight / 2;
 
-    // We want the center of the tree to align with the center of the SCREEN (viewport) horizontally.
-    // translateX = ScreenCenter - ContentCenter_scaled
     const translateX = window.innerWidth / 2 - centerX * scale;
-
-    // For vertical alignment, we stick to the container center to avoid overlapping with top navigation.
     const translateY = height / 2 - centerY * scale;
 
     const initialTransform = {
@@ -217,6 +209,7 @@ const OCPTContent: React.FC<OCPTContentProps> = ({
                                             sizeHeight={sizeHeight}
                                             showDetails={showDetails}
                                             onOperatorClick={isIdentityOcpt ? setClickedNode : undefined}
+                                            isForestMode={isForestMode}
                                         />
                                     </Group>
                                 </g>

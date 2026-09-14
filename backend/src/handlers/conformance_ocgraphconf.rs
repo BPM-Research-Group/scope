@@ -182,7 +182,12 @@ mod tests {
         assert_eq!(payload["origin_file_id_ocel"].as_str(), Some("source-1"));
         assert_eq!(payload["precision"], serde_json::Value::Null);
         assert!(payload["alignment_cost"].as_f64().unwrap() >= 0.0);
+        assert!(payload["left_nodes"].is_u64());
+        assert!(payload["right_nodes"].is_u64());
+        assert!(payload.get("left_case_nodes").is_none());
         assert!(payload["alignment_details"].is_object());
+        assert!(payload["alignment_details"]["left_graph_nodes"].is_array());
+        assert!(payload["alignment_details"]["right_graph_nodes"].is_array());
 
         fs::remove_file(path).await.unwrap();
     }
@@ -234,7 +239,13 @@ mod tests {
         assert_eq!(payload["alignment_cost"].as_f64(), Some(0.0));
         assert_eq!(payload["fitness"].as_f64(), Some(1.0));
         assert_eq!(payload["precision"], serde_json::Value::Null);
+        assert!(payload["left_nodes"].is_u64());
+        assert!(payload["right_nodes"].is_u64());
+        assert!(payload.get("case_nodes").is_none());
+        assert!(payload.get("model_case_nodes").is_none());
         assert!(payload["alignment_details"].is_object());
+        assert!(payload["alignment_details"]["left_graph_nodes"].is_array());
+        assert!(payload["alignment_details"]["right_graph_nodes"].is_array());
 
         fs::remove_file(path).await.unwrap();
         fs::remove_file(format!("./temp/ocpn_{ocpn_file_id}.json"))

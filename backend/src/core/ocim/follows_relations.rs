@@ -61,7 +61,7 @@ impl OCGraphRelations {
                 node_map.insert(act.clone(), node);
             }
 
-            for ((a, b), _) in &dfg.directly_follows_relations {
+            for (a, b) in dfg.directly_follows_relations.keys() {
                 if let (Some(src), Some(dst)) = (node_map.get(a.as_ref()), node_map.get(b.as_ref()))
                 {
                     g.add_edge(*src, *dst, ());

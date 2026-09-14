@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 pub type Relation = (String, String, String, String, String);
 
-pub fn build_relations(events: &Vec<Event>, objects: &Vec<Object>) -> Vec<Relation> {
+pub fn build_relations(events: &[Event], objects: &[Object]) -> Vec<Relation> {
     let mut relations = Vec::new();
 
     // Create a HashMap for quick object lookup

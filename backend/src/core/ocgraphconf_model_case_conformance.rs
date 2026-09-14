@@ -2,6 +2,7 @@ use crate::core::ocgraphconf_case_compare::{
     compare::{self, AlignmentResult},
     convert::{self, CaseGraph},
     extract::{self, SelectedCase},
+    metrics::{all_edge_details, all_node_details, attr_string, graph_metrics},
 };
 use crate::core::ocpn_conversion::{ConvertOcptToOcpnError, convert_ocpt_to_ocpn};
 use crate::core::struct_converters::ocpn_ocgraphconf::backend_to_ocgraphconf;
@@ -18,8 +19,6 @@ use ocgraphconf_process_mining::oc_petri_net::initialize_ocpn_from_json;
 use ocgraphconf_process_mining::oc_petri_net::marking::Marking;
 use ocgraphconf_process_mining::oc_state_space::r#impl::ocpn::{OCPNStateInterface, OCPNStateNode};
 use ocgraphconf_process_mining::oc_state_space::r#impl::ocpt::OCPTStateInterface;
-use serde_json::Value;
-use std::collections::HashMap;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::Arc;
 use tokio::task;
@@ -193,14 +192,9 @@ fn build_response(
     model_case_graph: &CaseGraph,
     alignment: &AlignmentResult,
 ) -> Result<OcgraphconfModelCaseConformanceResponse, (StatusCode, String)> {
-    let case_nodes = case_graph.nodes.len();
-    let case_edges = case_graph.edges.len();
-    let model_case_nodes = model_case_graph.nodes.len();
-    let model_case_edges = model_case_graph.edges.len();
-    let case_size = case_nodes + case_edges;
-    let model_case_size = model_case_nodes + model_case_edges;
-    let normalizer = (case_size + model_case_size).max(1) as f64;
-    let fitness = (1.0 - (alignment.alignment_cost / normalizer)).max(0.0);
+    // The unified response uses positional names: left is the selected log case, while right is
+    // the accepting model execution represented as a generated case graph.
+    let graph_metrics = graph_metrics(case_graph, model_case_graph, alignment.alignment_cost);
 
     Ok(OcgraphconfModelCaseConformanceResponse {
         model_kind: model_kind.as_str().to_string(),
@@ -212,42 +206,39 @@ fn build_response(
         object_type: attr_string(&selected_case.attributes, "object_type"),
         case_notion_file_id: attr_string(&selected_case.attributes, "case_notion_file_id"),
         alignment_cost: alignment.alignment_cost,
-        fitness,
+        fitness: graph_metrics.fitness,
         precision: None,
-        case_nodes,
-        case_edges,
-        model_case_nodes,
-        model_case_edges,
-        case_size,
-        model_case_size,
+        left_nodes: graph_metrics.left_nodes,
+        left_edges: graph_metrics.left_edges,
+        right_nodes: graph_metrics.right_nodes,
+        right_edges: graph_metrics.right_edges,
+        left_size: graph_metrics.left_size,
+        right_size: graph_metrics.right_size,
         matched_node_count: alignment.matched_nodes.len(),
         matched_edge_count: alignment.matched_edges.len(),
-        case_unmatched_node_count: alignment.left_unmatched_node_ids.len(),
-        model_case_unmatched_node_count: alignment.right_unmatched_node_ids.len(),
-        case_unmatched_edge_count: alignment.left_unmatched_edge_ids.len(),
-        model_case_unmatched_edge_count: alignment.right_unmatched_edge_ids.len(),
+        left_unmatched_node_count: alignment.left_unmatched_node_ids.len(),
+        right_unmatched_node_count: alignment.right_unmatched_node_ids.len(),
+        left_unmatched_edge_count: alignment.left_unmatched_edge_ids.len(),
+        right_unmatched_edge_count: alignment.right_unmatched_edge_ids.len(),
         void_node_count: alignment.left_unmatched_node_ids.len()
             + alignment.right_unmatched_node_ids.len(),
         void_edge_count: alignment.left_unmatched_edge_ids.len()
             + alignment.right_unmatched_edge_ids.len(),
         alignment_details: request
             .include_alignment_details
-            .then_some(CaseAlignmentDetails {
+            .then(|| CaseAlignmentDetails {
                 matched_nodes: alignment.matched_nodes.clone(),
                 matched_edges: alignment.matched_edges.clone(),
+                left_graph_nodes: all_node_details(case_graph),
+                left_graph_edges: all_edge_details(case_graph),
+                right_graph_nodes: all_node_details(model_case_graph),
+                right_graph_edges: all_edge_details(model_case_graph),
                 left_unmatched_node_ids: alignment.left_unmatched_node_ids.clone(),
                 right_unmatched_node_ids: alignment.right_unmatched_node_ids.clone(),
                 left_unmatched_edge_ids: alignment.left_unmatched_edge_ids.clone(),
                 right_unmatched_edge_ids: alignment.right_unmatched_edge_ids.clone(),
             }),
     })
-}
-
-fn attr_string(attributes: &HashMap<String, Value>, key: &str) -> Option<String> {
-    attributes
-        .get(key)
-        .and_then(Value::as_str)
-        .map(ToOwned::to_owned)
 }
 
 fn map_convert_error(error: ConvertOcptToOcpnError) -> (StatusCode, String) {

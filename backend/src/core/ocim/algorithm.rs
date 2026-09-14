@@ -13,9 +13,9 @@ use crate::models::ocel::OCEL;
 use crate::models::ocpt::{OCPT, OCPTNode, OCPTOperatorType};
 use uuid::Uuid;
 
-pub fn ocim_init(logs: &Vec<OCEL>) -> OCPT {
-    let local_data = LocalData::new(logs.clone(), None);
-    let global_data = GlobalData::new(logs.clone());
+pub fn ocim_init(logs: &[OCEL]) -> OCPT {
+    let local_data = LocalData::new(logs.to_vec(), None);
+    let global_data = GlobalData::new(logs.to_vec());
 
     let root_node: OCPTNode = ocim_recursive(local_data, &global_data);
     OCPT::new(root_node)
@@ -27,7 +27,7 @@ fn ocim_recursive(local_data: LocalData, global_data: &GlobalData) -> OCPTNode {
     if let Some((partition, operator)) = detect_tau_cases(&mut local_data, global_data) {
         let sublogs = split_log(&local_data, partition, &operator, global_data);
         let mut subtrees: Vec<OCPTNode> = Vec::new();
-        if let Some(first) = sublogs.get(0) {
+        if let Some(first) = sublogs.first() {
             subtrees.push(ocim_recursive(first.clone(), global_data));
         }
         // Second branch corresponds to tau (empty behavior) but carry all object-type sets.
@@ -77,7 +77,7 @@ fn ocim_recursive(local_data: LocalData, global_data: &GlobalData) -> OCPTNode {
         for subtree in subtrees {
             operator_node.add_child(subtree);
         }
-        return operator_node;
+        operator_node
     } else {
         // If no strict cut found, try fallthrough detection.
         let (fallthrough_partition, fallthrough_operator, _score) =
@@ -99,7 +99,7 @@ fn ocim_recursive(local_data: LocalData, global_data: &GlobalData) -> OCPTNode {
 
         // No cut and no fallthrough => algorithm would usually abort or return a leaf.
         // Return a leaf indicating that no further decomposition was possible.
-        return OCPTNode::new_leaf(Some("NO_CUT_FOUND".to_string()));
+        OCPTNode::new_leaf(Some("NO_CUT_FOUND".to_string()))
     }
 }
 

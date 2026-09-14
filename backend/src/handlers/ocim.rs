@@ -1,8 +1,7 @@
 use crate::core::ocim::algorithm::ocim_init;
 use crate::core::struct_converters::ocpt_frontend_backend::backend_to_frontend;
-use crate::models::ocel::OCEL;
-use crate::models::ocel_collection::OCELCollection;
-use crate::traits::import_export::{ExportableToPath, ImportableFromPath};
+use crate::handlers::case_input::resolve_case_input;
+use crate::traits::import_export::ExportableToPath;
 use axum::extract::Path;
 use axum::{Json, http::StatusCode, response::IntoResponse};
 use serde_json::json;
@@ -10,13 +9,9 @@ use serde_json::json;
 pub async fn apply_ocim(
     Path(file_id): Path<String>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    let ocels = match OCEL::import_from_path(&file_id).await {
-        Ok(ocel) => vec![ocel],
-        Err(_) => match OCELCollection::import_from_path(&file_id).await {
-            Ok(collection) => collection.ocels,
-            Err(e) => return Err(e),
-        },
-    };
+    let resolved = resolve_case_input(&file_id).await?;
+    let case_ocels_file_id = resolved.case_ocels_file_id;
+    let ocels = resolved.collection.ocels;
 
     if ocels.is_empty() {
         return Err((
@@ -46,6 +41,7 @@ pub async fn apply_ocim(
 
     let payload = json!({
         "file_id": id,
+        "case_ocels_file_id": case_ocels_file_id,
         "ocpt": ocpt_frontend
     });
 

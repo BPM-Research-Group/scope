@@ -48,7 +48,7 @@ fn check_concurrent(
             && lookup_start
                 .get(a)
                 .and_then(|m| m.get(ot))
-                .map_or(false, |s| s.contains(b))
+                .is_some_and(|s| s.contains(b))
         {
             return true;
         }
@@ -58,7 +58,7 @@ fn check_concurrent(
             && lookup_end
                 .get(a)
                 .and_then(|m| m.get(ot))
-                .map_or(false, |s| s.contains(b))
+                .is_some_and(|s| s.contains(b))
         {
             return true;
         }
@@ -133,7 +133,7 @@ pub fn find_cut_concurrent(
                 for ot in related {
                     if projected_starts[idx]
                         .get(ot)
-                        .map_or(false, |starts| starts.contains(a))
+                        .is_some_and(|starts| starts.contains(a))
                         && local_data
                             .dfgs
                             .get(ot)
@@ -164,7 +164,7 @@ pub fn find_cut_concurrent(
                     for ot in related {
                         if get_projected_start(local_data, &combined)
                             .get(ot)
-                            .map_or(false, |starts| starts.contains(a))
+                            .is_some_and(|starts| starts.contains(a))
                             && local_data
                                 .dfgs
                                 .get(ot)
@@ -197,7 +197,7 @@ pub fn find_cut_concurrent(
                 for ot in related {
                     if projected_ends[idx]
                         .get(ot)
-                        .map_or(false, |ends| ends.contains(a))
+                        .is_some_and(|ends| ends.contains(a))
                         && local_data
                             .dfgs
                             .get(ot)
@@ -228,7 +228,7 @@ pub fn find_cut_concurrent(
                     for ot in related {
                         if get_projected_end(local_data, &combined)
                             .get(ot)
-                            .map_or(false, |ends| ends.contains(a))
+                            .is_some_and(|ends| ends.contains(a))
                             && local_data
                                 .dfgs
                                 .get(ot)
@@ -259,8 +259,8 @@ pub fn find_cut_concurrent(
     for &i in &nodes {
         for &j in &nodes {
             if i == j
-                || start_problems.get(&i).map_or(false, |v| v.contains(&j))
-                || end_problems.get(&i).map_or(false, |v| v.contains(&j))
+                || start_problems.get(&i).is_some_and(|v| v.contains(&j))
+                || end_problems.get(&i).is_some_and(|v| v.contains(&j))
             {
                 edges.push((i, j));
             }
@@ -416,7 +416,7 @@ mod tests {
     }
 
     #[test]
-    fn example_log_detects_concurrent_cut_direct() {
+    fn example_log_has_no_root_concurrent_cut() {
         let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
         let path = manifest
             .join("..")
@@ -431,10 +431,9 @@ mod tests {
         let global = GlobalData::new(vec![ocel]);
 
         let cut = find_cut_concurrent(&local, &global);
-        println!("concurrent cut detection result: {cut:?}");
-        let (parts, op) = cut.expect("expected concurrent cut for example OCEL (direct call)");
-        println!("concurrent partitions: {:?}", parts);
-        assert!(matches!(op, OCPTOperatorType::Concurrency));
-        assert!(!parts.is_empty());
+        assert!(
+            cut.is_none(),
+            "the example log has a sequence cut at its root, not a concurrent cut"
+        );
     }
 }

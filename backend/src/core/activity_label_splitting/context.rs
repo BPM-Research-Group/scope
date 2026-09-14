@@ -11,8 +11,11 @@ pub struct EventContext {
     pub post: FxHashMap<String, ContextBag>,
 }
 
-/// Activity -> object types linked to it.
-pub fn related_types_by_activity(cases: &[OCEL]) -> FxHashMap<String, Vec<String>> {
+pub fn related_types_by_activity(
+    cases: &[OCEL],
+    object_types: &[String],
+) -> FxHashMap<String, Vec<String>> {
+    let wanted: FxHashSet<&str> = object_types.iter().map(|s| s.as_str()).collect();
     let mut related: FxHashMap<String, BTreeSet<String>> = FxHashMap::default();
 
     for case in cases {
@@ -20,7 +23,10 @@ pub fn related_types_by_activity(cases: &[OCEL]) -> FxHashMap<String, Vec<String
         for event in &case.events {
             let entry = related.entry(event.event_type.clone()).or_default();
             for rel in &event.relationships {
-                if let Some(&ot) = types.get(rel.object_id.as_str()) {
+                let Some(&ot) = types.get(rel.object_id.as_str()) else {
+                    continue;
+                };
+                if wanted.contains(ot) {
                     entry.insert(ot.to_string());
                 }
             }
@@ -31,6 +37,22 @@ pub fn related_types_by_activity(cases: &[OCEL]) -> FxHashMap<String, Vec<String
         .into_iter()
         .map(|(activity, ots)| (activity, ots.into_iter().collect()))
         .collect()
+}
+
+pub fn merge_event_contexts(parts: impl IntoIterator<Item = EventContext>) -> EventContext {
+    let mut merged = EventContext {
+        pre: FxHashMap::default(),
+        post: FxHashMap::default(),
+    };
+    for part in parts {
+        for (ot, mut bag) in part.pre {
+            merged.pre.entry(ot).or_default().append(&mut bag);
+        }
+        for (ot, mut bag) in part.post {
+            merged.post.entry(ot).or_default().append(&mut bag);
+        }
+    }
+    merged
 }
 
 fn object_type_map(case: &OCEL) -> FxHashMap<&str, &str> {

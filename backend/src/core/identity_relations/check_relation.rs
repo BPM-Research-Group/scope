@@ -74,13 +74,13 @@ pub fn check_relation(
 
     let mut ot1_object_hashes: HashMap<String, HashSet<Vec<String>>> = HashMap::new();
     for (eid, _activity, _timestamp, oid, otype) in relations {
-        if ot1.contains(otype) {
-            if let Some(event_hash) = event_hashes.get(eid) {
-                ot1_object_hashes
-                    .entry(oid.clone())
-                    .or_default()
-                    .insert(event_hash.clone());
-            }
+        if ot1.contains(otype)
+            && let Some(event_hash) = event_hashes.get(eid)
+        {
+            ot1_object_hashes
+                .entry(oid.clone())
+                .or_default()
+                .insert(event_hash.clone());
         }
     }
 
