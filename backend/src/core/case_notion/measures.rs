@@ -114,7 +114,7 @@ pub fn calculate_measures(
         //    name: "Absolute Simplicity".to_string(),
         //    value: absolute_simplicity,
         //},
-        //-------------------------------------------------------
+        //------------------------------------------------------- delete the stuff above here!
         CaseMeasure {
             name: "Absolute Size Measure".to_string(),
             value: absolute_size_measure,
@@ -133,22 +133,22 @@ pub fn calculate_measures(
             value: relative_connectivity_measure,
         },
         //------------------------------------------------------- ceep the stuf belov here!
-        //CaseMeasure { 
-        //    name: "Correctness".to_string(),
-        //    value: correctness,
-        //},
-        //CaseMeasure {
-        //    name: "Fuzzy Homogeneity".to_string(),
-        //    value: fuzzy_homogeneity,
-        //},
-        //CaseMeasure {
-        //    name: "Fuzzy Homogeneity V2".to_string(),
-        //    value: fuzzy_homogeneity_v2,
-        //},
-        //CaseMeasure {
-        //    name: "Strict Homogeneity".to_string(),
-        //    value: strict_homogeneity,
-        //},
+        CaseMeasure { 
+            name: "Correctness".to_string(),
+            value: correctness,
+        },
+        CaseMeasure {
+            name: "Fuzzy Homogeneity".to_string(),
+            value: fuzzy_homogeneity,
+        },
+        CaseMeasure {
+            name: "Fuzzy Homogeneity V2".to_string(),
+            value: fuzzy_homogeneity_v2,
+        },
+        CaseMeasure {
+            name: "Strict Homogeneity".to_string(),
+            value: strict_homogeneity,
+        },
         
     ]
 }
