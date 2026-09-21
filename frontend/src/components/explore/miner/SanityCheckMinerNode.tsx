@@ -8,6 +8,7 @@ import BaseMinerNode from '~/components/explore/miner/BaseMinerNode';
 import { useInputAsset, useMinerOutput } from '~/hooks/explore/useMinerAssets';
 import { useLabelSplitting } from '~/services/queries';
 import { MinerNode } from '~/types/explore/nodes';
+import { Button } from '~/components/ui/button';
 
 const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
     const queryClient = useQueryClient();
@@ -17,13 +18,26 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
     const fileId = inputAsset?.id ?? null;
 
     const handleReset = useCallback(() => {
-        queryClient.removeQueries({ queryKey: ['getAbstraction', node.id] });
+        console.log('resetting query for node', node.id);
+        queryClient.removeQueries({ queryKey: ['labelSplitting', node.id] });
     }, [queryClient, node.id]);
+
+    const handleParametersChange = useCallback(() => {
+        console.log('parameters changed, resetting query for node', node.id);
+        setEps(tempEps);
+        setMinSamples(tempMinSamples);
+        setKeepNoise(tempKeepNoise);   
+        handleReset(); 
+        setDialogOpen(false);
+    }, []);
 
     const [dialogOpen, setDialogOpen] = useState(false);
     const [eps, setEps] = useState<number>(0.3);
     const [min_samples, setMinSamples] = useState<number>(2);
     const [keep_noise, setKeepNoise] = useState<boolean>(false);
+    const [tempEps, setTempEps] = useState<number>(0.3);
+    const [tempMinSamples, setTempMinSamples] = useState<number>(2);
+    const [tempKeepNoise, setTempKeepNoise] = useState<boolean>(false);
 
     const queryLabelSplitting = useLabelSplitting(fileId ?? '', eps, min_samples, keep_noise, !dialogOpen);
     const queryData = queryLabelSplitting.data?.data;
@@ -31,6 +45,15 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
     const loading = miner_output_id ? false : true;
 
     useMinerOutput( node.id, miner_output_id, 's_' + (inputAsset?.name ?? ''), 'ocelCollectionFile', 'ocelCollectionNode');
+
+    useEffect(() => {
+        if (dialogOpen) {
+            console.log("reset temp parameters to curent values");
+            setTempEps(eps);
+            setTempMinSamples(min_samples);
+            setTempKeepNoise(keep_noise);  
+        }
+    }, [dialogOpen]);
 
     const renderActions = () => {
         if (!fileId) return null;
@@ -110,15 +133,15 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
                                         id="param-bool"
                                         type="button"
                                         role="switch"
-                                        aria-checked={keep_noise}
-                                        onClick={() => setKeepNoise(!keep_noise)}
+                                        aria-checked={tempKeepNoise}
+                                        onClick={() => setTempKeepNoise(!tempKeepNoise)}
                                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                                            keep_noise ? 'bg-blue-600' : 'bg-gray-300'
+                                            tempKeepNoise ? 'bg-blue-600' : 'bg-gray-300'
                                         }`}
                                     >
                                         <span
                                             className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                                keep_noise ? 'translate-x-6' : 'translate-x-1'
+                                                tempKeepNoise ? 'translate-x-6' : 'translate-x-1'
                                             }`}
                                         />
                                     </button>
@@ -132,7 +155,7 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
                             <div className="flex flex-col gap-2 max-w-sm">
                                 <div className="flex justify-between items-center text-sm font-medium">
                                     <label htmlFor="param-a">Episodes (Epsylon)</label>
-                                    <span className="text-gray-500 font-mono">{eps}</span>
+                                    <span className="text-gray-500 font-mono">{tempEps}</span>
                                 </div>
                                 <p className="text-xs text-gray-500 leading-relaxed">
                                     Controls how similar event contexts must be. Lower values create stricter,
@@ -145,8 +168,8 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
                                     min="0"
                                     max="1"
                                     step="0.05"
-                                    value={eps}
-                                    onChange={(e) => setEps(parseFloat(e.target.value))}
+                                    value={tempEps}
+                                    onChange={(e) => setTempEps(parseFloat(e.target.value))}
                                     className="w-full cursor-pointer"
                                 />
                             </div>
@@ -154,7 +177,7 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
                             <div className="flex flex-col gap-2 max-w-sm">
                                 <div className="flex justify-between items-center text-sm font-medium">
                                     <label htmlFor="param-b">Nr. of Events (minimum:2)</label>
-                                    <span className="text-gray-500 font-mono">{min_samples}</span>
+                                    <span className="text-gray-500 font-mono">{tempMinSamples}</span>
                                 </div>
                                 <p className="text-xs text-gray-500 leading-relaxed">
                                     Sets the minimum number of similar events required to form a cluster. Lower values
@@ -165,13 +188,16 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
                                     id="param-b"
                                     type="number"
                                     min="2"
-                                    value={min_samples}
-                                    onChange={(e) => setMinSamples(Math.max(2, parseInt(e.target.value) || 2))}
+                                    value={tempMinSamples}
+                                    onChange={(e) => setTempMinSamples(Math.max(2, parseInt(e.target.value) || 2))}
                                     className="w-full px-3 py-1 text-sm border rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                                 />
                             </div>
                         </div>
                     </div>
+                     <Button variant={'outline'} onClick={handleParametersChange}>
+                        Reload
+                    </Button>
                 </DialogContent>
             </Dialog>
         </BaseMinerNode>
