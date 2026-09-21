@@ -142,7 +142,7 @@ export const nodeRegistry = {
     },
     resourceMinerNode: {
         category: 'miner',
-        allowedAssetTypes: ['ocelFile'],
+        allowedAssetTypes: ['ocelFile', 'ocelCollectionFile'],
         sidebar: { label: 'Resource Miner', icon: 'waves', group: 'miners' },
     },
     kpiBuilderNode: {

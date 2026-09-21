@@ -158,7 +158,7 @@ export function useKpiDashboard(fileId: string | null, Id: string) {
                 io: 'output',
                 origin: 'mined',
                 type: 'ocelCollectionFile',
-                name: 'Filtered Case OCEL',
+                name: 'Filtered Case Collection',
             },
         ];
 

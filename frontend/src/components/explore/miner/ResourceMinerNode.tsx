@@ -19,7 +19,7 @@ const ResourceMinerNode = memo<NodeProps<MinerNode>>((node) => {
     const fileId = assets?.[0]?.id;
 
     useEffect(() => {
-        const inputAsset = assets.find((a) => a.io === 'input' && a.type === 'ocelFile');
+        const inputAsset = assets.find((a) => a.io === 'input' && a.type === 'ocelFile' || 'ocelCollectionNode');
         setInputFileId(inputAsset?.id ?? null);
     }, [assets]);
 
@@ -29,7 +29,7 @@ const ResourceMinerNode = memo<NodeProps<MinerNode>>((node) => {
 
     const openResourceInterface = () => {
         if (inputFileId) {
-            navigate(`/data/pipeline/explore/resource_graph/${id}`, {
+            navigate(`/data/pipeline/explore/resource_miner/${id}`, {
                 state: { fileId: inputFileId },
             });
         }

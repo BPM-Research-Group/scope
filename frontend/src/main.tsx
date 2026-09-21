@@ -14,10 +14,9 @@ import HistViz from '~/routes/Hist-Viz';
 import Home from '~/routes/Home';
 import KpiViewer from '~/routes/KpiViewer';
 import OcelViewer from '~/routes/OcelViewer';
-import OcpfViewer from '~/routes/OcpfViewer';
+import ResourceViewer from '~/routes/ResourceViewer';
 import OcptViewer from '~/routes/OcptViewer';
 import Pipeline from '~/routes/Pipeline';
-import ResourceViewer from '~/routes/ResourceViewer';
 import Upload from '~/routes/Upload';
 import { initPipelineAutosave } from '~/lib/explore/pipelineAutosave';
 import { hydrateDetachedViewerTab } from '~/lib/explore/viewerTabs';
@@ -44,6 +43,10 @@ const router = createBrowserRouter([
         path: '/data/pipeline/explore/',
         element: <Explore />,
     },
+    // {
+    //     path: '/ocel/ocel-visualization/',
+    //     element: <OcelVisualization />,
+    // },
     {
         path: '/data/pipeline/explore/ocpt/:nodeId',
         element: (
@@ -97,15 +100,23 @@ const router = createBrowserRouter([
         element: (
             <RedirectErrorBoundary>
                 <OcpnViewer />
+            </RedirectErrorBoundary>    
+         ),
+     },
+     {       
+        path: '/data/pipeline/explore/resource_miner/:nodeId',
+        element: (
+             <RedirectErrorBoundary>
+                <ResourceViewer />
             </RedirectErrorBoundary>
         ),
     },
     {
-        path: '/data/pipeline/explore/ocpf/:nodeId',
+        path: '/data/pipeline/explore/kpi/:nodeId',
         element: (
             <RedirectErrorBoundary>
-                <OcpfViewer />
-            </RedirectErrorBoundary>
+                <KpiViewer />
+                </RedirectErrorBoundary>
         ),
     },
     {
@@ -148,7 +159,14 @@ createRoot(document.getElementById('root')!).render(
           <SidebarTrigger /> */}
             <RouterProvider router={router} />
             {/* </SidebarProvider> */}
-            <Toaster position="top-center" />
+            <Toaster
+                position="top-center"
+                // toastOptions={{
+                //     classNames: {
+                //         // toast: 'data-[type=success]:bg-green-500 data-[type=success]:text-white',
+                //     },
+                // }}
+            />
             {/* <ReactQueryDevtools /> */}
         </QueryClientProvider>
     </StrictMode>
