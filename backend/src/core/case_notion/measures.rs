@@ -64,19 +64,21 @@ pub fn calculate_measures(
     let e2o_relations_cn = count_e2o_relations_cn(&case_notion);
     info!( e2o_relations_EL = e2o_relations_EL, "=== Anzahl EL E2O-Relationen ===");
     info!( e2o_relations_cn = e2o_relations_cn, "=== Anzahl cn E2O-Relationen ===");
-    let normal_simplicity = normal_simplicity_of_case_notion(
-        case_notion,
-        total_number_of_events,
-        total_number_of_objects,
-    );
-    let extended_simplicity = extended_simplicity_of_case_notion(
-        case_notion,
-        total_number_of_events,
-        total_number_of_objects,
-        0.6,
-        20,
-    );
-    let absolute_simplicity = absolute_simplicity_of_case_notion(case_notion, 0.8, 10);
+    //following part is not needed anymore -------------------------------------------------------
+    //let normal_simplicity = normal_simplicity_of_case_notion(
+    //    case_notion,
+    //    total_number_of_events,
+    //    total_number_of_objects,
+    //);
+    //let extended_simplicity = extended_simplicity_of_case_notion(
+    //    case_notion,
+    //    total_number_of_events,
+    //    total_number_of_objects,
+    //    0.6,
+    //    20,
+    //);
+    //let absolute_simplicity = absolute_simplicity_of_case_notion(case_notion, 0.8, 10);
+     //-------------------------------------------------------------------------------------------
     //---------new stuff-----------------------------
     let absolute_size_measure = absolute_size_measure_of_case_notion(case_notion);
     let relative_size_measure = relative_size_measure_of_case_notion(
@@ -85,8 +87,8 @@ pub fn calculate_measures(
         total_number_of_events,
     );
     let absolute_connectivity_measure = absolute_connectivity_measure_of_case_notion(case_notion.len(), e2o_relations_cn, o2o_relations_cn);
-    let relative_connectivity_measure = relative_connectivity_measure_of_case_notion( absolute_connectivity_measure, e2o_relations_EL, o2o_relations_EL,
-    );
+    let relative_connectivity_measure = relative_connectivity_measure_of_case_notion( absolute_connectivity_measure, e2o_relations_EL, o2o_relations_EL);
+    let absolute_instance_correctness = absolute_instance_correctness(case_notion);
     //-------------------------------------------------------
     let correctness = correctness_of_case_notion(
         case_notion,
@@ -130,6 +132,10 @@ pub fn calculate_measures(
         },
         CaseMeasure {
             name: "Relative Connectivity Measure".to_string(),
+            value: relative_connectivity_measure,
+        },
+        CaseMeasure {
+            name: "Absolute Instance Correctness".to_string(),
             value: relative_connectivity_measure,
         },
         //------------------------------------------------------- ceep the stuf belov here!
@@ -281,6 +287,24 @@ pub fn relative_connectivity_measure_of_case_notion(
     info!(absolute_connectivity = absolute_connectivity, "=== absolute Connectivity Measure ===");
     absolute_connectivity as f64/(nr_e2o_relations_el + nr_o2o_relations_el) as f64
 }
+
+fn absolute_instance_correctness(cn: &FxHashSet<(Vec<String>, Vec<String>, Vec<(String, String)>)>){
+    //Step 1 calculate O1, the uniquely assigned objects or "any object from the event log, that only appears once in the case notion"
+    let mut object_count:HashMap<&str, usize> = HashMap::new();
+    for (events, objects, e2o) in cn{
+        let unique_in_case: HashSet<&str> = objects.iter().map(|s| s.as_str()).collect();
+        println!("Unique objects in case: {:?}", unique_in_case);
+        for obj in unique_in_case {
+            *object_counts.entry(obj).or_insert(0) += 1;
+        }
+    }
+    object_counts
+        .into_iter()
+        .filter(|&(_, count)| count == 1)
+        .map(|(obj, _)| obj.to_string())
+        .collect()
+}
+
 
 pub fn average_score(measures: &[CaseMeasure]) -> f64 {
     if measures.is_empty() {
