@@ -25,7 +25,7 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
     const [min_samples, setMinSamples] = useState<number>(2);
     const [keep_noise, setKeepNoise] = useState<boolean>(false);
 
-    const queryLabelSplitting = useLabelSplitting(fileId ?? '', eps, min_samples, keep_noise, true);
+    const queryLabelSplitting = useLabelSplitting(fileId ?? '', eps, min_samples, keep_noise, !dialogOpen);
     const queryData = queryLabelSplitting.data?.data;
     const miner_output_id = queryData?.case_ocels_file_id ?? null;
     const loading = miner_output_id ? false : true;
@@ -34,7 +34,7 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
 
     const renderActions = () => {
         if (!fileId) return null;
-        return (loading || (queryLabelSplitting.fetchStatus === 'fetching')) ? (
+        return ((loading && !(dialogOpen)) || (queryLabelSplitting.fetchStatus === 'fetching')) ? (
             <div className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 rounded-md">
                 <span className="text-xs text-yellow-600">Processing...</span>
             </div>
