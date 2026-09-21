@@ -131,7 +131,7 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
                             {/* Parameter eps */}
                             <div className="flex flex-col gap-2 max-w-sm">
                                 <div className="flex justify-between items-center text-sm font-medium">
-                                    <label htmlFor="param-a">Parameter A</label>
+                                    <label htmlFor="param-a">Episodes (Epsylon)</label>
                                     <span className="text-gray-500 font-mono">{eps}</span>
                                 </div>
                                 <p className="text-xs text-gray-500 leading-relaxed">
@@ -153,7 +153,7 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
                             {/* Parameter min_samples */}
                             <div className="flex flex-col gap-2 max-w-sm">
                                 <div className="flex justify-between items-center text-sm font-medium">
-                                    <label htmlFor="param-b">Parameter B (Min: 2)</label>
+                                    <label htmlFor="param-b">Nr. of Events (minimum:2)</label>
                                     <span className="text-gray-500 font-mono">{min_samples}</span>
                                 </div>
                                 <p className="text-xs text-gray-500 leading-relaxed">
