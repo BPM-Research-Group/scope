@@ -18,12 +18,10 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
     const fileId = inputAsset?.id ?? null;
 
     const handleReset = useCallback(() => {
-        console.log('resetting query for node', node.id);
         queryClient.removeQueries({ queryKey: ['labelSplitting', node.id] });
     }, [queryClient, node.id]);
 
-    const handleParametersChange = useCallback(() => {
-        console.log('parameters changed, resetting query for node', node.id);
+    const handleParametersChange = useCallback((tempEps: number, tempMinSamples: number, tempKeepNoise: boolean) => {
         setEps(tempEps);
         setMinSamples(tempMinSamples);
         setKeepNoise(tempKeepNoise);   
@@ -48,13 +46,19 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
 
     useEffect(() => {
         if (dialogOpen) {
-            console.log("reset temp parameters to curent values");
             setTempEps(eps);
             setTempMinSamples(min_samples);
             setTempKeepNoise(keep_noise);  
         }
     }, [dialogOpen]);
 
+    /*
+    Feedback about the state:
+        - Processing... If the query is fetching something new. But only if it is reall going to the api.
+        - Splitts applied: If the query successfully generated an output, but and it is not fetching something new
+        - Checked: If there are no splits applied.
+        - If it fails then there should be an error message
+    */
     const renderActions = () => {
         if (!fileId) return null;
         return ((loading && !(dialogOpen)) || (queryLabelSplitting.fetchStatus === 'fetching')) ? (
@@ -69,7 +73,11 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
             <div className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 rounded-md">
                 <span className="text-xs text-green-600">Checked</span>
             </div>
-        ) : (
+        ) : queryLabelSplitting.isError === true ? (
+            <div className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 rounded-md">
+                <span className="text-xs text-red-600">Error</span>
+            </div>
+        ) :(
             <div className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 rounded-md">
                 <span className="text-xs text-gray-600">Undefined</span>
             </div>
@@ -97,7 +105,8 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
                 { id: 'source', position: Position.Right, type: 'source' as const },
             ]}
             dropdownOptions={[]}
-            customActions={[renderActions(), renderSettings()]}
+            customActions={renderActions()}
+            settings={renderSettings()}
             onReset={handleReset}
         >
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -154,9 +163,10 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
                             {/* Parameter eps */}
                             <div className="flex flex-col gap-2 max-w-sm">
                                 <div className="flex justify-between items-center text-sm font-medium">
-                                    <label htmlFor="param-a">Episodes (Epsylon)</label>
+                                    <label htmlFor="param-a">Episodes (Epsilon)</label>
                                     <span className="text-gray-500 font-mono">{tempEps}</span>
                                 </div>
+                                {tempEps === 0 && <div className="text-red-500 font-medium">This value should not be zero.</div>}
                                 <p className="text-xs text-gray-500 leading-relaxed">
                                     Controls how similar event contexts must be. Lower values create stricter,
                                     potentially smaller clusters; higher values create broader clusters that may merge
@@ -169,7 +179,10 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
                                     max="1"
                                     step="0.05"
                                     value={tempEps}
-                                    onChange={(e) => setTempEps(parseFloat(e.target.value))}
+                                    onChange={(e) => {
+                                      const value = parseFloat(e.target.value);
+                                      setTempEps(value);
+                                    }}
                                     className="w-full cursor-pointer"
                                 />
                             </div>
@@ -195,7 +208,12 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
                             </div>
                         </div>
                     </div>
-                     <Button variant={'outline'} onClick={handleParametersChange}>
+                    <Button 
+                         variant={'outline'} 
+                         disabled={tempEps === 0 || Number.isNaN(tempEps)}
+                         className="disabled:opacity-50 disabled:cursor-not-allowed"
+                         onClick={() => handleParametersChange(tempEps, tempMinSamples, tempKeepNoise)}
+                        >
                         Reload
                     </Button>
                 </DialogContent>
