@@ -104,6 +104,7 @@ pub async fn fix_case_ocel_special_activities(
         };
 
         let silent_object_type = silent_type_name(&combination);
+        let mut registry = SilentObjectRegistry::new();
         for (ocel, (object_id_to_type, profiles_by_activity)) in
             collection.ocels.iter_mut().zip(case_profiles.iter())
         {
@@ -117,7 +118,6 @@ pub async fn fix_case_ocel_special_activities(
             }
 
             ensure_silent_type(ocel, &silent_object_type);
-            let mut registry = SilentObjectRegistry::new();
             attach_silent_objects(
                 ocel,
                 &combination,

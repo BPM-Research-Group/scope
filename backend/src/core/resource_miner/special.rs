@@ -43,7 +43,16 @@ impl SilentObjectRegistry {
             .or_insert((BTreeMap::new(), 1));
 
         if let Some(existing) = sig_map.get(&signature) {
-            return existing.clone();
+            let existing = existing.clone();
+            if !objects.iter().any(|object| object.id == existing) {
+                objects.push(OCELObject {
+                    id: existing.clone(),
+                    object_type: silent_type.to_string(),
+                    attributes: Vec::new(),
+                    relationships: Vec::new(),
+                });
+            }
+            return existing;
         }
 
         let generated = loop {
