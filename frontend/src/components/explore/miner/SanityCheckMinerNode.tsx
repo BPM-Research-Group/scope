@@ -41,8 +41,13 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
     const queryData = queryLabelSplitting.data?.data;
     const miner_output_id = queryData?.case_ocels_file_id ?? null;
     const loading = miner_output_id ? false : true;
-
+    const errorState = queryLabelSplitting.failureCount > 2;
     useMinerOutput( node.id, miner_output_id, 's_' + (inputAsset?.name ?? ''), 'ocelCollectionFile', 'ocelCollectionNode');
+
+    useEffect(() => {
+        console.log('SanityCheckMinerNode', queryLabelSplitting);
+        console.log('errorState?', errorState);
+    }, [queryLabelSplitting]);
 
     useEffect(() => {
         if (dialogOpen) {
@@ -52,6 +57,10 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
         }
     }, [dialogOpen]);
 
+    useEffect(() => {
+        console.log("Error State", errorState);
+        console.log("queryLabelSplitting.failureCount", queryLabelSplitting.failureCount);
+    }, [queryLabelSplitting.failureCount]);
     /*
     Feedback about the state:
         - Processing... If the query is fetching something new. But only if it is reall going to the api.
@@ -61,9 +70,15 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
     */
     const renderActions = () => {
         if (!fileId) return null;
-        return ((loading && !(dialogOpen)) || (queryLabelSplitting.fetchStatus === 'fetching')) ? (
+        console.log('RenderActions', { errorState, loading, dialogOpen, queryLabelSplitting, queryData });
+        console.log('result: ', ((loading && !(dialogOpen)) || (queryLabelSplitting.fetchStatus === 'fetching') && (errorState === false)));
+        return (((loading && !(dialogOpen)) || (queryLabelSplitting.fetchStatus === 'fetching')) && (!errorState)) ? (
             <div className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 rounded-md">
                 <span className="text-xs text-yellow-600">Processing...</span>
+            </div>
+        ): (errorState) ? (
+            <div className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 rounded-md">
+                <span className="text-xs text-red-600">Error</span>
             </div>
         ) : queryData?.splitting_applied ? (
             <div className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 rounded-md">
@@ -72,10 +87,6 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
         ) : queryData?.splitting_applied === false ? (
             <div className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 rounded-md">
                 <span className="text-xs text-green-600">Checked</span>
-            </div>
-        ) : queryLabelSplitting.isError === true ? (
-            <div className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 rounded-md">
-                <span className="text-xs text-red-600">Error</span>
             </div>
         ) :(
             <div className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 rounded-md">
@@ -123,7 +134,7 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
                             </div>
                             {queryData?.splits.length > 0 && (
                                 <div className="mt-1 pt-2 flex flex-col">
-                                    <span className="text-xs text-gray-500 font-medium">Splitt Activities:</span>
+                                    <span className="text-xs text-gray-500 font-medium">Split Activities:</span>
                                     <ul className="list-disc list-inside text-xs text-gray-700 flex flex-col gap-0.5">
                                         {queryData?.splits.map((item:any, index:any) => (
                                             <li key={index} className="truncate">
@@ -163,7 +174,7 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
                             {/* Parameter eps */}
                             <div className="flex flex-col gap-2 max-w-sm">
                                 <div className="flex justify-between items-center text-sm font-medium">
-                                    <label htmlFor="param-a">Episodes (Epsilon)</label>
+                                    <label htmlFor="param-a">Similarity (Epsilon)</label>
                                     <span className="text-gray-500 font-mono">{tempEps}</span>
                                 </div>
                                 {tempEps === 0 && <div className="text-red-500 font-medium">This value should not be zero.</div>}
