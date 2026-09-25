@@ -173,6 +173,7 @@ fn evaluate_traditional_case_notion_for_object_type(
         context.arches(),
         context.total_number_of_objects(),
         context.total_number_of_events(),
+        context.event_lookup(),
     );
     Some(CaseNotionEvaluation::new(
         Some(object_type.to_string()),
