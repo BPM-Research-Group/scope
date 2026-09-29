@@ -174,7 +174,7 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
                             {/* Parameter eps */}
                             <div className="flex flex-col gap-2 max-w-sm">
                                 <div className="flex justify-between items-center text-sm font-medium">
-                                    <label htmlFor="param-a">Similarity (Epsilon)</label>
+                                    <label htmlFor="param-a">Maximum context difference (Epsilon)</label>
                                     <span className="text-gray-500 font-mono">{tempEps}</span>
                                 </div>
                                 {tempEps === 0 && <div className="text-red-500 font-medium">This value should not be zero.</div>}
