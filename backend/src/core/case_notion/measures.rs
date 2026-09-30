@@ -43,7 +43,7 @@ pub(crate) fn measure_value(measures: &[CaseMeasure], target: &str) -> Option<f6
 
 pub fn calculate_measures(
     case_notion: &FxHashSet<(Vec<String>, Vec<String>, Vec<(String, String)>)>, //case notion (Events, Objects, E2O), part of total log
-    event_identifiers: &FxHashMap< //About total Log! (event_id, (activityType, allObjects involved, O2E mappings))
+    event_identifiers: &FxHashMap<          //About total Log (event_id, (activityType, allObjects involved, O2E mappings))
         String,
         (
             String,
@@ -56,15 +56,10 @@ pub fn calculate_measures(
     total_number_of_objects: usize,
     total_number_of_events: usize,
 ) -> Vec<CaseMeasure> {
-    //TODO double check correctness of these functions
     let o2o_relations_el = count_o2o_relations_EL(&event_identifiers);
     let o2o_relations_cn = count_o2o_relations_cn(&case_notion);
-    info!( o2o_relations_el = o2o_relations_el, "=== Anzahl EL O2O-Relationen ==="); //TOREMOVE
-    info!( o2o_relations_cn = o2o_relations_cn, "=== Anzahl cn O2O-Relationen ==="); //TOREMOVE
     let e2o_relations_el = count_e2o_relations_EL(&object_identifiers);
     let e2o_relations_cn = count_e2o_relations_cn(&case_notion);
-    info!( e2o_relations_el = e2o_relations_el, "=== Anzahl EL E2O-Relationen ==="); //TOREMOVE
-    info!( e2o_relations_cn = e2o_relations_cn, "=== Anzahl cn E2O-Relationen ==="); //TOREMOVE
     //following part is not needed anymore -------------------------------------------------------
     //let normal_simplicity = normal_simplicity_of_case_notion(
     //    case_notion,
@@ -79,15 +74,12 @@ pub fn calculate_measures(
     //    20,
     //);
     //let absolute_simplicity = absolute_simplicity_of_case_notion(case_notion, 0.8, 10);
-     //-------------------------------------------------------------------------------------------
-    //---------new measures-----------------------------
     let absolute_size_measure = absolute_size_measure_of_case_notion(case_notion);
     let relative_size_measure = relative_size_measure_of_case_notion(case_notion, total_number_of_objects, total_number_of_events);
     let absolute_connectivity_measure = absolute_connectivity_measure_of_case_notion(case_notion.len(), e2o_relations_cn, o2o_relations_cn);
     let relative_connectivity_measure = relative_connectivity_measure_of_case_notion( absolute_connectivity_measure, e2o_relations_el, o2o_relations_el);
     let absolute_instance_correctness = absolute_instance_correctness(case_notion);
     let relative_instance_correctness = relative_instance_correctness(absolute_instance_correctness, total_number_of_events, total_number_of_objects, e2o_relations_el, o2o_relations_el);
-    //-------------------------------------------------------
     let correctness = correctness_of_case_notion(
         case_notion,
         arches,
@@ -114,7 +106,7 @@ pub fn calculate_measures(
         //    name: "Absolute Simplicity".to_string(),
         //    value: absolute_simplicity,
         //},
-        //------------------------------------------------------- delete the stuff above here!
+        //------The code above is not needed anymore-------------------------------------------------
         CaseMeasure {
             name: "Absolute Size Measure".to_string(),
             value: absolute_size_measure,
@@ -140,7 +132,6 @@ pub fn calculate_measures(
             name: "Relative Instance Correctness".to_string(),
             value: relative_instance_correctness,
         },
-        //------------------------------------------------------- keep the stuf below here!
         CaseMeasure { 
             name: "Correctness".to_string(),
             value: correctness,
@@ -156,8 +147,7 @@ pub fn calculate_measures(
         CaseMeasure {
             name: "Strict Homogeneity".to_string(),
             value: strict_homogeneity,
-        },
-        
+        },    
     ]
 }
 
@@ -171,7 +161,6 @@ fn count_o2o_relations_EL(
         ),
     >,
 ) -> usize {
-    // Saves references
     let mut unique_pairs: FxHashSet<(&String, &String)> = FxHashSet::default();
 
     for (_, all_objects_sorted, _) in event_identifiers.values() {
@@ -188,7 +177,6 @@ fn count_o2o_relations_EL(
     unique_pairs.len()
 }
 
-//Problem: Zählt o2o relationen über cases hinweg
 fn count_o2o_relations_cn(
     case_notion: &FxHashSet<(Vec<String>, Vec<String>, Vec<(String, String)>)>,
 ) -> usize {
@@ -205,7 +193,7 @@ fn count_o2o_relations_cn(
     let mut unique_o2o_pairs: FxHashSet<(&str, &str)> = FxHashSet::default();
     for objects in event_to_objects.values() {
         if objects.len() < 2 {
-            continue; // Skip events involving only one object
+            continue;           // Skip events involving only one object
         }
 
         let obj_list: Vec<&&str> = objects.iter().collect();
@@ -271,14 +259,11 @@ pub fn relative_size_measure_of_case_notion(
     absolute_size_measure / total_size as f64
 }
 
-use tracing::{info, debug, trace, instrument};
-
 pub fn absolute_connectivity_measure_of_case_notion(
     nr_of_case_notions: usize,
     nr_e2o_relations_cn: usize,
     nr_o2o_relations_cn: usize,
 ) -> f64 {
-    info!(nr_of_case_notions = nr_of_case_notions, "=== nr_of_case_notions ===");
     (nr_e2o_relations_cn + nr_o2o_relations_cn) as f64 / nr_of_case_notions as f64
 }
 
@@ -287,7 +272,6 @@ pub fn relative_connectivity_measure_of_case_notion(
     nr_e2o_relations_el: usize,
     nr_o2o_relations_el: usize,
 ) -> f64 {
-    info!(absolute_connectivity = absolute_connectivity, "=== absolute Connectivity Measure ===");
     absolute_connectivity as f64/(nr_e2o_relations_el + nr_o2o_relations_el) as f64
 }
 
@@ -295,11 +279,10 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 type Case = (Vec<String>, Vec<String>, Vec<(String, String)>);
 
-/// Generiert die O2O-Relationen für einen EINZELNEN Case
+/// Generates the O2O-relations for the single cases
 pub fn get_o2o_for_case(case: &Case) -> FxHashSet<(String, String)> {
     let (_events, _objects, e2o) = case;
 
-    // 1. Gruppiere die Objekte nach Event-ID innerhalb DIESES Cases
     let mut event_to_objects: FxHashMap<&str, FxHashSet<&str>> = FxHashMap::default();
     for (event_id, obj_id) in e2o {
         event_to_objects
@@ -308,12 +291,11 @@ pub fn get_o2o_for_case(case: &Case) -> FxHashSet<(String, String)> {
             .insert(obj_id.as_str());
     }
 
-    // 2. Erzeuge ungerichtete Paare (o1, o2) für alle Events mit >= 2 Objekten
     let mut case_o2o: FxHashSet<(String, String)> = FxHashSet::default();
 
     for objects in event_to_objects.values() {
         if objects.len() < 2 {
-            continue; // Events mit nur 1 Objekt erzeugen keine O2O-Beziehung
+            continue; 
         }
 
         let obj_list: Vec<&&str> = objects.iter().collect();
@@ -321,7 +303,6 @@ pub fn get_o2o_for_case(case: &Case) -> FxHashSet<(String, String)> {
             for j in (i + 1)..obj_list.len() {
                 let (o1, o2) = (obj_list[i], obj_list[j]);
                 
-                // Alphabetisch sortieren (o1 < o2), um Duplikate wie (A,B) und (B,A) zu vermeiden
                 if o1 < o2 {
                     case_o2o.insert((o1.to_string(), o2.to_string()));
                 } else {
@@ -334,26 +315,18 @@ pub fn get_o2o_for_case(case: &Case) -> FxHashSet<(String, String)> {
     case_o2o
 }
 
-//INPROGRESS (o2o relations)
 fn absolute_instance_correctness(cn: &FxHashSet<(Vec<String>, Vec<String>, Vec<(String, String)>)>)-> f64 {
-    //for (idx, case) in cn.iter().take(1).enumerate() {    //TOREMOVE
-    //    println!("--- Case {} ---: {:?}", idx + 1, case);
-    //}
     let mut object_counts:  HashMap<&str, usize> = HashMap::new();
     let mut event_counts:   HashMap<&str, usize> = HashMap::new();
     let mut e2o_counts:     HashMap<(&str, &str), usize> = HashMap::new();
     let mut o2o_counts: FxHashMap<(String, String), usize> = FxHashMap::default();
     for case in cn {
-        // O2O-Paare für den aktuellen Case ermitteln
         let unique_o2o_in_case = get_o2o_for_case(case);
 
-        // Pro Case jedes vorkommende Paar in der globalen Map um 1 hochzählen
         for pair in unique_o2o_in_case {
             *o2o_counts.entry(pair).or_insert(0) += 1;
         }
     }
-    println!("o2o relations: {:?}", o2o_counts.iter().take(1));
-    println!("Nr of o2o relations: {:?}", o2o_counts.len());
     for (events, objects, e2o) in cn{   //iterating over the cases
         let objects_in_case: HashSet<&str> = objects.iter().map(|s| s.as_str()).collect(); 
         let events_in_case: HashSet<&str> = events.iter().map(|s| s.as_str()).collect(); 
@@ -388,7 +361,6 @@ fn absolute_instance_correctness(cn: &FxHashSet<(Vec<String>, Vec<String>, Vec<(
         .filter(|&(_, count)| count == 1)       //Filtering for all o2os that appear only in one case
         .map(|(pair, _)| pair)
         .collect();
-    println!("[DEBUG] absolute results: {:?}, {:?}, {:?}, {:?}", absolute_objects.len(), absolute_events.len(), absolute_e2o.len(), absolute_o2o.len()); //TOREMOVE
     let absolute_instance_correctness = (absolute_objects.len() + absolute_events.len() + absolute_e2o.len() + absolute_o2o.len()) as f64;
     return absolute_instance_correctness;
 }
