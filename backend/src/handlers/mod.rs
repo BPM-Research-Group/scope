@@ -1,5 +1,6 @@
 pub mod abstractions;
 pub mod activity_label_splitting;
+pub mod case_input;
 pub mod case_notion;
 pub mod clustering;
 pub mod collection_ocels;

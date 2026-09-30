@@ -180,4 +180,9 @@ export const nodeRegistry = {
         allowedAssetTypes: ['ocelCollectionFile'],
         sidebar: { label: 'Clustering', icon: 'ungroup', group: 'miners' },
     },
+    sanityCheckMinerNode: {
+        category: 'miner',
+        allowedAssetTypes: ['ocelCollectionFile'],
+        sidebar: { label: 'Sanity Check', icon: 'fileCheck', group: 'miners' },
+    },
 } satisfies Record<RegistrableNodeType, NodeRegistryEntry>;
