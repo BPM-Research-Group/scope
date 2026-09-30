@@ -62,7 +62,7 @@ const ResourceViewer: React.FC = () => {
             <div className="flex flex-col h-screen w-screen overflow-hidden">
                 <BreadcrumbNav />
                 <div className="flex flex-1 h-full w-full overflow-hidden">
-                    <ResourceGraphPage fileId={fileId} nodeeId={nodeId ?? null} sourceType={sourceType} />
+                    <ResourceGraphPage fileId={fileId} nodeId={nodeId ?? null} sourceType={sourceType} />
                 </div>
             </div>
         </SidebarProvider>

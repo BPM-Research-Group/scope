@@ -29,7 +29,7 @@ const ResourceMinerNode = memo<NodeProps<MinerNode>>((node) => {
 
     const openResourceInterface = () => {
         if (inputFileId) {
-            navigate(`/data/pipeline/explore/resource_miner/${id}`, {
+            navigate(`/data/pipeline/explore/resource_graph/${id}`, {
                 state: { fileId: inputFileId },
             });
         }

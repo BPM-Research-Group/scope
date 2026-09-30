@@ -29,7 +29,7 @@ type Props = {
     sourceType: string;
 };
 
-const ResourceGraphPage: React.FC<Props> = ({ fileId: initialFileId, nodeeId: nodeId }) => {
+const ResourceGraphPage: React.FC<Props> = ({ fileId: initialFileId, nodeId: nodeId }) => {
     const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
     const [fileId, setFileId] = useState<string | null>(initialFileId);
     const [newFileId, setNewFileId] = useState<string | null>('');
