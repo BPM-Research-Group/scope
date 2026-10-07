@@ -24,37 +24,45 @@ struct DfgFacts {
 }
 
 impl DfgFacts {
-    fn fact_count(&self) -> usize {
-        self.edges.len() + self.starts.len() + self.ends.len()
-    }
-
-    fn preserved_count(&self, other: &DfgFacts) -> usize {
-        self.edges.intersection(&other.edges).count()
-            + self.starts.intersection(&other.starts).count()
-            + self.ends.intersection(&other.ends).count()
+    fn mismatch_count(&self, other: &DfgFacts) -> usize {
+        self.edges.symmetric_difference(&other.edges).count()
+            + self.starts.symmetric_difference(&other.starts).count()
+            + self.ends.symmetric_difference(&other.ends).count()
     }
 }
 
 /// Calculates the abstraction completeness measures for a given case notion.
+/// The abstraction consists of every possible DFG fact. A fact is preserved if it is present in both or absent in both the
+/// log and the cases.
 pub fn abstraction_completeness_measures(
     case_notion: &CaseNotion,
     event_identifiers: &EventIdentifiers,
     object_identifiers: &ObjectIdentifiers,
     event_lookup: &FxHashMap<String, OCELEvent>,
 ) -> (f64, f64) {
-    let log_facts = dfg_from_log(object_identifiers, event_identifiers, event_lookup);
-    let m = log_facts.fact_count();
+    let object_type_count = object_identifiers
+        .values()
+        .map(|(object_type, _)| object_type.as_str())
+        .collect::<FxHashSet<_>>()
+        .len();
+    let activity_count = event_identifiers
+        .values()
+        .map(|(activity, _, _)| activity.as_str())
+        .collect::<FxHashSet<_>>()
+        .len();
+    let m = object_type_count * (activity_count * activity_count + 2 * activity_count);
     if m == 0 {
         return (0.0, 0.0);
     }
 
+    let log_facts = dfg_from_log(object_identifiers, event_identifiers, event_lookup);
     let case_facts = dfg_from_cases(
         case_notion,
         object_identifiers,
         event_identifiers,
         event_lookup,
     );
-    let absolute = log_facts.preserved_count(&case_facts) as f64;
+    let absolute = m.saturating_sub(log_facts.mismatch_count(&case_facts)) as f64;
     (absolute, absolute / m as f64)
 }
 
