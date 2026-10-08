@@ -39,11 +39,11 @@ const AnalyticsDashboard: React.FC<Props> = ({ fileId, Id, sourceType }) => {
     } = d;
 
     if (metadataLoading) {
-        return <div className="p-6 text-lg font-medium">Loading KPI Dashboard...</div>;
+        return <div className="p-1 text-black-200">Loading...</div>;
     }
 
     if (metadataError) {
-        return <div className="p-6 text-red-500">Failed to load metadata</div>;
+        return <div className="p-1 text-black-200">Failed to load metadata</div>;
     }
 
     return (

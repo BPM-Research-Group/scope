@@ -79,6 +79,7 @@ export const getOcel = async (fileId: string) => {
 
 export const getActivityResource = async (fileId: string) => {
     const response = await api.get(`/v1/resource_miner/${fileId}`);
+
     return response.data;
 };
 
@@ -294,7 +295,6 @@ export const caseStats = async (fileId: string, params: any, caseType: string) =
         return response.data;
     }
     if (caseType === 'activity_time') {
-        console.log('objectgdd');
         const response = await api.get(`/v1/kpi/case_time_stats/${fileId}`, { params });
         return response.data;
     }
