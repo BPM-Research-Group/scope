@@ -3,8 +3,7 @@ use crate::core::process_forest::{
     project_process_forest_to_ocpt,
 };
 use crate::core::struct_converters::ocpt_frontend_backend::backend_to_frontend;
-use crate::models::ocel::OCEL;
-use crate::models::ocel_collection::OCELCollection;
+use crate::handlers::case_input::resolve_case_input;
 use crate::models::process_forest::{ProcessForest, ProcessForestFrontend};
 use crate::traits::import_export::{ExportableToPath, ImportableFromPath};
 use axum::{
@@ -29,7 +28,9 @@ pub async fn discover_process_forest(
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let threshold = query.threshold.unwrap_or(0.2);
     let source_file_id = file_id.clone();
-    let ocels = load_process_forest_ocels(&file_id).await?;
+    let resolved = resolve_case_input(&file_id).await?;
+    let case_ocels_file_id = resolved.case_ocels_file_id;
+    let ocels = resolved.collection.ocels;
 
     let forest = tokio::task::spawn_blocking(move || mine_process_forest(&ocels, threshold))
         .await
@@ -52,6 +53,7 @@ pub async fn discover_process_forest(
     let payload = json!({
         "file_id": new_file_id,
         "source_file_id": source_file_id,
+        "case_ocels_file_id": case_ocels_file_id,
         "threshold": threshold,
         "process_forest": forest,
     });
@@ -123,17 +125,6 @@ pub async fn get_process_forest_projection(
         "ocpt": backend_to_frontend(&ocpt),
     });
     Ok(Json(payload))
-}
-
-async fn load_process_forest_ocels(file_id: &str) -> Result<Vec<OCEL>, (StatusCode, String)> {
-    match OCEL::import_from_path(file_id).await {
-        Ok(ocel) => Ok(vec![ocel]),
-        Err((StatusCode::NOT_FOUND, _)) => match OCELCollection::import_from_path(file_id).await {
-            Ok(collection) => Ok(collection.ocels),
-            Err(err) => Err(err),
-        },
-        Err(err) => Err(err),
-    }
 }
 
 fn map_mining_error(error: ProcessForestMiningError) -> (StatusCode, String) {

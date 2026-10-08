@@ -3,6 +3,7 @@ use serde_json::json;
 use std::io::ErrorKind;
 use tokio::fs;
 
+use crate::handlers::case_input::resolve_case_input;
 use crate::models::abstraction::{
     EnrichedOCLanguageAbstraction, OCLanguageAbstraction, identity_relations_from_ocpt,
 };
@@ -25,11 +26,14 @@ fn abstraction_payload(
 }
 
 pub(crate) async fn compute_ocel_abstraction(
-    ocel: OCEL,
+    ocels: Vec<OCEL>,
 ) -> Result<OCLanguageAbstraction, (StatusCode, String)> {
     tokio::task::spawn_blocking(move || {
-        let locel = IndexLinkedOCEL::from_ocel(ocel);
-        OCLanguageAbstraction::create_from_ocel(&locel)
+        let locels = ocels
+            .into_iter()
+            .map(IndexLinkedOCEL::from_ocel)
+            .collect::<Vec<_>>();
+        OCLanguageAbstraction::create_from_ocels(locels.iter())
     })
     .await
     .map_err(|err| {
@@ -56,12 +60,13 @@ pub(crate) async fn compute_ocpt_abstraction(
 }
 
 pub async fn get_ocel_abstraction(AxumPath(source_file_id): AxumPath<String>) -> impl IntoResponse {
-    let ocel = match OCEL::import_from_path(&source_file_id).await {
-        Ok(ocel) => ocel,
+    let resolved = match resolve_case_input(&source_file_id).await {
+        Ok(resolved) => resolved,
         Err((status, message)) => return (status, message).into_response(),
     };
+    let case_ocels_file_id = resolved.case_ocels_file_id;
 
-    let abstraction = match compute_ocel_abstraction(ocel).await {
+    let abstraction = match compute_ocel_abstraction(resolved.collection.ocels).await {
         Ok(abstraction) => abstraction,
         Err((status, message)) => return (status, message).into_response(),
     };
@@ -71,13 +76,13 @@ pub async fn get_ocel_abstraction(AxumPath(source_file_id): AxumPath<String>) ->
         Err((status, message)) => return (status, message).into_response(),
     };
 
-    Json(abstraction_payload(
-        &file_id,
-        &source_file_id,
-        "ocel",
-        &enriched,
-    ))
-    .into_response()
+    let mut payload = abstraction_payload(&file_id, &source_file_id, "ocel", &enriched);
+    payload
+        .as_object_mut()
+        .expect("abstraction payload is an object")
+        .insert("case_ocels_file_id".to_string(), json!(case_ocels_file_id));
+
+    Json(payload).into_response()
 }
 
 pub async fn get_ocpt_abstraction(AxumPath(source_file_id): AxumPath<String>) -> impl IntoResponse {
@@ -178,5 +183,237 @@ pub async fn delete_abstraction(AxumPath(file_id): AxumPath<String>) -> impl Int
             format!("Failed to delete abstraction: {}", e),
         )
             .into_response(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::ocel::OCELObject;
+    use process_mining::ocel;
+    use std::collections::{HashMap, HashSet};
+
+    fn contains(
+        properties: &HashMap<String, HashSet<String>>,
+        object_type: &str,
+        activity: &str,
+    ) -> bool {
+        properties
+            .get(object_type)
+            .is_some_and(|activities| activities.contains(activity))
+    }
+
+    #[tokio::test]
+    async fn collection_abstraction_infers_global_cross_case_deficiency() {
+        let with_item = ocel!(
+            events:
+            ("pack", ["o:1", "i:1"]),
+            o2o:
+        );
+        let without_item = ocel!(
+            events:
+            ("pack", ["o:1"]),
+            o2o:
+        );
+
+        let abstraction = compute_ocel_abstraction(vec![with_item, without_item])
+            .await
+            .unwrap();
+
+        assert!(contains(
+            &abstraction.related_ev_type_per_ob_type,
+            "i",
+            "pack"
+        ));
+        assert!(contains(
+            &abstraction.deficient_ev_type_per_ob_type,
+            "i",
+            "pack"
+        ));
+    }
+
+    #[tokio::test]
+    async fn e2o_less_event_witnesses_deficiency_through_downstream_path() {
+        let mut case = ocel!(
+            events:
+            ("pack", ["i:1"]),
+            ("pack", ["i:1"]),
+            o2o:
+        );
+        case.events[1].relationships.clear();
+
+        let abstraction = compute_ocel_abstraction(vec![case]).await.unwrap();
+
+        assert!(contains(
+            &abstraction.related_ev_type_per_ob_type,
+            "i",
+            "pack"
+        ));
+        assert!(contains(
+            &abstraction.deficient_ev_type_per_ob_type,
+            "i",
+            "pack"
+        ));
+    }
+
+    #[tokio::test]
+    async fn orphan_object_witnesses_optionality_through_downstream_path() {
+        let mut case = ocel!(
+            events:
+            ("pack", ["i:1"]),
+            o2o:
+        );
+        case.objects.push(OCELObject {
+            id: "i:2".to_string(),
+            object_type: "i".to_string(),
+            attributes: Vec::new(),
+            relationships: Vec::new(),
+        });
+
+        let abstraction = compute_ocel_abstraction(vec![case]).await.unwrap();
+
+        assert!(contains(
+            &abstraction.related_ev_type_per_ob_type,
+            "i",
+            "pack"
+        ));
+        assert!(contains(
+            &abstraction.optional_ev_type_per_ob_type,
+            "i",
+            "pack"
+        ));
+    }
+
+    #[tokio::test]
+    async fn repeated_identical_context_activity_is_divergent_through_downstream_path() {
+        let case = ocel!(
+            events:
+            ("pack", ["i:1", "o:1"]),
+            ("pack", ["i:1", "o:1"]),
+            o2o:
+        );
+
+        let abstraction = compute_ocel_abstraction(vec![case]).await.unwrap();
+
+        assert!(contains(
+            &abstraction.divergent_ev_type_per_ob_type,
+            "i",
+            "pack"
+        ));
+        assert!(contains(
+            &abstraction.divergent_ev_type_per_ob_type,
+            "o",
+            "pack"
+        ));
+    }
+
+    #[tokio::test]
+    async fn multiple_same_type_objects_on_one_event_are_convergent() {
+        let case = ocel!(
+            events:
+            ("pack", ["i:1", "i:2"]),
+            o2o:
+        );
+
+        let abstraction = compute_ocel_abstraction(vec![case]).await.unwrap();
+
+        assert!(contains(
+            &abstraction.convergent_ev_type_per_ob_type,
+            "i",
+            "pack"
+        ));
+    }
+
+    #[tokio::test]
+    async fn reused_local_ids_across_cases_remain_independent() {
+        let first = ocel!(
+            events:
+            ("pack", ["i:1"]),
+            o2o:
+        );
+        let second = ocel!(
+            events:
+            ("pack", ["i:1"]),
+            o2o:
+        );
+        assert_eq!(first.events[0].id, second.events[0].id);
+        assert_eq!(first.objects[0].id, second.objects[0].id);
+
+        let abstraction = compute_ocel_abstraction(vec![first, second]).await.unwrap();
+
+        assert!(!contains(
+            &abstraction.divergent_ev_type_per_ob_type,
+            "i",
+            "pack"
+        ));
+        assert!(!contains(
+            &abstraction.deficient_ev_type_per_ob_type,
+            "i",
+            "pack"
+        ));
+        assert!(!contains(
+            &abstraction.optional_ev_type_per_ob_type,
+            "i",
+            "pack"
+        ));
+    }
+
+    #[tokio::test]
+    async fn unrelated_activity_type_pair_has_no_multiplicity_properties() {
+        let case = ocel!(
+            events:
+            ("pack", ["o:1"]),
+            ("register", ["i:1"]),
+            o2o:
+        );
+
+        let abstraction = compute_ocel_abstraction(vec![case]).await.unwrap();
+
+        for properties in [
+            &abstraction.related_ev_type_per_ob_type,
+            &abstraction.convergent_ev_type_per_ob_type,
+            &abstraction.deficient_ev_type_per_ob_type,
+            &abstraction.divergent_ev_type_per_ob_type,
+            &abstraction.optional_ev_type_per_ob_type,
+        ] {
+            assert!(!contains(properties, "i", "pack"));
+        }
+    }
+
+    #[tokio::test]
+    async fn one_case_collection_matches_direct_single_ocel_abstraction() {
+        let case = ocel!(
+            events:
+            ("pack", ["i:1", "i:2", "o:1"]),
+            ("pack", ["i:1", "o:1"]),
+            ("ship", ["i:1"]),
+            ("ship", ["o:1"]),
+            o2o:
+        );
+        let locel = IndexLinkedOCEL::from_ocel(case.clone());
+        let direct = OCLanguageAbstraction::create_from_ocel(&locel);
+
+        let collection = compute_ocel_abstraction(vec![case]).await.unwrap();
+
+        assert_eq!(
+            direct.related_ev_type_per_ob_type,
+            collection.related_ev_type_per_ob_type
+        );
+        assert_eq!(
+            direct.convergent_ev_type_per_ob_type,
+            collection.convergent_ev_type_per_ob_type
+        );
+        assert_eq!(
+            direct.deficient_ev_type_per_ob_type,
+            collection.deficient_ev_type_per_ob_type
+        );
+        assert_eq!(
+            direct.divergent_ev_type_per_ob_type,
+            collection.divergent_ev_type_per_ob_type
+        );
+        assert_eq!(
+            direct.optional_ev_type_per_ob_type,
+            collection.optional_ev_type_per_ob_type
+        );
     }
 }

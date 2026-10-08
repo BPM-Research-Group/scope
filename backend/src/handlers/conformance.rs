@@ -1,13 +1,14 @@
 use axum::{Json, extract::Path as AxumPath, response::IntoResponse};
 use serde_json::json;
 
+use crate::handlers::abstractions::compute_ocel_abstraction;
+use crate::handlers::case_input::resolve_case_input;
 use crate::models::abstraction::OCLanguageAbstraction;
-use crate::models::ocel::{IndexLinkedOCEL, OCEL};
 use crate::models::ocpt::OCPT as BackendOCPT;
 use crate::traits::import_export::ImportableFromPath;
 use process_mining::conformance::object_centric::footprint_based_ocpt::{
-    FootprintConformance, compute_footprint_conformance,
-    compute_footprint_conformance_abstractions, compute_footprint_conformance_ocpt_vs_ocpt,
+    FootprintConformance, compute_footprint_conformance_abstractions,
+    compute_footprint_conformance_ocpt_vs_ocpt,
 };
 use process_mining::conformance::object_centric::object_centric_language_abstraction::compute_fitness_precision;
 
@@ -59,6 +60,7 @@ fn conformance_payload(
     fitness: f64,
     precision: f64,
     footprint: Option<&FootprintConformance>,
+    case_ocels_file_id: Option<&str>,
 ) -> serde_json::Value {
     let footprint = footprint
         .map(|footprint| {
@@ -75,11 +77,18 @@ fn conformance_payload(
         })
         .unwrap_or(serde_json::Value::Null);
 
-    json!({
+    let mut payload = json!({
         "fitness": fitness,
         "precision": precision,
         "footprint": footprint
-    })
+    });
+    if let Some(case_ocels_file_id) = case_ocels_file_id {
+        payload
+            .as_object_mut()
+            .expect("conformance payload is an object")
+            .insert("case_ocels_file_id".to_string(), json!(case_ocels_file_id));
+    }
+    payload
 }
 
 async fn load_extended_ocpt(
@@ -119,7 +128,13 @@ pub async fn get_conformance_ocpt_abstraction(
         footprint_log_suffix(footprint.as_ref())
     );
 
-    Json(conformance_payload(fitness, precision, footprint.as_ref())).into_response()
+    Json(conformance_payload(
+        fitness,
+        precision,
+        footprint.as_ref(),
+        None,
+    ))
+    .into_response()
 }
 
 /// GET /v1/conformance/extended_ocpt/{extended_ocpt_id}/abstraction/{abstraction_id}
@@ -152,7 +167,13 @@ pub async fn get_conformance_extended_ocpt_abstraction(
         footprint_log_suffix(footprint.as_ref())
     );
 
-    Json(conformance_payload(fitness, precision, footprint.as_ref())).into_response()
+    Json(conformance_payload(
+        fitness,
+        precision,
+        footprint.as_ref(),
+        None,
+    ))
+    .into_response()
 }
 
 /// GET /v1/conformance/abstraction_1/{model_abstraction_id}/abstraction_2/{log_abstraction_id}
@@ -185,11 +206,17 @@ pub async fn get_conformance_abstraction_abstraction(
         footprint_log_suffix(footprint.as_ref())
     );
 
-    Json(conformance_payload(fitness, precision, footprint.as_ref())).into_response()
+    Json(conformance_payload(
+        fitness,
+        precision,
+        footprint.as_ref(),
+        None,
+    ))
+    .into_response()
 }
 
 /// GET /v1/conformance/ocpt/{ocpt_id}/ocel/{ocel_id}"
-/// -> loads ./temp/ocpt_{ocpt_id}.json and ./temp/ocel_v2_{ocel_id}.json
+/// -> loads an OCPT and resolves the input ID to a case-OCEL collection
 pub async fn get_conformance_ocpt_ocel(
     AxumPath((ocpt_id, ocel_id)): AxumPath<(String, String)>,
 ) -> impl IntoResponse {
@@ -198,29 +225,39 @@ pub async fn get_conformance_ocpt_ocel(
         Err((status, message)) => return (status, message).into_response(),
     };
 
-    let ocel_struct = match OCEL::import_from_path(&ocel_id).await {
-        Ok(o) => o,
+    let resolved = match resolve_case_input(&ocel_id).await {
+        Ok(resolved) => resolved,
         Err((status, message)) => return (status, message).into_response(),
     };
+    let case_ocels_file_id = resolved.case_ocels_file_id;
 
-    let locel: IndexLinkedOCEL = IndexLinkedOCEL::from_ocel(ocel_struct);
     let model_abs = OCLanguageAbstraction::create_from_oc_process_tree(&ocpt_backend);
-    let log_abs = OCLanguageAbstraction::create_from_ocel(&locel);
+    let log_abs = match compute_ocel_abstraction(resolved.collection.ocels).await {
+        Ok(abstraction) => abstraction,
+        Err((status, message)) => return (status, message).into_response(),
+    };
     let footprint = maybe_compute_footprint(&log_abs, &model_abs, || {
-        compute_footprint_conformance(&locel, &ocpt_backend)
+        compute_footprint_conformance_abstractions(&log_abs, &model_abs)
     });
     let (fitness, precision) = select_top_level_scores(&log_abs, &model_abs, footprint.as_ref());
 
     println!(
-        "[conformance ocpt_ocel] ocpt_id={} ocel_id={} fitness={} precision={}{}",
+        "[conformance ocpt_ocel] ocpt_id={} ocel_id={} case_ocels_file_id={} fitness={} precision={}{}",
         ocpt_id,
         ocel_id,
+        case_ocels_file_id,
         fitness,
         precision,
         footprint_log_suffix(footprint.as_ref())
     );
 
-    Json(conformance_payload(fitness, precision, footprint.as_ref())).into_response()
+    Json(conformance_payload(
+        fitness,
+        precision,
+        footprint.as_ref(),
+        Some(&case_ocels_file_id),
+    ))
+    .into_response()
 }
 
 /// GET /v1/conformance/ocpt_1/{ocpt_id_1}/ocpt_2/{ocpt_id_2}
@@ -253,11 +290,17 @@ pub async fn get_conformance_ocpt_ocpt(
         footprint_log_suffix(footprint.as_ref())
     );
 
-    Json(conformance_payload(fitness, precision, footprint.as_ref())).into_response()
+    Json(conformance_payload(
+        fitness,
+        precision,
+        footprint.as_ref(),
+        None,
+    ))
+    .into_response()
 }
 
 /// GET /v1/conformance/extended_ocpt/{extended_ocpt_id}/ocel/{ocel_id}
-/// -> loads ./temp/extended_ocpt_{extended_ocpt_id}.json and ./temp/ocel_v2_{ocel_id}.json
+/// -> loads an extended OCPT and resolves the input ID to a case-OCEL collection
 pub async fn get_conformance_extended_ocpt_ocel(
     AxumPath((extended_ocpt_id, ocel_id)): AxumPath<(String, String)>,
 ) -> impl IntoResponse {
@@ -266,29 +309,39 @@ pub async fn get_conformance_extended_ocpt_ocel(
         Err((status, message)) => return (status, message).into_response(),
     };
 
-    let ocel_struct = match OCEL::import_from_path(&ocel_id).await {
-        Ok(o) => o,
+    let resolved = match resolve_case_input(&ocel_id).await {
+        Ok(resolved) => resolved,
         Err((status, message)) => return (status, message).into_response(),
     };
+    let case_ocels_file_id = resolved.case_ocels_file_id;
 
-    let locel: IndexLinkedOCEL = IndexLinkedOCEL::from_ocel(ocel_struct);
     let model_abs = OCLanguageAbstraction::create_from_oc_process_tree(&extended_ocpt);
-    let log_abs = OCLanguageAbstraction::create_from_ocel(&locel);
+    let log_abs = match compute_ocel_abstraction(resolved.collection.ocels).await {
+        Ok(abstraction) => abstraction,
+        Err((status, message)) => return (status, message).into_response(),
+    };
     let footprint = maybe_compute_footprint(&log_abs, &model_abs, || {
-        compute_footprint_conformance(&locel, &extended_ocpt)
+        compute_footprint_conformance_abstractions(&log_abs, &model_abs)
     });
     let (fitness, precision) = select_top_level_scores(&log_abs, &model_abs, footprint.as_ref());
 
     println!(
-        "[conformance extended_ocpt_ocel] extended_ocpt_id={} ocel_id={} fitness={} precision={}{}",
+        "[conformance extended_ocpt_ocel] extended_ocpt_id={} ocel_id={} case_ocels_file_id={} fitness={} precision={}{}",
         extended_ocpt_id,
         ocel_id,
+        case_ocels_file_id,
         fitness,
         precision,
         footprint_log_suffix(footprint.as_ref())
     );
 
-    Json(conformance_payload(fitness, precision, footprint.as_ref())).into_response()
+    Json(conformance_payload(
+        fitness,
+        precision,
+        footprint.as_ref(),
+        Some(&case_ocels_file_id),
+    ))
+    .into_response()
 }
 
 /// GET /v1/conformance/extended_ocpt_1/{extended_ocpt_id_1}/extended_ocpt_2/{extended_ocpt_id_2}
@@ -321,5 +374,33 @@ pub async fn get_conformance_extended_ocpt_extended_ocpt(
         footprint_log_suffix(footprint.as_ref())
     );
 
-    Json(conformance_payload(fitness, precision, footprint.as_ref())).into_response()
+    Json(conformance_payload(
+        fitness,
+        precision,
+        footprint.as_ref(),
+        None,
+    ))
+    .into_response()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn collection_conformance_payload_exposes_reusable_collection_id() {
+        let payload = conformance_payload(1.0, 0.5, None, Some("collection-id"));
+
+        assert_eq!(payload["case_ocels_file_id"], "collection-id");
+        assert_eq!(payload["fitness"], 1.0);
+        assert_eq!(payload["precision"], 0.5);
+        assert!(payload["footprint"].is_null());
+    }
+
+    #[test]
+    fn non_collection_conformance_payload_keeps_previous_shape() {
+        let payload = conformance_payload(1.0, 1.0, None, None);
+
+        assert!(payload.get("case_ocels_file_id").is_none());
+    }
 }
