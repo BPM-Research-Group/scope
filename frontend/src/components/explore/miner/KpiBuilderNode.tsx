@@ -20,7 +20,7 @@ const KpiBuilderNode = memo<NodeProps<MinerNode>>((node) => {
     const { id, data: nodeData } = node;
     const { assets } = nodeData;
 
-    const inputAsset = useInputAsset(assets, 'ocelCollectionFile');
+    const inputAsset = useInputAsset(assets, 'ocelCollectionFile', 'ocelFile');
     const inputFileId = inputAsset?.id ?? null;
     const fileName = inputAsset?.name ?? '';
 
