@@ -1,6 +1,9 @@
 // Legacy metrics helpers are still useful ad-hoc, but not all are invoked via the HTTP API.
+// I temporarily commented out absolute_instance_correctness because it did not compile.
 #![allow(dead_code)]
+use crate::core::case_notion::abstraction_completeness::abstraction_completeness_measures;
 use crate::core::case_notion::main::CaseMeasure;
+use crate::models::ocel::OCELEvent;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
@@ -55,6 +58,7 @@ pub fn calculate_measures(
     arches: &FxHashSet<(String, String)>, //((eventId, objectId))
     total_number_of_objects: usize,
     total_number_of_events: usize,
+    event_lookup: &FxHashMap<String, OCELEvent>,
 ) -> Vec<CaseMeasure> {
     let o2o_relations_el = count_o2o_relations_EL(&event_identifiers);
     let o2o_relations_cn = count_o2o_relations_cn(&case_notion);
@@ -80,6 +84,15 @@ pub fn calculate_measures(
     let relative_connectivity_measure = relative_connectivity_measure_of_case_notion( absolute_connectivity_measure, e2o_relations_el, o2o_relations_el);
     let absolute_instance_correctness = absolute_instance_correctness(case_notion);
     let relative_instance_correctness = relative_instance_correctness(absolute_instance_correctness, total_number_of_events, total_number_of_objects, e2o_relations_el, o2o_relations_el);
+    // let absolute_instance_correctness = absolute_instance_correctness(case_notion);
+    let (absolute_abstraction_completeness, relative_abstraction_completeness) =
+        abstraction_completeness_measures(
+            case_notion,
+            event_identifiers,
+            object_identifiers,
+            event_lookup,
+        );
+    //-------------------------------------------------------
     let correctness = correctness_of_case_notion(
         case_notion,
         arches,
@@ -124,6 +137,10 @@ pub fn calculate_measures(
             name: "Relative Connectivity Measure".to_string(),
             value: relative_connectivity_measure,
         },
+        // CaseMeasure {
+        //     name: "Absolute Instance Correctness".to_string(),
+        //     value: relative_connectivity_measure,
+        // },
         CaseMeasure {
             name: "Absolute Instance Correctness".to_string(),
             value: absolute_instance_correctness,
@@ -131,6 +148,14 @@ pub fn calculate_measures(
         CaseMeasure {
             name: "Relative Instance Correctness".to_string(),
             value: relative_instance_correctness,
+        },
+        CaseMeasure {
+            name: "Absolute Abstraction Completeness".to_string(),
+            value: absolute_abstraction_completeness,
+        },
+        CaseMeasure {
+            name: "Relative Abstraction Completeness".to_string(),
+            value: relative_abstraction_completeness,
         },
         CaseMeasure { 
             name: "Correctness".to_string(),

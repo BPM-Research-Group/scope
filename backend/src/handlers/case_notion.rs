@@ -397,6 +397,7 @@ pub async fn get_connected_components_case_notion(
         context.arches(),
         context.total_number_of_objects(),
         context.total_number_of_events(),
+        context.event_lookup(),
     );
     let evaluation = CaseNotionEvaluation::new(None, measures, case_notion);
 
@@ -532,6 +533,7 @@ pub async fn post_generic_case_notion(
         context.arches_ref(),
         *context.total_number_of_objects_ref(),
         *context.total_number_of_events_ref(),
+        context.event_lookup_ref(),
     );
     let evaluation = CaseNotionEvaluation::new(None, measures, case_notion);
 
