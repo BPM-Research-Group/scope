@@ -137,10 +137,6 @@ pub fn calculate_measures(
             name: "Relative Connectivity Measure".to_string(),
             value: relative_connectivity_measure,
         },
-        // CaseMeasure {
-        //     name: "Absolute Instance Correctness".to_string(),
-        //     value: relative_connectivity_measure,
-        // },
         CaseMeasure {
             name: "Absolute Instance Correctness".to_string(),
             value: absolute_instance_correctness,
@@ -901,8 +897,11 @@ pub fn correctness_of_case_notion(
     (a_c as f64 / a as f64 + o_c as f64 / o as f64 + e_c as f64 / e as f64) / 3.0
 }
 
-pub fn calculate_total_score(measures: &[CaseMeasure], weights: &[f64]) -> f64 {
+pub fn weighted_total_score(measures: &[CaseMeasure], weights: &[f64]) -> f64 {
     let total_weight: f64 = weights.iter().sum();
+    if total_weight == 0.0 {
+        return 0.0;
+    }
     measures
         .iter()
         .zip(weights.iter())
