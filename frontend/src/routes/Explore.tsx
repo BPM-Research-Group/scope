@@ -30,6 +30,7 @@ import OcpnMinerNode from '~/components/explore/miner/OcpnMinerNode';
 import OcptMinerNode from '~/components/explore/miner/OcptMinerNode';
 import OcptStreamMinerNode from '~/components/explore/miner/OcptStreamMinerNode';
 import ResourceMinerNode from '~/components/explore/miner/ResourceMinerNode';
+import ConnectedComponentNode from '~/components/explore/miner/ConnectedComponentNode';
 import SanityCheckMinerNode from '~/components/explore/miner/SanityCheckMinerNode';
 import { RefocusProgressPanel } from '~/components/explore/RefocusProgressPanel';
 import { RestoreDraftPanel } from '~/components/explore/RestoreDraftPanel';
@@ -58,6 +59,7 @@ const nodeTypes = {
     conformanceMinerNode: ConformanceMinerNode,
     abstractionFileNode: AbstractionFileNode,
     resourceMinerNode: ResourceMinerNode,
+    connectedComponentNode: ConnectedComponentNode,
     conformanceFileNode: ConformanceFileNode,
     eventStreamNode: EventStreamNode,
     df2StreamMinerNode: Df2StreamMinerNode,

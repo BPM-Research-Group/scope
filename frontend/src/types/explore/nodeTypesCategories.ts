@@ -21,6 +21,7 @@ export const minerNodeTypes = [
     'ocpnMinerNode',
     'ocpfMinerNode',
     'resourceMinerNode',
+    'connectedComponentNode',
     'kpiBuilderNode',
     'caseClusteringMinerNode',
     'conformanceMinerNode',
