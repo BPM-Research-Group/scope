@@ -500,7 +500,16 @@ pub async fn post_measurement_weights_change(
 ) -> (StatusCode, Json<ChangeWeightsResponse>){
     let mut updated_measurements = payload.measurements.clone();
     updated_measurements.retain(|m| m.name != "Total Score");
-    let new_total_score = weighted_total_score(&payload.measurements, &payload.weights);
+    if updated_measurements.len() != payload.weights.len() {
+        eprintln!("Mismatch between number of measurements and weights");
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ChangeWeightsResponse {
+                measurements: updated_measurements,
+            }),
+        );
+    }
+    let new_total_score = weighted_total_score(&updated_measurements, &payload.weights);
     updated_measurements.push(CaseMeasure {
         name: "Total Score".to_string(),
         value: new_total_score,
