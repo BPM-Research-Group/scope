@@ -1,6 +1,6 @@
 // Handler layer only uses a subset of these helpers; keep the rest available without warnings.
 #![allow(dead_code)]
-use crate::core::case_notion::measures::{average_score, f1_from_measures, measure_value};
+use crate::core::case_notion::measures::{average_score, f1_from_measures, measure_value, weighted_total_score};
 use crate::models::ocel::{OCELEvent, OCELObject, OCELType};
 use crate::models::ocel::{
     OCELUtils, build_event_identifiers, build_object_identifiers, map_object_id_to_type,
@@ -116,7 +116,8 @@ impl CaseNotionEvaluation {
     }
 
     fn with_summary_measures(mut measures: Vec<CaseMeasure>) -> Vec<CaseMeasure> {
-        let total_score = average_score(&measures);
+        let zero_weights = vec![0.0; measures.len()];
+        let total_score = weighted_total_score(&measures, &zero_weights);
         let f1_score = f1_from_measures(&measures);
         measures.push(CaseMeasure {
             name: "Total Score".to_string(),
