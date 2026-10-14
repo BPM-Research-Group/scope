@@ -60,31 +60,17 @@ pub fn calculate_measures(
     total_number_of_events: usize,
     event_lookup: &FxHashMap<String, OCELEvent>,
 ) -> Vec<CaseMeasure> {
-    let o2o_relations_el = count_o2o_relations_EL(&event_identifiers);
+    let o2o_relations_el = count_o2o_relations_el(&event_identifiers);
     let o2o_relations_cn = count_o2o_relations_cn(&case_notion);
-    let e2o_relations_el = count_e2o_relations_EL(&object_identifiers);
+    let e2o_relations_el = count_e2o_relations_el(&object_identifiers);
     let e2o_relations_cn = count_e2o_relations_cn(&case_notion);
-    //following part is not needed anymore -------------------------------------------------------
-    //let normal_simplicity = normal_simplicity_of_case_notion(
-    //    case_notion,
-    //    total_number_of_events,
-    //    total_number_of_objects,
-    //);
-    //let extended_simplicity = extended_simplicity_of_case_notion(
-    //    case_notion,
-    //    total_number_of_events,
-    //    total_number_of_objects,
-    //    0.6,
-    //    20,
-    //);
+    //following measures are not wanted anymore and therefore comented out -------------------------------------------------------
+    //let normal_simplicity = normal_simplicity_of_case_notion( case_notion, total_number_of_events, total_number_of_objects,);
+    //let extended_simplicity = extended_simplicity_of_case_notion(case_notion, total_number_of_events, total_number_of_objects, 0.6, 20);
     //let absolute_simplicity = absolute_simplicity_of_case_notion(case_notion, 0.8, 10);
-    let absolute_size_measure = absolute_size_measure_of_case_notion(case_notion);
-    let relative_size_measure = relative_size_measure_of_case_notion(case_notion, total_number_of_objects, total_number_of_events);
-    let absolute_connectivity_measure = absolute_connectivity_measure_of_case_notion(case_notion.len(), e2o_relations_cn, o2o_relations_cn);
-    let relative_connectivity_measure = relative_connectivity_measure_of_case_notion( absolute_connectivity_measure, e2o_relations_el, o2o_relations_el);
-    let absolute_instance_correctness = absolute_instance_correctness(case_notion);
-    let relative_instance_correctness = relative_instance_correctness(absolute_instance_correctness, total_number_of_events, total_number_of_objects, e2o_relations_el, o2o_relations_el);
-    // let absolute_instance_correctness = absolute_instance_correctness(case_notion);
+    let (absolute_size_measure, relative_size_measure) = size_measure_calcualtions(case_notion, total_number_of_objects, total_number_of_events);
+    let (absolute_connectivity_measure, relative_connectivity_measure) = connectivity_measure_calculations(case_notion.len(), e2o_relations_cn, o2o_relations_cn, e2o_relations_el, o2o_relations_el);
+    let (absolute_instance_correctness, relative_instance_correctness) = instance_correctness_measures(case_notion, total_number_of_events, total_number_of_objects, e2o_relations_el, o2o_relations_el);
     let (absolute_abstraction_completeness, relative_abstraction_completeness) =
         abstraction_completeness_measures(
             case_notion,
@@ -92,7 +78,6 @@ pub fn calculate_measures(
             object_identifiers,
             event_lookup,
         );
-    //-------------------------------------------------------
     let correctness = correctness_of_case_notion(
         case_notion,
         arches,
@@ -107,6 +92,7 @@ pub fn calculate_measures(
         strict_homogeneity_of_case_notion(case_notion, event_identifiers, object_identifiers);
 
     vec![
+        //------The code below is commented out because "Normal Simplicity", "Extended Simplicity", "Absolute Simplicity" measures are not wanted anymore-------------------------------------------------
         //CaseMeasure {
         //    name: "Normal Simplicity".to_string(),
         //    value: normal_simplicity,
@@ -119,7 +105,6 @@ pub fn calculate_measures(
         //    name: "Absolute Simplicity".to_string(),
         //    value: absolute_simplicity,
         //},
-        //------The code above is not needed anymore-------------------------------------------------
         CaseMeasure {
             name: "Absolute Size Measure".to_string(),
             value: absolute_size_measure,
@@ -138,20 +123,20 @@ pub fn calculate_measures(
             value: relative_connectivity_measure,
         },
         CaseMeasure {
-            name: "Absolute Instance Correctness".to_string(),
-            value: absolute_instance_correctness,
-        },
-        CaseMeasure {
-            name: "Relative Instance Correctness".to_string(),
-            value: relative_instance_correctness,
-        },
-        CaseMeasure {
             name: "Absolute Abstraction Completeness".to_string(),
             value: absolute_abstraction_completeness,
         },
         CaseMeasure {
             name: "Relative Abstraction Completeness".to_string(),
             value: relative_abstraction_completeness,
+        },
+        CaseMeasure {
+            name: "Absolute Instance Correctness".to_string(),
+            value: absolute_instance_correctness,
+        },
+        CaseMeasure {
+            name: "Relative Instance Correctness".to_string(),
+            value: relative_instance_correctness,
         },
         CaseMeasure { 
             name: "Correctness".to_string(),
@@ -172,7 +157,7 @@ pub fn calculate_measures(
     ]
 }
 
-fn count_o2o_relations_EL(
+fn count_o2o_relations_el(
     event_identifiers: &FxHashMap<
         String,
         (
@@ -233,7 +218,7 @@ fn count_o2o_relations_cn(
     unique_o2o_pairs.len()
 }
 
-fn count_e2o_relations_EL(
+fn count_e2o_relations_el(
     object_identifiers: &FxHashMap<String, (String, Vec<String>)>,
 ) -> usize {
     object_identifiers
@@ -248,12 +233,15 @@ fn count_e2o_relations_cn(
     case_notion.iter().map(|(_events, _objects, e2o)| e2o.len()).sum()
 }
 
-pub fn absolute_size_measure_of_case_notion(
+
+pub fn size_measure_calcualtions(
     case_notion: &FxHashSet<(Vec<String>, Vec<String>, Vec<(String, String)>)>,
-) -> f64 {
+    total_number_of_objects: usize,
+    total_number_of_events: usize,
+) -> (f64,f64) {
     let count_cases = case_notion.len();
     if count_cases == 0 {
-        return 0.0;
+        return (0.0, 0.0);
     }
 
     let (count_events, count_objects) = case_notion
@@ -261,39 +249,26 @@ pub fn absolute_size_measure_of_case_notion(
         .fold((0, 0), |acc, (events, objects, _)| {
             (acc.0 + events.len(), acc.1 + objects.len())
         });
-
-    (count_events + count_objects) as f64 / count_cases as f64
-}
-
-pub fn relative_size_measure_of_case_notion(
-    case_notion: &FxHashSet<(Vec<String>, Vec<String>, Vec<(String, String)>)>,
-    total_number_of_objects: usize,
-    total_number_of_events: usize,
-) -> f64 {
-    let absolute_size_measure = absolute_size_measure_of_case_notion(case_notion);
+    let absolute_size_measure_of_cn=(count_events + count_objects) as f64 / count_cases as f64;
     let total_size = total_number_of_objects + total_number_of_events;
 
     if total_size == 0 {
-        return 0.0;
+        return (absolute_size_measure_of_cn, 0.0);
     }
 
-    absolute_size_measure / total_size as f64
+    (absolute_size_measure_of_cn as f64, absolute_size_measure_of_cn / total_size as f64)
 }
 
-pub fn absolute_connectivity_measure_of_case_notion(
+pub fn connectivity_measure_calculations(
     nr_of_case_notions: usize,
     nr_e2o_relations_cn: usize,
     nr_o2o_relations_cn: usize,
-) -> f64 {
-    (nr_e2o_relations_cn + nr_o2o_relations_cn) as f64 / nr_of_case_notions as f64
-}
-
-pub fn relative_connectivity_measure_of_case_notion(
-    absolute_connectivity: f64,
     nr_e2o_relations_el: usize,
     nr_o2o_relations_el: usize,
-) -> f64 {
-    absolute_connectivity as f64/(nr_e2o_relations_el + nr_o2o_relations_el) as f64
+) -> (f64,f64) {
+    let absolute_connectivity=(nr_e2o_relations_cn + nr_o2o_relations_cn) as f64 / nr_of_case_notions as f64;
+
+    (absolute_connectivity as f64, absolute_connectivity/((nr_e2o_relations_el + nr_o2o_relations_el) as f64))
 }
 
 use std::collections::HashMap;
@@ -336,11 +311,17 @@ pub fn get_o2o_for_case(case: &Case) -> FxHashSet<(String, String)> {
     case_o2o
 }
 
-fn absolute_instance_correctness(cn: &FxHashSet<(Vec<String>, Vec<String>, Vec<(String, String)>)>)-> f64 {
+fn instance_correctness_measures(
+    cn: &FxHashSet<(Vec<String>, Vec<String>, Vec<(String, String)>)>,
+    el_total_objects: usize,
+    el_total_events:usize,
+    el_total_e2o:usize,
+    el_total_o2o:usize
+)-> (f64, f64) {
     let mut object_counts:  HashMap<&str, usize> = HashMap::new();
     let mut event_counts:   HashMap<&str, usize> = HashMap::new();
     let mut e2o_counts:     HashMap<(&str, &str), usize> = HashMap::new();
-    let mut o2o_counts: FxHashMap<(String, String), usize> = FxHashMap::default();
+    let mut o2o_counts:     FxHashMap<(String, String), usize> = FxHashMap::default();
     for case in cn {
         let unique_o2o_in_case = get_o2o_for_case(case);
 
@@ -383,11 +364,8 @@ fn absolute_instance_correctness(cn: &FxHashSet<(Vec<String>, Vec<String>, Vec<(
         .map(|(pair, _)| pair)
         .collect();
     let absolute_instance_correctness = (absolute_objects.len() + absolute_events.len() + absolute_e2o.len() + absolute_o2o.len()) as f64;
-    return absolute_instance_correctness;
-}
-
-fn relative_instance_correctness(absolute_instance_correctness: f64, el_total_objects: usize, el_total_events:usize, el_total_e2o:usize, el_total_o2o:usize)-> f64 {
-    return (absolute_instance_correctness / (el_total_objects as f64 + el_total_events as f64 + el_total_e2o as f64 + el_total_o2o as f64)) as f64;
+    let relative_instance_correctness = (absolute_instance_correctness / (el_total_objects as f64 + el_total_events as f64 + el_total_e2o as f64 + el_total_o2o as f64)) as f64;
+    return (absolute_instance_correctness,relative_instance_correctness);
 }
 
 pub fn average_score(measures: &[CaseMeasure]) -> f64 {
