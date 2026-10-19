@@ -149,7 +149,7 @@ export const nodeRegistry = {
     connectedComponentNode: {
         category: 'miner',
         allowedAssetTypes: ['ocelFile', 'ocelCollectionFile'],
-        sidebar: { label: 'Connected Component', icon: 'waves', group: 'miners' },
+        sidebar: { label: 'Connected Component Miner', icon: 'waves', group: 'miners' },
     },
 
     kpiBuilderNode: {
