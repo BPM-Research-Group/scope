@@ -5,7 +5,7 @@ use crate::core::case_notion::connected_component::connected_components_notion;
 use crate::core::case_notion::generic::{build_case, generic_case_notion};
 use crate::core::case_notion::log_graphs::build_log_graph_type_level;
 use crate::core::case_notion::main::{CaseMeasure, CaseNotionContext, CaseNotionEvaluation};
-use crate::core::case_notion::measures::{calculate_measures, calculate_total_score};
+use crate::core::case_notion::measures::{calculate_measures, weighted_total_score};
 use crate::core::case_notion::traditional::{
     traditional_case_notion, traditional_case_notion_type_level,
 };
@@ -397,6 +397,7 @@ pub async fn get_connected_components_case_notion(
         context.arches(),
         context.total_number_of_objects(),
         context.total_number_of_events(),
+        context.event_lookup(),
     );
     let evaluation = CaseNotionEvaluation::new(None, measures, case_notion);
 
@@ -499,7 +500,16 @@ pub async fn post_measurement_weights_change(
 ) -> (StatusCode, Json<ChangeWeightsResponse>){
     let mut updated_measurements = payload.measurements.clone();
     updated_measurements.retain(|m| m.name != "Total Score");
-    let new_total_score = calculate_total_score(&payload.measurements, &payload.weights);
+    if updated_measurements.len() != payload.weights.len() {
+        eprintln!("Mismatch between number of measurements and weights");
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ChangeWeightsResponse {
+                measurements: updated_measurements,
+            }),
+        );
+    }
+    let new_total_score = weighted_total_score(&updated_measurements, &payload.weights);
     updated_measurements.push(CaseMeasure {
         name: "Total Score".to_string(),
         value: new_total_score,
@@ -532,6 +542,7 @@ pub async fn post_generic_case_notion(
         context.arches_ref(),
         *context.total_number_of_objects_ref(),
         *context.total_number_of_events_ref(),
+        context.event_lookup_ref(),
     );
     let evaluation = CaseNotionEvaluation::new(None, measures, case_notion);
 
