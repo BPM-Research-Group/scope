@@ -198,7 +198,6 @@ export const useMineIdentityOcpt = (nodeId: string, fileId: string | null, algor
 };
 
 export const useGetIdentityOcpt = (fileId: string | null, shouldFetch: boolean) => {
-    console.log('Api, file ID 2.2', fileId);
     return useQuery({
         queryKey: ['getIdentityOcpt', fileId],
         queryFn: () => getIdentityOcpt(fileId!),

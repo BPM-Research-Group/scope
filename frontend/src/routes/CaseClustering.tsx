@@ -338,7 +338,6 @@ const CaseClustering: React.FC = () => {
                                     </Button>
                                     <Button
                                         onClick={() => {
-                                            console.log('node State: ', node);
                                             navigate(`/data/pipeline/explore`); 
                                         }}
                                         className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 hover:bg-gray-200 rounded-md mt-3"
