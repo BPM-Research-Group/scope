@@ -102,10 +102,10 @@ export const nodeRegistry = {
     },
     identityExtendMinerNode: {
         category: 'miner',
-        allowedAssetTypes: ['ocptAsset', 'ocptFile', 'identityOcptAsset'],
+        allowedAssetTypes: ['ocptAsset', 'ocptFile', 'identityOcptAsset', 'ocelCollectionFile'],
         inputs: [
             { label: 'Primary', types: ['ocptAsset', 'ocptFile'] },
-            { label: 'Secondary', types: ['ocelAsset', 'ocelFile'] },
+            { label: 'Secondary', types: ['ocelAsset', 'ocelFile', 'ocelCollectionFile'] },
         ],
         sidebar: { label: 'Extend Identity', icon: 'scanEye', group: 'miners' },
     },
