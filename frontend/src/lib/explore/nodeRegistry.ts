@@ -127,7 +127,7 @@ export const nodeRegistry = {
     },
     abstractionMinerNode: {
         category: 'miner',
-        allowedAssetTypes: ['ocelFile', 'ocelAsset', 'ocptFile', 'ocptAsset', 'identityOcptAsset'],
+        allowedAssetTypes: ['ocelFile', 'ocelAsset', 'ocptFile', 'ocptAsset', 'identityOcptAsset', 'ocelCollectionFile'],
         sidebar: { label: 'Abstraction', icon: 'layers', group: 'miners' },
     },
     ocpnMinerNode: {

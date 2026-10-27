@@ -201,7 +201,7 @@ export const getOcelObjectTypes = async (fileId: string): Promise<CaseNotionApiR
     return response.data;
 };
 
-export type AbstractionSourceKind = 'ocel' | 'ocpt' | 'extended_ocpt';
+export type AbstractionSourceKind = 'ocel' | 'ocpt' | 'extended_ocpt' | 'case_collection';
 
 export type GetAbstractionResponse = {
     file_id: string;
