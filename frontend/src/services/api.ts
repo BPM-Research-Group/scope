@@ -63,11 +63,11 @@ export const mineIdentityOcpt = async (ocelFileId: string, baseAlgorithm: string
 
 export const extendOcptWithIdentity = async (
     ocptFileId: string,
-    ocelFileId: string,
+    secondInputId: string,
     noiseThreshold: number
 ): Promise<GetOcptResponse> => {
     const response = await api.get(`v1/ocpt/extend/${ocptFileId}`, {
-        params: { ocel_id: ocelFileId, noise_threshold: noiseThreshold },
+        params: { ocel_id: secondInputId, noise_threshold: noiseThreshold },
     });
     return { file_id: response.data.file_id, ocpt: response.data.extended_ocpt };
 };
@@ -201,7 +201,7 @@ export const getOcelObjectTypes = async (fileId: string): Promise<CaseNotionApiR
     return response.data;
 };
 
-export type AbstractionSourceKind = 'ocel' | 'ocpt' | 'extended_ocpt';
+export type AbstractionSourceKind = 'ocel' | 'ocpt' | 'extended_ocpt' | 'case_collection';
 
 export type GetAbstractionResponse = {
     file_id: string;

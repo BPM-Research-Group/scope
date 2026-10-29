@@ -85,6 +85,29 @@ pub async fn get_ocel_abstraction(AxumPath(source_file_id): AxumPath<String>) ->
     Json(payload).into_response()
 }
 
+pub async fn get_case_collection_abstraction(AxumPath(source_file_id): AxumPath<String>) -> impl IntoResponse {
+    let resolved = match resolve_case_input(&source_file_id).await {
+        Ok(resolved) => resolved,
+        Err((status, message)) => return (status, message).into_response(),
+    };
+    let abstraction = match compute_ocel_abstraction(resolved.collection.ocels).await {
+        Ok(abstraction) => abstraction,
+        Err((status, message)) => return (status, message).into_response(),
+    };
+    let enriched = EnrichedOCLanguageAbstraction::new(abstraction, Vec::new());
+    let file_id = match enriched.export_to_path().await {
+        Ok(file_id) => file_id,
+        Err((status, message)) => return (status, message).into_response(),
+    };
+    Json(abstraction_payload(
+        &file_id,
+        &source_file_id,
+        "case_collection",
+        &enriched,
+    ))
+    .into_response()
+}
+
 pub async fn get_ocpt_abstraction(AxumPath(source_file_id): AxumPath<String>) -> impl IntoResponse {
     let ocpt = match BackendOCPT::import_from_path(&source_file_id).await {
         Ok(ocpt) => ocpt,

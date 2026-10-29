@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { NodeProps } from '@xyflow/react';
 import { Position } from '@xyflow/react';
@@ -22,13 +22,14 @@ const ExtendWithIdentityNode = memo<NodeProps<MinerNode>>((node) => {
     }, [node.data.assets]);
 
     const ocptAsset = useInputAsset(node.data.assets, 'ocptAsset', 'ocptFile');
-    const ocelAsset = useInputAsset(node.data.assets, 'ocelAsset', 'ocelFile');
+    const ocelAsset = useInputAsset(node.data.assets, 'ocelAsset', 'ocelFile'); 
+    const ocelCollectionAsset = useInputAsset(node.data.assets, 'ocelCollectionFile', 'ocelCollectionFile');
     const inputFileName = ocptAsset?.name ?? ocelAsset?.name ?? '';
 
     const { isLoading, isFetching, data } = useExtendOcptWithIdentity(
         node.id,
         ocptAsset?.id ?? null,
-        ocelAsset?.id ?? null,
+        ocelAsset?.id ?? (ocelCollectionAsset?.id ?? null),
         noiseThreshold,
         !hasMinedAsset
     );
@@ -96,7 +97,7 @@ const ExtendWithIdentityNode = memo<NodeProps<MinerNode>>((node) => {
                 { id: 'target', position: Position.Left, type: 'target' as const },
                 { id: 'source', position: Position.Right, type: 'source' as const },
             ]}
-            secondaryHandles={[{ id: 'ocelTarget', label: 'OCEL Input', hintTypes: ['ocelAsset', 'ocelFile'] }]}
+            secondaryHandles={[{ id: 'ocelTarget', label: 'OCEL Input', hintTypes: ['ocelAsset', 'ocelFile',  'ocelCollectionFile'] }]} //handels second input, adding " 'ocelCollectionFile'"
             dropdownOptions={[]}
             isLoading={isLoading || isFetching}
             onReset={handleReset}
