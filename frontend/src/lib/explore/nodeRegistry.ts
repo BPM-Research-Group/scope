@@ -160,7 +160,7 @@ export const nodeRegistry = {
             },
             {
                 label: 'Input B',
-                types: ['ocptAsset', 'ocptFile', 'identityOcptAsset', 'ocelFile', 'ocelAsset', 'abstractionAsset'],
+                types: ['ocptAsset', 'ocptFile', 'identityOcptAsset', 'ocelFile', 'ocelAsset', 'abstractionAsset', 'ocelCollectionFile'],
             },
         ],
         sidebar: { label: 'Conformance', icon: 'radar', group: 'miners' },
