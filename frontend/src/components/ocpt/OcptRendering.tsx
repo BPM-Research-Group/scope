@@ -45,7 +45,6 @@ export const RenderTree: React.FC<RenderTreeProps> = ({
         if (renderedTree && !originalRenderedTree) {
             const clonedTree = cloneDeep(renderedTree);
             updateTreeWithExtendedOperators(clonedTree);
-            console.log(clonedTree);
             setOriginalRenderedOcpt(clonedTree);
             setOriginalRenderedTree(clonedTree);
             setRenderedOcpt(clonedTree);
@@ -61,7 +60,6 @@ export const RenderTree: React.FC<RenderTreeProps> = ({
         if (filteredObjectTypes.length > 0) {
             newTree = cloneDeep(originalRenderedTree);
             projectTreeOntoOT(newTree, filteredObjectTypes);
-            console.log(newTree);
         } else {
             newTree = originalRenderedTree;
         }

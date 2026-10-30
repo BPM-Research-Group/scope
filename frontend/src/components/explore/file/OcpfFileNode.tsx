@@ -30,8 +30,6 @@ const OcpfFileNode = memo<NodeProps<FileNode>>((props) => {
     useEffect(() => {
         // If we have downloaded the data, but haven't saved it to the node yet.
         if (fetchedForestData && !nodeData.processedData) {
-            console.log('OCPF File Node: Saving backend data to Zustand store!');
-
             updateNodeData(id, {
                 processedData: fetchedForestData,
             });
