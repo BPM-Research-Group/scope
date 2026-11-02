@@ -22,6 +22,7 @@ import { initPipelineAutosave } from '~/lib/explore/pipelineAutosave';
 import { hydrateDetachedViewerTab } from '~/lib/explore/viewerTabs';
 import CaseClustering from './routes/CaseClustering';
 import OcpnViewer from './routes/OcpnViewer';
+import OcpfViewer from './routes/OcpfViewer';
 
 // Create a client
 const queryClient = new QueryClient();
@@ -140,6 +141,14 @@ const router = createBrowserRouter([
         element: (
             <RedirectErrorBoundary>
                 <CaseClustering />
+            </RedirectErrorBoundary>
+        ),
+    },
+    {
+        path: '/data/pipeline/explore/ocpf/:nodeId',
+        element: (
+            <RedirectErrorBoundary>
+                <OcpfViewer />
             </RedirectErrorBoundary>
         ),
     },
