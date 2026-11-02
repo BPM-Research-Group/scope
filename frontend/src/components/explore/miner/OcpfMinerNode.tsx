@@ -12,7 +12,7 @@ const OcpfMinerNode = memo<NodeProps<MinerNode>>((node) => {
     const { assets } = nodeData;
 
     // Filter OCEL Input
-    const inputAsset = useInputAsset(assets, 'ocelAsset', 'ocelFile') || null;
+    const inputAsset = useInputAsset(assets, 'ocelAsset', 'ocelFile', 'ocelCollectionFile') || null;
 
     const inputFileId = inputAsset?.id ?? null;
     const fileName = inputAsset?.name ?? 'Process_Forest';

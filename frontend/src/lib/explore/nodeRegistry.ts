@@ -137,7 +137,7 @@ export const nodeRegistry = {
     },
     ocpfMinerNode: {
         category: 'miner',
-        allowedAssetTypes: ['ocelFile', 'ocelAsset'],
+        allowedAssetTypes: ['ocelFile', 'ocelAsset','ocelCollectionFile'],
         sidebar: { label: 'OCPF Miner', icon: 'trees', group: 'miners' },
     },
     resourceMinerNode: {
