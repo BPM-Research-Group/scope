@@ -8,6 +8,7 @@ import BaseFileNode from '~/components/explore/file/BaseFileNode';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { useGetOcpf } from '~/services/queries';
 import type { FileNode } from '~/types/explore/nodes';
+import ViewerLink from '../ui/ViewerLink';
 
 const OcpfFileNode = memo<NodeProps<FileNode>>((props) => {
     const navigate = useNavigate();
@@ -30,39 +31,30 @@ const OcpfFileNode = memo<NodeProps<FileNode>>((props) => {
     useEffect(() => {
         // If we have downloaded the data, but haven't saved it to the node yet.
         if (fetchedForestData && !nodeData.processedData) {
-            console.log('OCPF File Node: Saving backend data to Zustand store!');
-
             updateNodeData(id, {
                 processedData: fetchedForestData,
             });
         }
     }, [fetchedForestData, id, updateNodeData, nodeData.processedData]);
 
-    const openViewer = () => {
-        navigate(`/data/pipeline/explore/ocpf/${id}`);
-    };
-
     return (
         <BaseFileNode
             {...props}
             title="OCPF File"
             iconName="fileJson"
-            handleOptions={[{ position: Position.Right, type: 'source' as const }]}
+            handleOptions={[{ id: 'source', position: Position.Right, type: 'source' as const }]}
             dropdownOptions={[{ label: 'Open File', action: 'openFileDialog' as const, icon: 'file' }]}
         >
             {hasFile && (
                 <div className="mt-2 border-t pt-2">
                     <p className="text-xs font-semibold text-gray-500 mb-2">Visualizations</p>
                     <div className="flex flex-col gap-1">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full justify-start h-7 px-2 text-xs"
-                            onClick={openViewer}
-                        >
-                            <Grip className="h-3.5 w-3.5 text-blue-500" />
-                            View Process Forest
-                        </Button>
+                        <ViewerLink
+                            to={`/data/pipeline/explore/ocpf/${id}`}
+                            icon={Grip}
+                            iconClassName="text-blue-500"
+                            label="View Process Forest"
+                        />
                     </div>
                 </div>
             )}

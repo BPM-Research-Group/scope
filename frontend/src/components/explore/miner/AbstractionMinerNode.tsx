@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo } from 'react';
+import { memo, useCallback, useEffect, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { NodeProps } from '@xyflow/react';
 import { Position } from '@xyflow/react';
@@ -14,6 +14,7 @@ const assetTypeToSourceKind = (type: AssetType): AbstractionSourceKind | null =>
     if (type === 'ocelFile' || type === 'ocelAsset') return 'ocel';
     if (type === 'ocptFile' || type === 'ocptAsset') return 'ocpt';
     if (type === 'identityOcptAsset') return 'extended_ocpt';
+    if (type === 'ocelCollectionFile') return 'case_collection';
     return null;
 };
 

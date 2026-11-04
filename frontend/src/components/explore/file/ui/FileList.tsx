@@ -31,7 +31,6 @@ const FileList: React.FC = () => {
                 const ocelResponse = await fetch(`/example_data/ocel/${fileName}`);
                 if (ocelResponse.ok) {
                     const ocelBlob = await ocelResponse.blob();
-                    console.log('WOrks');
                     const ocelFile = new File([ocelBlob], fileName, { type: 'application/json' });
                     handleFileUpload(ocelFile, 'ocelFile');
                 }
