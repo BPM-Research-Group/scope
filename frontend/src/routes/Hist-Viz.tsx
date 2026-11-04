@@ -265,7 +265,7 @@ export default function HistViz() {
             { fileId: fileId!, payload: finalPayload },
             {
                 onSuccess: (data) => {
-                    console.log('Filtered histogram created:', data);
+                    console.log('[Filtered histogram] created');
                     const outputId = data[0];
                     setPendingOutput({ id: outputId, name: `filtered_ocel_${outputId}` });
                 },

@@ -45,11 +45,6 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
     useMinerOutput( node.id, miner_output_id, 's_' + (inputAsset?.name ?? ''), 'ocelCollectionFile', 'ocelCollectionNode');
 
     useEffect(() => {
-        console.log('SanityCheckMinerNode', queryLabelSplitting);
-        console.log('errorState?', errorState);
-    }, [queryLabelSplitting]);
-
-    useEffect(() => {
         if (dialogOpen) {
             setTempEps(eps);
             setTempMinSamples(min_samples);
@@ -57,10 +52,6 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
         }
     }, [dialogOpen]);
 
-    useEffect(() => {
-        console.log("Error State", errorState);
-        console.log("queryLabelSplitting.failureCount", queryLabelSplitting.failureCount);
-    }, [queryLabelSplitting.failureCount]);
     /*
     Feedback about the state:
         - Processing... If the query is fetching something new. But only if it is reall going to the api.
@@ -70,8 +61,6 @@ const SanityCheckMinerNode = memo<NodeProps<MinerNode>>((node) => {
     */
     const renderActions = () => {
         if (!fileId) return null;
-        console.log('RenderActions', { errorState, loading, dialogOpen, queryLabelSplitting, queryData });
-        console.log('result: ', ((loading && !(dialogOpen)) || (queryLabelSplitting.fetchStatus === 'fetching') && (errorState === false)));
         return (((loading && !(dialogOpen)) || (queryLabelSplitting.fetchStatus === 'fetching')) && (!errorState)) ? (
             <div className="flex items-center h-6 px-2 bg-gray-100 text-gray-800 rounded-md">
                 <span className="text-xs text-yellow-600">Processing...</span>

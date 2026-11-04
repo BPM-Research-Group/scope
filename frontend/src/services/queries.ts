@@ -198,7 +198,6 @@ export const useMineIdentityOcpt = (nodeId: string, fileId: string | null, algor
 };
 
 export const useGetIdentityOcpt = (fileId: string | null, shouldFetch: boolean) => {
-    console.log('Api, file ID 2.2', fileId);
     return useQuery({
         queryKey: ['getIdentityOcpt', fileId],
         queryFn: () => getIdentityOcpt(fileId!),
@@ -300,14 +299,14 @@ export const useGetLogGraphs = (ocelFileId: string) => {
 export const useExtendOcptWithIdentity = (
     nodeId: string,
     ocptFileId: string | null,
-    ocelFileId: string | null,
+    secondInputId: string | null,
     noiseThreshold: number,
     shouldFetch: boolean
 ) => {
     return useQuery({
-        queryKey: ['extendOcptWithIdentity', nodeId, ocptFileId, ocelFileId, noiseThreshold],
-        queryFn: () => extendOcptWithIdentity(ocptFileId!, ocelFileId!, noiseThreshold),
-        enabled: Boolean(ocptFileId) && Boolean(ocelFileId) && shouldFetch,
+        queryKey: ['extendOcptWithIdentity', nodeId, ocptFileId, secondInputId, noiseThreshold],
+        queryFn: () => extendOcptWithIdentity(ocptFileId!, secondInputId!, noiseThreshold),
+        enabled: Boolean(ocptFileId) && Boolean(secondInputId) && shouldFetch,
         refetchOnWindowFocus: false,
     });
 };
