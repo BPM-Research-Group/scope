@@ -1,6 +1,12 @@
-import { DragEvent, useCallback } from 'react';
+import { DragEvent, useCallback, useEffect, useState } from 'react';
 import { Background, Controls, NodeProps, ReactFlow, ReactFlowProvider } from '@xyflow/react';
+// import {
+//     handleAutoInsertConnectedComponent,
+// } from '~/lib/explore/autoInsertConnectedComponent';
+
+import type { Connection } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { v4 as uuidv4 } from 'uuid';
 import { SidebarInset, SidebarProvider } from '~/components/ui/sidebar';
 import BreadcrumbNav from '~/components/BreadcrumbNav';
 import { DnDProvider, useDnD } from '~/components/explore/DndContext';
@@ -19,6 +25,7 @@ import AbstractionMinerNode from '~/components/explore/miner/AbstractionMinerNod
 import CaseClusteringMinerNode from '~/components/explore/miner/CaseClusteringMinerNode';
 import CaseNotionMinerNode from '~/components/explore/miner/CaseNotionMinerNode';
 import ConformanceMinerNode from '~/components/explore/miner/ConformanceMinerNode';
+import ConnectedComponentNode from '~/components/explore/miner/ConnectedComponentNode';
 import Df2StreamMinerNode from '~/components/explore/miner/Df2StreamMinerNode';
 import ExtendWithIdentityNode from '~/components/explore/miner/ExtendWithIdentityNode';
 import FlowMinerNode from '~/components/explore/miner/FlowMinerNode';
@@ -30,7 +37,6 @@ import OcpnMinerNode from '~/components/explore/miner/OcpnMinerNode';
 import OcptMinerNode from '~/components/explore/miner/OcptMinerNode';
 import OcptStreamMinerNode from '~/components/explore/miner/OcptStreamMinerNode';
 import ResourceMinerNode from '~/components/explore/miner/ResourceMinerNode';
-import ConnectedComponentNode from '~/components/explore/miner/ConnectedComponentNode';
 import SanityCheckMinerNode from '~/components/explore/miner/SanityCheckMinerNode';
 import { RefocusProgressPanel } from '~/components/explore/RefocusProgressPanel';
 import { RestoreDraftPanel } from '~/components/explore/RestoreDraftPanel';
@@ -39,6 +45,10 @@ import { useDragDrop } from '~/hooks/explore/useDragDrop';
 import { useNodeOperations } from '~/hooks/explore/useNodeOperations';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { useFileDialogStore } from '~/stores/store';
+// import { handleConnect } from '~/lib/explore/flowActions';
+import { useMineCaseNotionMutation } from '~/services/mutation';
+import { useGetCaseNotions } from '~/services/queries';
+import { createNode } from '~/lib/explore/createNode';
 import { nodeRegistry } from '~/lib/explore/nodeRegistry';
 import { logger } from '~/lib/logger';
 
@@ -59,7 +69,6 @@ const nodeTypes = {
     conformanceMinerNode: ConformanceMinerNode,
     abstractionFileNode: AbstractionFileNode,
     resourceMinerNode: ResourceMinerNode,
-    connectedComponentNode: ConnectedComponentNode,
     conformanceFileNode: ConformanceFileNode,
     eventStreamNode: EventStreamNode,
     df2StreamMinerNode: Df2StreamMinerNode,
@@ -76,10 +85,138 @@ const Explore: React.FC = () => {
     const { dialogNodeId } = useFileDialogStore();
 
     const { onNodesChange } = useNodeOperations();
-    const { onEdgeDelete, handleConnect, isValidConnection } = useConnections();
+    // const { onEdgeDelete, handleConnect, isValidConnection } = useConnections();
+    const { onEdgeDelete, handleConnect: connectNodes, isValidConnection } = useConnections();
     const { onDragOver, onDrop } = useDragDrop();
 
     const handleDrop = useCallback((event: DragEvent<HTMLElement>) => onDrop(event, type), [onDrop, type]);
+
+    const [currentCnFileId, setCurrentCnFileId] = useState('');
+    const [shouldFetchCaseCollection, setShouldFetchCaseCollection] = useState(false);
+
+    const [pendingAutoConnection, setPendingAutoConnection] = useState<{
+        sourceId: string;
+        targetId: string;
+        sourceHandle: string | null;
+        targetHandle: string | null;
+    } | null>(null);
+
+    const { mutate: mineCaseNotion } = useMineCaseNotionMutation();
+
+    const { data: exportData } = useGetCaseNotions(currentCnFileId, shouldFetchCaseCollection);
+
+    const handleAutoInsertConnectedComponent = useCallback(
+        (connection: Connection) => {
+            const store = useExploreFlowStore.getState();
+
+            const sourceNode = store.getNode(connection.source);
+            const targetNode = store.getNode(connection.target);
+
+            if (!sourceNode || !targetNode) return;
+
+            const shouldMineAutomatically =
+                sourceNode.data.nodeType === 'ocelFileNode' && targetNode.data.nodeType === 'resourceMinerNode';
+
+            if (!shouldMineAutomatically) {
+                connectNodes(connection);
+                return;
+            }
+
+            const inputAsset = sourceNode.data.assets?.find(
+                (asset) => asset.io == 'output' && asset.type === 'ocelFile'
+            );
+
+            if (!inputAsset) {
+                console.error('Cannot mine: OCEL input asset not found.');
+                return;
+            }
+
+            setCurrentCnFileId('');
+            setShouldFetchCaseCollection(false);
+
+            setPendingAutoConnection({
+                sourceId: sourceNode.id,
+                targetId: targetNode.id,
+                sourceHandle: connection.sourceHandle,
+                targetHandle: connection.targetHandle,
+            });
+
+            mineCaseNotion(
+                {
+                    fileId: inputAsset.id,
+                    algorithm: 'connected-component',
+                    objectType: 'default',
+                    newFileId: uuidv4(),
+                    payload: null,
+                },
+                {
+                    onSuccess: (data) => {
+                        setCurrentCnFileId(data.case_notion_file_id);
+                        setShouldFetchCaseCollection(true);
+                    },
+                    onError: (error) => {
+                        console.error('Connected Component mining failed:', error);
+                        setPendingAutoConnection(null);
+                    },
+                }
+            );
+        },
+        [connectNodes, mineCaseNotion]
+    );
+
+    useEffect(() => {
+        if (!shouldFetchCaseCollection || !exportData?.case_ocels_file_id || !pendingAutoConnection) {
+            return;
+        }
+
+        const store = useExploreFlowStore.getState();
+
+        const sourceNode = store.getNode(pendingAutoConnection.sourceId);
+        const targetNode = store.getNode(pendingAutoConnection.targetId);
+
+        if (!sourceNode || !targetNode) {
+            console.error('Could not find the original pipeline nodes.');
+            setPendingAutoConnection(null);
+            setShouldFetchCaseCollection(false);
+            return;
+        }
+
+        const position = {
+            x: sourceNode.position.x + (targetNode.position.x - sourceNode.position.x) / 2,
+            y: sourceNode.position.y + (targetNode.position.y - sourceNode.position.y) / 2,
+        };
+
+        const collectionNode = createNode(position, 'ocelCollectionNode', true);
+
+        collectionNode.data.assets = [
+            {
+                id: exportData.case_ocels_file_id,
+                io: 'output',
+                origin: 'mined',
+                type: 'ocelCollectionFile',
+                name: 'Connected Component Miner Output',
+            },
+        ];
+
+        store.addNode(collectionNode);
+
+        connectNodes({
+            source: sourceNode.id,
+            target: collectionNode.id,
+            sourceHandle: pendingAutoConnection.sourceHandle,
+            targetHandle: 'target',
+        });
+
+        connectNodes({
+            source: collectionNode.id,
+            target: targetNode.id,
+            sourceHandle: 'source',
+            targetHandle: pendingAutoConnection.targetHandle,
+        });
+
+        setPendingAutoConnection(null);
+        setShouldFetchCaseCollection(false);
+    }, [shouldFetchCaseCollection, exportData, pendingAutoConnection, connectNodes]);
 
     logger.debug('nodes Updated', nodes);
 
@@ -95,7 +232,8 @@ const Explore: React.FC = () => {
                             edges={edges}
                             onNodesChange={onNodesChange}
                             onEdgesChange={onEdgesChange}
-                            onConnect={handleConnect}
+                            // onConnect={handleConnect}
+                            onConnect={handleAutoInsertConnectedComponent}
                             isValidConnection={isValidConnection}
                             onEdgeClick={onEdgeDelete}
                             onDrop={handleDrop}
