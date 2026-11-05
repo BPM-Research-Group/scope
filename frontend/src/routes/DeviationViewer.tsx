@@ -17,6 +17,9 @@ function assetTypeToSourceKind(type: AssetType): AbstractionSourceKind | null {
     if (type === 'ocelFile' || type === 'ocelAsset') return 'ocel';
     if (type === 'ocptFile' || type === 'ocptAsset') return 'ocpt';
     if (type === 'identityOcptAsset') return 'extended_ocpt';
+
+    //There is an extra backend route for abstraction/case_collection/...
+    if (type === 'ocelCollectionFile') return 'case_collection';  
     return null;
 }
 
