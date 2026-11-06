@@ -87,6 +87,163 @@ pub fn build_histograms(log: &OCEL, perspective: HistogramPerspective) -> Value 
     serde_json::to_value(&result).unwrap()
 }
 
+/// Histograms for a case collection.
+/// Each case is counted on its own, then the bars are added.
+pub fn build_histograms_for_logs(logs: &[OCEL], perspective: HistogramPerspective) -> Value {
+    let (histograms, perspective_str) = match perspective {
+        HistogramPerspective::Event => (merged_event_histograms(logs), "event"),
+        HistogramPerspective::Object => (merged_object_histograms(logs), "object"),
+    };
+
+    let result = HistogramResult {
+        perspective: perspective_str.to_string(),
+        histograms,
+    };
+
+    serde_json::to_value(&result).unwrap()
+}
+
+fn pair_keys(logs: &[OCEL]) -> HashMap<String, Vec<String>> {
+    let mut keys: HashMap<String, Vec<String>> = HashMap::new();
+    for log in logs {
+        let object_index = build_object_index(log);
+        for event in &log.events {
+            for rel in &event.relationships {
+                let Some(&object_type) = object_index.get(rel.object_id.as_str()) else {
+                    continue;
+                };
+                let object_types = keys.entry(event.event_type.clone()).or_default();
+                if !object_types.iter().any(|existing| existing == object_type) {
+                    object_types.push(object_type.to_string());
+                }
+            }
+        }
+    }
+    keys
+}
+
+fn entries_from_stats(
+    stats: HashMap<(String, String), HashMap<usize, usize>>,
+    sort_by_object_type_first: bool,
+) -> Vec<HistogramEntry> {
+    let mut histograms: Vec<HistogramEntry> = stats
+        .into_iter()
+        .map(|((event_type, object_type), hist)| {
+            let mut bins: Vec<HistogramBin> = hist
+                .into_iter()
+                .map(|(count, frequency)| HistogramBin { count, frequency })
+                .collect();
+            bins.sort_by_key(|bin| bin.count);
+            HistogramEntry {
+                event_type,
+                object_type,
+                histogram: bins,
+            }
+        })
+        .collect();
+
+    histograms.sort_by(|a, b| {
+        if sort_by_object_type_first {
+            a.object_type
+                .cmp(&b.object_type)
+                .then_with(|| a.event_type.cmp(&b.event_type))
+        } else {
+            a.event_type
+                .cmp(&b.event_type)
+                .then_with(|| a.object_type.cmp(&b.object_type))
+        }
+    });
+    histograms
+}
+
+fn merged_event_histograms(logs: &[OCEL]) -> Vec<HistogramEntry> {
+    let keys_by_event = pair_keys(logs);
+    let mut stats: HashMap<(String, String), HashMap<usize, usize>> = HashMap::new();
+
+    for log in logs {
+        let object_index = build_object_index(log);
+        for event in &log.events {
+            let Some(object_types) = keys_by_event.get(&event.event_type) else {
+                continue;
+            };
+            for object_type in object_types {
+                let count = event
+                    .relationships
+                    .iter()
+                    .filter(|rel| {
+                        object_index.get(rel.object_id.as_str()).copied()
+                            == Some(object_type.as_str())
+                    })
+                    .count();
+                *stats
+                    .entry((event.event_type.clone(), object_type.clone()))
+                    .or_default()
+                    .entry(count)
+                    .or_insert(0) += 1;
+            }
+        }
+    }
+
+    entries_from_stats(stats, false)
+}
+
+fn merged_object_histograms(logs: &[OCEL]) -> Vec<HistogramEntry> {
+    let keys_by_event = pair_keys(logs);
+    let mut keys_by_object: HashMap<String, Vec<String>> = HashMap::new();
+    for (event_type, object_types) in &keys_by_event {
+        for object_type in object_types {
+            let event_types = keys_by_object.entry(object_type.clone()).or_default();
+            if !event_types.iter().any(|existing| existing == event_type) {
+                event_types.push(event_type.clone());
+            }
+        }
+    }
+
+    let mut stats: HashMap<(String, String), HashMap<usize, usize>> = HashMap::new();
+    for log in logs {
+        let mut events_by_object: HashMap<&str, Vec<&str>> = HashMap::new();
+        for event in &log.events {
+            for rel in &event.relationships {
+                let seen = events_by_object.entry(rel.object_id.as_str()).or_default();
+                if !seen.contains(&event.id.as_str()) {
+                    seen.push(event.id.as_str());
+                }
+            }
+        }
+        let event_index: HashMap<&str, &str> = log
+            .events
+            .iter()
+            .map(|event| (event.id.as_str(), event.event_type.as_str()))
+            .collect();
+
+        for object in &log.objects {
+            let Some(event_types) = keys_by_object.get(&object.object_type) else {
+                continue;
+            };
+            for event_type in event_types {
+                let count = events_by_object
+                    .get(object.id.as_str())
+                    .map(|event_ids| {
+                        event_ids
+                            .iter()
+                            .filter(|event_id| {
+                                event_index.get(*event_id).copied() == Some(event_type.as_str())
+                            })
+                            .count()
+                    })
+                    .unwrap_or(0);
+                *stats
+                    .entry((event_type.clone(), object.object_type.clone()))
+                    .or_default()
+                    .entry(count)
+                    .or_insert(0) += 1;
+            }
+        }
+    }
+
+    entries_from_stats(stats, true)
+}
+
 fn build_event_perspective_histograms(log: &OCEL) -> Vec<HistogramEntry> {
     let object_index = build_object_index(log);
     let mut stats: HashMap<(String, String), HashMap<usize, usize>> = HashMap::new();

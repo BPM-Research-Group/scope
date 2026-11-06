@@ -306,3 +306,30 @@ pub fn filter_ocel_histograms(log: &OCEL, filters_json: &str) -> Result<Vec<OCEL
 
     Ok(result)
 }
+
+/// Runs the normal histogram filter once inside every case.
+pub fn filter_case_ocels(cases: &[OCEL], filters_json: &str) -> Result<Vec<Vec<OCEL>>, String> {
+    if cases.is_empty() {
+        return Err("Case collection is empty".to_string());
+    }
+
+    let mut per_selection: Option<Vec<Vec<OCEL>>> = None;
+    for case in cases {
+        let filtered = filter_ocel_histograms(case, filters_json)?;
+        let slots = per_selection.get_or_insert_with(|| vec![Vec::new(); filtered.len()]);
+        if filtered.len() != slots.len() {
+            return Err("Selections did not align across cases".to_string());
+        }
+        for (slot, ocel) in slots.iter_mut().zip(filtered) {
+            if !ocel.events.is_empty() {
+                slot.push(ocel);
+            }
+        }
+    }
+
+    let per_selection = per_selection.unwrap_or_default();
+    if per_selection.iter().any(|kept| kept.is_empty()) {
+        return Err("Filter removed every case; widen the selected histogram bins".to_string());
+    }
+    Ok(per_selection)
+}
