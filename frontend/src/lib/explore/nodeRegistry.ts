@@ -156,11 +156,11 @@ export const nodeRegistry = {
         inputs: [
             {
                 label: 'Input A',
-                types: ['ocptAsset', 'ocptFile', 'identityOcptAsset', 'ocelFile', 'ocelAsset', 'abstractionAsset'],
+                types: ['ocptAsset', 'ocptFile', 'identityOcptAsset', 'abstractionAsset'],
             },
             {
                 label: 'Input B',
-                types: ['ocptAsset', 'ocptFile', 'identityOcptAsset', 'ocelFile', 'ocelAsset', 'abstractionAsset'],
+                types: ['ocptAsset', 'ocptFile', 'identityOcptAsset', 'ocelFile', 'ocelAsset', 'abstractionAsset', 'ocelCollectionFile'],
             },
         ],
         sidebar: { label: 'Conformance', icon: 'radar', group: 'miners' },
