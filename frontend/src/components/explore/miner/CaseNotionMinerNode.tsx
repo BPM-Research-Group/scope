@@ -7,85 +7,221 @@ import { v4 as uuidv4 } from 'uuid';
 import { Button } from '~/components/ui/button';
 import CaseNotionDialog from '~/components/case_notion/ui/CaseNotionDialog';
 import BaseMinerNode from '~/components/explore/miner/BaseMinerNode';
-import { useMineCaseNotionMutation } from '~/services/mutation';
-import { useGetCaseNotions, useGetOcelObjectTypes } from '~/services/queries';
 import { useInputAsset, useMinerOutput } from '~/hooks/explore/useMinerAssets';
+import { useChangeCaseNotionMeasurementWeightsMutation, useMineCaseNotionMutation } from '~/services/mutation';
+import { useGetCaseNotions, useGetOcelObjectTypes } from '~/services/queries';
 import { BaseExploreNodeDropdownOption } from '~/types/explore/nodeData/baseNodeData';
 import { MinerNode } from '~/types/explore/nodes';
 
 const CaseNotionMinerNode = memo<NodeProps<MinerNode>>((node) => {
     const { assets } = node.data;
+
     const queryClient = useQueryClient();
 
     const inputAsset = useInputAsset(assets);
+
     const fileId = inputAsset?.id ?? null;
     const fileName = inputAsset?.name ?? '';
+
     const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-    // Mining Form State
     const [algorithm, setAlgorithm] = useState<string>('traditional');
+
     const [objectType, setObjectType] = useState<string>('default');
+
     const [genericPayload, setGenericPayload] = useState<any>(null);
 
     const [hasUnminedChanges, setHasUnminedChanges] = useState(false);
 
-    // Mining Execution State
     const [currentCnFileId, setCurrentCnFileId] = useState<string>('');
+
     const [makeFinalFetch, setMakeFinalFetch] = useState(false);
+
     const [pendingOutputId, setPendingOutputId] = useState<string | null>(null);
 
-    // Hooks
+    const [displayedCaseNotionData, setDisplayedCaseNotionData] = useState<any>(null);
+
+    const [weights, setWeights] = useState<number[]>([]);
+
     const { data: objectTypesData } = useGetOcelObjectTypes(fileId);
+
     const {
-        mutate,
+        mutate: mineCaseNotion,
         isPending: isMiningCaseNotion,
         data: caseNotionData,
         reset: resetCaseNotionMutation,
     } = useMineCaseNotionMutation();
+
+    const { mutate: changeMeasurementWeights, isPending: isCalculatingTotal } =
+        useChangeCaseNotionMeasurementWeightsMutation();
+
     const { data: exportData, isFetching: isExportingData } = useGetCaseNotions(currentCnFileId, makeFinalFetch);
+
+    useEffect(() => {
+        if (!caseNotionData) {
+            return;
+        }
+
+        console.log('New case notion data received from mining:', caseNotionData);
+
+        setDisplayedCaseNotionData(caseNotionData);
+    }, [caseNotionData]);
+
+    useEffect(() => {
+        if (!displayedCaseNotionData?.measures || !Array.isArray(displayedCaseNotionData.measures)) {
+            setWeights([]);
+            return;
+        }
+
+        const measuresWithoutTotal = displayedCaseNotionData.measures.filter(
+            (measure: { name: string }) => measure.name !== 'Total measurement' && measure.name !== 'Total Score'
+        );
+
+        setWeights((previousWeights) => {
+            if (previousWeights.length === measuresWithoutTotal.length) {
+                return previousWeights;
+            }
+
+            return measuresWithoutTotal.map((_: unknown, index: number) => previousWeights[index] ?? 0);
+        });
+    }, [displayedCaseNotionData?.measures]);
 
     useEffect(() => {
         if (makeFinalFetch && exportData) {
             setPendingOutputId(exportData.case_ocels_file_id);
+
             setIsDialogOpen(false);
+
             setMakeFinalFetch(false);
         }
     }, [makeFinalFetch, exportData]);
 
     useMinerOutput(node.id, pendingOutputId, fileName, 'ocelCollectionFile', 'ocelCollectionNode');
 
+    const handleCalculateTotal = useCallback(() => {
+        if (!currentCnFileId) {
+            console.warn('Cannot calculate total: no case notion file ID');
+            return;
+        }
+
+        if (!displayedCaseNotionData?.measures || !Array.isArray(displayedCaseNotionData.measures)) {
+            console.warn('Cannot calculate total: no measurements available');
+            return;
+        }
+
+        console.log('Calculate Total clicked');
+
+        console.log('Case Notion File ID:', currentCnFileId);
+
+        console.log('Measurements:', displayedCaseNotionData.measures);
+
+        console.log('Weights:', weights);
+
+        changeMeasurementWeights(
+            {
+                caseNotionFileId: currentCnFileId,
+
+                measurements: displayedCaseNotionData.measures,
+
+                weights,
+            },
+            {
+                onSuccess: (response) => {
+                    console.log('Calculate Total backend response:', response);
+
+                    if (response?.measures && Array.isArray(response.measures)) {
+                        setDisplayedCaseNotionData((previousData: any) => ({
+                            ...previousData,
+                            measures: response.measures,
+                        }));
+
+                        return;
+                    }
+
+                    if (Array.isArray(response)) {
+                        setDisplayedCaseNotionData((previousData: any) => ({
+                            ...previousData,
+                            measures: response,
+                        }));
+
+                        return;
+                    }
+
+                    if (response?.measurements && Array.isArray(response.measurements)) {
+                        setDisplayedCaseNotionData((previousData: any) => ({
+                            ...previousData,
+                            measures: response.measurements,
+                        }));
+
+                        return;
+                    }
+
+                    console.warn('Unexpected Calculate Total response:', response);
+                },
+
+                onError: (error) => {
+                    console.error('Failed to calculate total score:', error);
+                },
+            }
+        );
+    }, [currentCnFileId, displayedCaseNotionData, weights, changeMeasurementWeights]);
+
     const handleReset = useCallback(() => {
-        queryClient.cancelQueries({ queryKey: ['getOcelObjectTypes', fileId] });
+        queryClient.cancelQueries({
+            queryKey: ['getOcelObjectTypes', fileId],
+        });
+
         if (currentCnFileId) {
-            queryClient.cancelQueries({ queryKey: ['getCaseNotions', currentCnFileId] });
+            queryClient.cancelQueries({
+                queryKey: ['getCaseNotions', currentCnFileId],
+            });
         }
 
-        queryClient.removeQueries({ queryKey: ['getOcelObjectTypes', fileId] });
+        queryClient.removeQueries({
+            queryKey: ['getOcelObjectTypes', fileId],
+        });
+
         if (currentCnFileId) {
-            queryClient.removeQueries({ queryKey: ['getCaseNotions', currentCnFileId] });
+            queryClient.removeQueries({
+                queryKey: ['getCaseNotions', currentCnFileId],
+            });
         }
 
-        // 3. Reset Local Node State
         setIsDialogOpen(false);
 
         setAlgorithm('traditional');
         setObjectType('default');
         setGenericPayload(null);
+
         setHasUnminedChanges(false);
+
         setCurrentCnFileId('');
         setMakeFinalFetch(false);
         setPendingOutputId(null);
+
+        setDisplayedCaseNotionData(null);
+
+        setWeights([]);
+
         resetCaseNotionMutation();
     }, [queryClient, fileId, currentCnFileId, resetCaseNotionMutation]);
 
-    const handleMine = () => {
-        if (!fileId) return;
+    const handleMine = useCallback(() => {
+        if (!fileId) {
+            return;
+        }
 
         const newCnId = uuidv4();
+
         setCurrentCnFileId(newCnId);
+
         setMakeFinalFetch(false);
 
-        mutate(
+        setDisplayedCaseNotionData(null);
+
+        setWeights([]);
+
+        mineCaseNotion(
             {
                 fileId,
                 algorithm,
@@ -94,35 +230,68 @@ const CaseNotionMinerNode = memo<NodeProps<MinerNode>>((node) => {
                 payload: genericPayload,
             },
             {
-                onSuccess: () => {
+                onSuccess: (data) => {
+                    console.log('Case notion mining successful:', data);
+
                     setHasUnminedChanges(false);
+
+                    setDisplayedCaseNotionData(data);
                 },
             }
         );
-    };
+    }, [fileId, algorithm, objectType, genericPayload, mineCaseNotion]);
 
-    const handleExport = () => {
+    const handleExport = useCallback(() => {
+        if (!currentCnFileId) {
+            console.warn('Cannot export: no case notion file ID');
+            return;
+        }
+
         setMakeFinalFetch(true);
-    };
+    }, [currentCnFileId]);
 
-    const handleAlgorithmChange = (val: string) => {
-        setAlgorithm(val);
-        setHasUnminedChanges(true);
-        resetCaseNotionMutation();
-    };
+    const handleAlgorithmChange = useCallback(
+        (val: string) => {
+            setAlgorithm(val);
 
-    const handleObjectTypeChange = (val: string) => {
+            setHasUnminedChanges(true);
+
+            resetCaseNotionMutation();
+
+            setDisplayedCaseNotionData(null);
+
+            setWeights([]);
+        },
+        [resetCaseNotionMutation]
+    );
+
+    const handleObjectTypeChange = useCallback((val: string) => {
         setObjectType(val);
-        setHasUnminedChanges(true);
-    };
 
-    const handleGenericPayloadChange = useCallback((val: unknown) => {
-        setGenericPayload(val);
         setHasUnminedChanges(true);
     }, []);
 
+    const handleGenericPayloadChange = useCallback((val: unknown) => {
+        setGenericPayload(val);
+
+        setHasUnminedChanges(true);
+    }, []);
+
+    const handleWeightChange = useCallback((index: number, value: number) => {
+        setWeights((previousWeights) => {
+            const newWeights = [...previousWeights];
+
+            newWeights[index] = value;
+
+            return newWeights;
+        });
+    }, []);
+
     const renderActions = () => {
-        if (!fileId) return null;
+        if (!fileId) {
+            return null;
+        }
+
         return (
             <div className="flex items-center">
                 <Button
@@ -131,6 +300,7 @@ const CaseNotionMinerNode = memo<NodeProps<MinerNode>>((node) => {
                     aria-label="Configure case notion mining"
                 >
                     <Eye className="h-3.5 w-3.5 mr-1 text-blue-600" />
+
                     <span className="text-xs text-blue-600">Configure</span>
                 </Button>
             </div>
@@ -138,7 +308,10 @@ const CaseNotionMinerNode = memo<NodeProps<MinerNode>>((node) => {
     };
 
     const dropdownOptions: BaseExploreNodeDropdownOption[] = [
-        { label: 'Change Source', action: 'changeSourceFile' as const },
+        {
+            label: 'Change Source',
+            action: 'changeSourceFile' as const,
+        },
     ];
 
     return (
@@ -147,8 +320,16 @@ const CaseNotionMinerNode = memo<NodeProps<MinerNode>>((node) => {
             title="Case Notion Miner"
             iconName="waves"
             handleOptions={[
-                { id: 'target', position: Position.Left, type: 'target' as const },
-                { id: 'source', position: Position.Right, type: 'source' as const },
+                {
+                    id: 'target',
+                    position: Position.Left,
+                    type: 'target' as const,
+                },
+                {
+                    id: 'source',
+                    position: Position.Right,
+                    type: 'source' as const,
+                },
             ]}
             dropdownOptions={dropdownOptions}
             isLoading={false}
@@ -159,7 +340,6 @@ const CaseNotionMinerNode = memo<NodeProps<MinerNode>>((node) => {
                 isOpen={isDialogOpen}
                 onOpenChange={setIsDialogOpen}
                 fileId={fileId}
-                // Passing the nodeId here so the Dialog can pass it to GraphPage
                 nodeId={node.id}
                 algorithm={algorithm}
                 onAlgorithmChange={handleAlgorithmChange}
@@ -168,7 +348,11 @@ const CaseNotionMinerNode = memo<NodeProps<MinerNode>>((node) => {
                 genericPayload={genericPayload}
                 onGenericPayloadChange={handleGenericPayloadChange}
                 objectTypes={objectTypesData?.object_types}
-                caseNotionData={caseNotionData}
+                caseNotionData={displayedCaseNotionData}
+                weights={weights}
+                onWeightChange={handleWeightChange}
+                onCalculateTotal={handleCalculateTotal}
+                isCalculatingTotal={isCalculatingTotal}
                 isMining={isMiningCaseNotion}
                 isExporting={makeFinalFetch && isExportingData}
                 hasUnminedChanges={hasUnminedChanges}
