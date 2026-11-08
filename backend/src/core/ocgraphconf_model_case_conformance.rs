@@ -245,7 +245,9 @@ fn map_convert_error(error: ConvertOcptToOcpnError) -> (StatusCode, String) {
     match error {
         ConvertOcptToOcpnError::InvalidOcpt
         | ConvertOcptToOcpnError::UnsupportedIdentityRelations
-        | ConvertOcptToOcpnError::MalformedLoop { .. } => {
+        | ConvertOcptToOcpnError::MalformedLoop { .. }
+        | ConvertOcptToOcpnError::UnsupportedLoopBound { .. }
+        | ConvertOcptToOcpnError::InconsistentLeafAnnotations { .. } => {
             (StatusCode::BAD_REQUEST, error.to_string())
         }
         ConvertOcptToOcpnError::InvalidProjectedProcessTree

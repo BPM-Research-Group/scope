@@ -16,7 +16,18 @@ use uuid::Uuid;
 pub enum ConvertOcptToOcpnError {
     InvalidOcpt,
     UnsupportedIdentityRelations,
-    MalformedLoop { child_count: usize },
+    MalformedLoop {
+        child_count: usize,
+    },
+    /// Ordinary process-tree projection cannot preserve a finite loop limit.
+    UnsupportedLoopBound {
+        bound: u32,
+    },
+    /// Divergence, convergence, or deficiency was declared for an unrelated object type.
+    InconsistentLeafAnnotations {
+        activity: String,
+        object_type: String,
+    },
     InvalidProjectedProcessTree,
     InvalidGeneratedOcpn,
 }
@@ -31,9 +42,22 @@ impl fmt::Display for ConvertOcptToOcpnError {
             Self::MalformedLoop { child_count } => {
                 write!(
                     f,
-                    "OCPT loop operators must have exactly two children, found {child_count}"
+                    "OCPT loop operators must have at least two children, found {child_count}"
                 )
             }
+            Self::UnsupportedLoopBound { bound } => {
+                write!(
+                    f,
+                    "Unsupported OCPT loop bound {bound}; refusing to drop the bound"
+                )
+            }
+            Self::InconsistentLeafAnnotations {
+                activity,
+                object_type,
+            } => write!(
+                f,
+                "Inconsistent OCPT leaf annotation: activity '{activity}' marks unrelated object type '{object_type}'"
+            ),
             Self::InvalidProjectedProcessTree => {
                 f.write_str("Projected process tree is invalid and cannot be converted")
             }
@@ -85,12 +109,37 @@ impl OcpnIdAllocator {
     }
 }
 
+/// Projects an OCPT onto one accepting Petri net per object type and merges transitions
+/// that represent the same activity leaf.
+///
+/// The projection follows the object-centric process tree language in Section III.B of
+/// van Detten, Schumacher and Leemans, ICPM 2024. Remaining restrictions:
+///
+/// - `Loop(Some(bound))` is rejected. The ordinary process-tree translation only has
+///   unrestricted loops, so a finite limit is never dropped silently.
+/// - Identity-relation wrappers are rejected at every depth, including inside a subtree
+///   that would otherwise collapse to a divergence flower.
+/// - A fully divergent subtree becomes a flower: any order and any number of repetitions
+///   of its related activities, including zero.
+/// - Activities with no related object type, and deficiency variants whose participating
+///   type set is empty, stay in the net as transitions without places. Enclosing
+///   operators do not limit how often those transitions fire.
+/// - Exclusive branches that do not share an activity leaf are not synchronized across
+///   object types. Each type can take or skip the branch that does not mention it.
+/// - Distinct leaves that reuse one visible label are merged into one transition. The
+///   supported source contract is one leaf per visible label; deficiency variants of a
+///   single leaf are the exception and stay separate.
+/// - Distributing an optional sequence can place one activity in more than one branch.
+///   Those copies remain separate transitions. They synchronize across object types when
+///   every projection emits the same number of copies in the same order.
 pub fn convert_ocpt_to_ocpn(ocpt: &OCPT) -> Result<OCPN, ConvertOcptToOcpnError> {
     if !ocpt.is_valid() {
         return Err(ConvertOcptToOcpnError::InvalidOcpt);
     }
+    validate_ocpt_for_conversion(&ocpt.root)?;
 
     let metadata = LeafMetadataIndex::from_ocpt(ocpt);
+    let variants = activity_variants(ocpt);
     let mut merged = OCPN {
         name: "ocpt".to_string(),
         places: Vec::new(),
@@ -101,7 +150,7 @@ pub fn convert_ocpt_to_ocpn(ocpt: &OCPT) -> Result<OCPN, ConvertOcptToOcpnError>
     };
 
     let mut id_allocator = OcpnIdAllocator::default();
-    let mut visible_transition_ids: BTreeMap<String, OCPNId> = BTreeMap::new();
+    let mut visible_transition_ids: BTreeMap<(String, String, String), OCPNId> = BTreeMap::new();
 
     for object_type in &metadata.all_object_types {
         let projected = project_ocpt_for_object_type(&ocpt.root, object_type, &metadata)?;
@@ -119,11 +168,20 @@ pub fn convert_ocpt_to_ocpn(ocpt: &OCPT) -> Result<OCPN, ConvertOcptToOcpnError>
             &petri_net,
             &bundle,
             &convergent_activities,
+            &variants,
             &mut id_allocator,
             &mut visible_transition_ids,
         );
         merged.nets.insert(object_type.clone(), bundle);
     }
+
+    add_unconstrained_transitions(
+        &mut merged,
+        &variants,
+        &objectless_activities(ocpt),
+        &mut id_allocator,
+        &mut visible_transition_ids,
+    );
 
     let merged = merged.normalize();
     if !merged.is_valid() {
@@ -137,152 +195,438 @@ fn project_ocpt_for_object_type(
     object_type: &str,
     metadata: &LeafMetadataIndex,
 ) -> Result<ProcessTree, ConvertOcptToOcpnError> {
+    validate_ocpt_for_conversion(node)?;
+    let behavior = project_behavior(node, object_type, metadata)?;
+    let mut totals = BTreeMap::new();
+    count_activity_copies(&behavior, &mut totals);
+    let mut labeler = ActivityLabeler {
+        totals,
+        next: BTreeMap::new(),
+    };
+    Ok(materialize(&behavior, &mut labeler))
+}
+
+struct ActivityLabeler {
+    totals: BTreeMap<String, usize>,
+    next: BTreeMap<String, usize>,
+}
+
+impl ActivityLabeler {
+    /// Copies of one activity created by optional-sequence distribution stay distinct.
+    /// A single copy keeps the plain label so projections of the same leaf still merge.
+    fn assign(&mut self, activity: &str) -> String {
+        let total = self.totals.get(activity).copied().unwrap_or(1);
+        let index = self.next.entry(activity.to_string()).or_insert(0);
+        let label = if total <= 1 {
+            activity.to_string()
+        } else {
+            format!("{activity}\u{1f}{index}")
+        };
+        *index += 1;
+        label
+    }
+}
+
+fn count_activity_copies(behavior: &Behavior, totals: &mut BTreeMap<String, usize>) {
+    match behavior {
+        Behavior::Empty => {}
+        Behavior::Flower(activities) => {
+            for activity in activities {
+                *totals.entry(activity.clone()).or_insert(0) += 1;
+            }
+        }
+        Behavior::Activity(activity) => {
+            *totals.entry(activity.clone()).or_insert(0) += 1;
+        }
+        Behavior::Optional(inner) => count_activity_copies(inner, totals),
+        Behavior::Choice(items) | Behavior::Seq(items) | Behavior::Conc(items) => {
+            for item in items {
+                count_activity_copies(item, totals);
+            }
+        }
+        Behavior::Loop(body, redo) => {
+            count_activity_copies(body, totals);
+            count_activity_copies(redo, totals);
+        }
+    }
+}
+
+fn split_activity_label(label: &str) -> (&str, &str) {
+    label.split_once('\u{1f}').unwrap_or((label, ""))
+}
+
+fn validate_ocpt_for_conversion(node: &OCPTNode) -> Result<(), ConvertOcptToOcpnError> {
     match node {
-        OCPTNode::Leaf(leaf) => match &leaf.activity_label {
-            OCPTLeafLabel::Tau => Ok(tau_tree()),
-            OCPTLeafLabel::Activity(activity) => {
-                if leaf.related_ob_types.contains(object_type) {
-                    Ok(activity_tree(activity))
-                } else {
-                    Ok(tau_tree())
+        OCPTNode::Leaf(leaf) => {
+            let activity = match &leaf.activity_label {
+                OCPTLeafLabel::Activity(activity) => activity.clone(),
+                OCPTLeafLabel::Tau => "tau".to_string(),
+            };
+            for object_type in leaf
+                .divergent_ob_types
+                .iter()
+                .chain(leaf.convergent_ob_types.iter())
+                .chain(leaf.deficient_ob_types.iter())
+            {
+                if !leaf.related_ob_types.contains(object_type) {
+                    return Err(ConvertOcptToOcpnError::InconsistentLeafAnnotations {
+                        activity,
+                        object_type: object_type.clone(),
+                    });
                 }
             }
-        },
+            Ok(())
+        }
         OCPTNode::Operator(op) => {
             match &op.operator_type {
                 OCPTOperatorType::IdentityRelation(_) => {
                     return Err(ConvertOcptToOcpnError::UnsupportedIdentityRelations);
                 }
-                OCPTOperatorType::Loop(_) if op.children.len() != 2 => {
+                OCPTOperatorType::Loop(Some(bound)) => {
+                    return Err(ConvertOcptToOcpnError::UnsupportedLoopBound { bound: *bound });
+                }
+                OCPTOperatorType::Loop(None) if op.children.len() < 2 => {
                     return Err(ConvertOcptToOcpnError::MalformedLoop {
                         child_count: op.children.len(),
                     });
                 }
                 _ => {}
             }
-
-            if op.children.len() == 1 {
-                return project_ocpt_for_object_type(&op.children[0], object_type, metadata);
+            for child in &op.children {
+                validate_ocpt_for_conversion(child)?;
             }
+            Ok(())
+        }
+    }
+}
 
-            let related_activities =
-                subtree_related_visible_activities(node, object_type, metadata);
-            if related_activities.is_empty() {
-                return Ok(tau_tree());
-            }
+#[derive(Debug, Clone)]
+enum Behavior {
+    Empty,
+    Flower(BTreeSet<String>),
+    Activity(String),
+    Optional(Box<Behavior>),
+    Choice(Vec<Behavior>),
+    Seq(Vec<Behavior>),
+    Conc(Vec<Behavior>),
+    Loop(Box<Behavior>, Box<Behavior>),
+}
 
-            if is_fully_divergent_subtree(node, object_type, metadata) {
-                return Ok(divergence_loop_tree(&related_activities));
-            }
-
-            match &op.operator_type {
-                OCPTOperatorType::Concurrency => Ok(operator_tree(
-                    OperatorType::Concurrency,
-                    op.children
-                        .iter()
-                        .map(|child| project_ocpt_for_object_type(child, object_type, metadata))
-                        .collect::<Result<Vec<_>, _>>()?,
-                )),
-                OCPTOperatorType::Loop(_) => Ok(operator_tree(
-                    OperatorType::Loop,
-                    op.children
-                        .iter()
-                        .map(|child| project_ocpt_for_object_type(child, object_type, metadata))
-                        .collect::<Result<Vec<_>, _>>()?,
-                )),
-                OCPTOperatorType::Sequence => {
-                    let mut children = Vec::new();
-                    let mut index = 0;
-                    while index < op.children.len() {
-                        let child = &op.children[index];
-                        if is_fully_divergent_subtree(child, object_type, metadata) {
-                            let mut div_activities =
-                                subtree_related_visible_activities(child, object_type, metadata);
-                            index += 1;
-                            while index < op.children.len()
-                                && is_fully_divergent_subtree(
-                                    &op.children[index],
-                                    object_type,
-                                    metadata,
-                                )
-                            {
-                                div_activities.extend(subtree_related_visible_activities(
-                                    &op.children[index],
-                                    object_type,
-                                    metadata,
-                                ));
-                                index += 1;
-                            }
-                            children.push(divergence_loop_tree(&div_activities));
-                            continue;
-                        }
-
-                        children.push(project_ocpt_for_object_type(child, object_type, metadata)?);
-                        index += 1;
-                    }
-
-                    Ok(operator_tree(OperatorType::Sequence, children))
+fn project_behavior(
+    node: &OCPTNode,
+    object_type: &str,
+    metadata: &LeafMetadataIndex,
+) -> Result<Behavior, ConvertOcptToOcpnError> {
+    match node {
+        OCPTNode::Leaf(leaf) => match &leaf.activity_label {
+            OCPTLeafLabel::Tau => Ok(Behavior::Empty),
+            OCPTLeafLabel::Activity(activity) => {
+                if !leaf.related_ob_types.contains(object_type) {
+                    return Ok(Behavior::Empty);
                 }
-                OCPTOperatorType::ExclusiveChoice => {
-                    let diverging_indices: Vec<usize> = op
-                        .children
-                        .iter()
-                        .enumerate()
-                        .filter_map(|(index, child)| {
-                            if is_fully_divergent_subtree(child, object_type, metadata) {
-                                Some(index)
-                            } else {
-                                None
-                            }
-                        })
-                        .collect();
-                    let non_diverging_indices: Vec<usize> = op
-                        .children
-                        .iter()
-                        .enumerate()
-                        .filter_map(|(index, child)| {
-                            let child_related =
-                                subtree_related_visible_activities(child, object_type, metadata);
-                            if !child_related.is_empty() && !diverging_indices.contains(&index) {
-                                Some(index)
-                            } else {
-                                None
-                            }
-                        })
-                        .collect();
-
-                    let mut children = Vec::new();
-                    let div_activities: BTreeSet<String> = diverging_indices
-                        .iter()
-                        .flat_map(|index| {
-                            subtree_related_visible_activities(
-                                &op.children[*index],
-                                object_type,
-                                metadata,
-                            )
-                        })
-                        .collect();
-                    if !div_activities.is_empty() {
-                        children.push(divergence_loop_tree(&div_activities));
-                    }
-                    for index in non_diverging_indices {
-                        children.push(project_ocpt_for_object_type(
-                            &op.children[index],
-                            object_type,
-                            metadata,
-                        )?);
-                    }
-                    if has_optional_tau_child(op.children.as_slice()) {
-                        children.push(tau_tree());
-                    }
-
-                    Ok(operator_tree(OperatorType::ExclusiveChoice, children))
+                if leaf.divergent_ob_types.contains(object_type) {
+                    return Ok(Behavior::Flower(BTreeSet::from([activity.clone()])));
+                }
+                let activity = Behavior::Activity(activity.clone());
+                if leaf.deficient_ob_types.contains(object_type) {
+                    Ok(Behavior::Optional(Box::new(activity)))
+                } else {
+                    Ok(activity)
+                }
+            }
+        },
+        OCPTNode::Operator(op) => {
+            if is_fully_divergent_subtree(node, object_type, metadata) {
+                return Ok(Behavior::Flower(subtree_related_visible_activities(
+                    node,
+                    object_type,
+                    metadata,
+                )));
+            }
+            if subtree_related_visible_activities(node, object_type, metadata).is_empty() {
+                return Ok(Behavior::Empty);
+            }
+            let children = op
+                .children
+                .iter()
+                .map(|child| project_behavior(child, object_type, metadata))
+                .collect::<Result<Vec<_>, _>>()?;
+            match &op.operator_type {
+                OCPTOperatorType::Sequence => Ok(seq_behavior(children)),
+                OCPTOperatorType::ExclusiveChoice => Ok(choice_behavior(children)),
+                OCPTOperatorType::Concurrency => Ok(conc_behavior(children)),
+                OCPTOperatorType::Loop(_) => {
+                    let mut children = children;
+                    let body = children.remove(0);
+                    Ok(loop_behavior(body, choice_behavior(children)))
                 }
                 OCPTOperatorType::IdentityRelation(_) => {
                     Err(ConvertOcptToOcpnError::UnsupportedIdentityRelations)
                 }
             }
         }
+    }
+}
+
+fn allows_empty(behavior: &Behavior) -> bool {
+    match behavior {
+        Behavior::Empty | Behavior::Flower(_) | Behavior::Optional(_) => true,
+        Behavior::Activity(_) => false,
+        Behavior::Choice(items) | Behavior::Seq(items) | Behavior::Conc(items) => match behavior {
+            Behavior::Choice(_) => items.iter().any(allows_empty),
+            _ => items.iter().all(allows_empty),
+        },
+        Behavior::Loop(body, _) => allows_empty(body),
+    }
+}
+
+fn seq_behavior(items: Vec<Behavior>) -> Behavior {
+    let items = flatten_seq(items);
+    if let Some(index) = boundary_between_flowers(&items) {
+        if let Some(middle) = nonempty(items[index].clone()) {
+            if !allows_empty(&middle) {
+                let mut skipped = items.clone();
+                skipped.remove(index);
+                let mut taken = items;
+                taken[index] = middle;
+                return choice_behavior(vec![seq_behavior(skipped), seq_behavior(taken)]);
+            }
+        }
+    }
+    match items.len() {
+        0 => Behavior::Empty,
+        1 => items.into_iter().next().unwrap(),
+        _ => Behavior::Seq(items),
+    }
+}
+
+fn flatten_seq(items: Vec<Behavior>) -> Vec<Behavior> {
+    let mut flat = Vec::new();
+    for item in items {
+        match item {
+            Behavior::Empty => {}
+            Behavior::Seq(inner) => flat.extend(flatten_seq(inner)),
+            other => flat.push(other),
+        }
+    }
+    let mut merged = Vec::new();
+    for item in flat {
+        if let Behavior::Flower(activities) = &item {
+            if let Some(Behavior::Flower(previous)) = merged.last_mut() {
+                previous.extend(activities.iter().cloned());
+                continue;
+            }
+        }
+        merged.push(item);
+    }
+    merged
+}
+
+fn boundary_between_flowers(items: &[Behavior]) -> Option<usize> {
+    items.iter().enumerate().find_map(|(index, item)| {
+        let between_flowers = matches!(items[..index].last(), Some(Behavior::Flower(_)))
+            && matches!(items.get(index + 1), Some(Behavior::Flower(_)));
+        (between_flowers && is_optional_boundary(item)).then_some(index)
+    })
+}
+
+fn is_optional_boundary(behavior: &Behavior) -> bool {
+    allows_empty(behavior) && !matches!(behavior, Behavior::Flower(_) | Behavior::Empty)
+}
+
+fn choice_behavior(items: Vec<Behavior>) -> Behavior {
+    let mut flat = Vec::new();
+    for item in items {
+        match item {
+            Behavior::Choice(inner) => flat.extend(inner),
+            other => flat.push(other),
+        }
+    }
+    let had_empty = flat.iter().any(|item| matches!(item, Behavior::Empty));
+    let mut meaningful: Vec<Behavior> = flat
+        .into_iter()
+        .filter(|item| !matches!(item, Behavior::Empty))
+        .collect();
+    if meaningful.is_empty() {
+        return Behavior::Empty;
+    }
+    if had_empty && !meaningful.iter().any(allows_empty) {
+        if meaningful.len() == 1 {
+            return Behavior::Optional(Box::new(meaningful.remove(0)));
+        }
+        meaningful.push(Behavior::Empty);
+    }
+    if meaningful.len() == 1 {
+        meaningful.remove(0)
+    } else {
+        Behavior::Choice(meaningful)
+    }
+}
+
+fn conc_behavior(items: Vec<Behavior>) -> Behavior {
+    let items: Vec<Behavior> = items
+        .into_iter()
+        .filter(|item| !matches!(item, Behavior::Empty))
+        .collect();
+    if items.is_empty() {
+        Behavior::Empty
+    } else if items.iter().all(|item| matches!(item, Behavior::Flower(_))) {
+        let mut activities = BTreeSet::new();
+        for item in items {
+            if let Behavior::Flower(item_activities) = item {
+                activities.extend(item_activities);
+            }
+        }
+        Behavior::Flower(activities)
+    } else if items.len() == 1 {
+        items.into_iter().next().unwrap()
+    } else {
+        Behavior::Conc(items)
+    }
+}
+
+fn loop_behavior(body: Behavior, redo: Behavior) -> Behavior {
+    let body_activities = match &body {
+        Behavior::Flower(activities) => Some(activities.clone()),
+        Behavior::Empty => Some(BTreeSet::new()),
+        _ => None,
+    };
+    if let Some(mut activities) = body_activities {
+        if matches!(redo, Behavior::Empty) {
+            return if activities.is_empty() {
+                Behavior::Empty
+            } else {
+                Behavior::Flower(activities)
+            };
+        }
+        if let Some(redo_activities) = visible_activity_set(&redo) {
+            activities.extend(redo_activities);
+            return if activities.is_empty() {
+                Behavior::Empty
+            } else {
+                Behavior::Flower(activities)
+            };
+        }
+    }
+    Behavior::Loop(Box::new(body), Box::new(redo))
+}
+
+fn visible_activity_set(behavior: &Behavior) -> Option<BTreeSet<String>> {
+    match behavior {
+        Behavior::Activity(label) => Some(BTreeSet::from([label.clone()])),
+        Behavior::Flower(activities) => Some(activities.clone()),
+        Behavior::Choice(items) if !items.is_empty() => {
+            let mut activities = BTreeSet::new();
+            for item in items {
+                activities.extend(visible_activity_set(item)?);
+            }
+            Some(activities)
+        }
+        _ => None,
+    }
+}
+
+fn nonempty(behavior: Behavior) -> Option<Behavior> {
+    match behavior {
+        Behavior::Empty => None,
+        Behavior::Flower(activities) => {
+            if activities.is_empty() {
+                None
+            } else {
+                let branches = activities.into_iter().map(Behavior::Activity).collect();
+                Some(Behavior::Loop(
+                    Box::new(choice_behavior(branches)),
+                    Box::new(Behavior::Empty),
+                ))
+            }
+        }
+        Behavior::Activity(label) => Some(Behavior::Activity(label)),
+        Behavior::Optional(inner) => nonempty(*inner),
+        Behavior::Choice(items) => {
+            let parts: Vec<Behavior> = items.into_iter().filter_map(nonempty).collect();
+            if parts.is_empty() {
+                None
+            } else {
+                Some(choice_behavior(parts))
+            }
+        }
+        Behavior::Seq(items) if items.iter().all(allows_empty) => {
+            let mut branches = Vec::new();
+            for index in 0..items.len() {
+                let Some(forced) = nonempty(items[index].clone()) else {
+                    continue;
+                };
+                let mut sequence = items.clone();
+                sequence[index] = forced;
+                branches.push(seq_behavior(sequence));
+            }
+            if branches.is_empty() {
+                None
+            } else {
+                Some(choice_behavior(branches))
+            }
+        }
+        other => Some(other),
+    }
+}
+
+fn materialize(behavior: &Behavior, labeler: &mut ActivityLabeler) -> ProcessTree {
+    match behavior {
+        Behavior::Empty => tau_tree(),
+        Behavior::Flower(activities) => {
+            let labeled: BTreeSet<String> = activities
+                .iter()
+                .map(|activity| labeler.assign(activity))
+                .collect();
+            if labeled.is_empty() {
+                tau_tree()
+            } else {
+                divergence_loop_tree(&labeled)
+            }
+        }
+        Behavior::Activity(label) => activity_tree(&labeler.assign(label)),
+        Behavior::Optional(inner) => operator_tree(
+            OperatorType::ExclusiveChoice,
+            vec![materialize(inner, labeler), tau_tree()],
+        ),
+        Behavior::Choice(items) => {
+            let mut children = Vec::new();
+            let mut add_tau = false;
+            for item in items {
+                match item {
+                    Behavior::Empty => add_tau = true,
+                    other => children.push(materialize(other, labeler)),
+                }
+            }
+            if add_tau {
+                children.push(tau_tree());
+            }
+            match children.len() {
+                0 => tau_tree(),
+                1 => children.remove(0),
+                _ => operator_tree(OperatorType::ExclusiveChoice, children),
+            }
+        }
+        Behavior::Seq(items) | Behavior::Conc(items) => {
+            let operator = if matches!(behavior, Behavior::Seq(_)) {
+                OperatorType::Sequence
+            } else {
+                OperatorType::Concurrency
+            };
+            let children: Vec<ProcessTree> = items
+                .iter()
+                .map(|item| materialize(item, labeler))
+                .collect();
+            match children.len() {
+                0 => tau_tree(),
+                1 => children.into_iter().next().unwrap(),
+                _ => operator_tree(operator, children),
+            }
+        }
+        Behavior::Loop(body, redo) => operator_tree(
+            OperatorType::Loop,
+            vec![materialize(body, labeler), materialize(redo, labeler)],
+        ),
     }
 }
 
@@ -881,14 +1225,159 @@ fn remove_non_terminal_places(net: &mut PetriNet) {
     }
 }
 
+struct ActivityVariant {
+    tag: String,
+    types: BTreeSet<String>,
+}
+
+fn activity_variants(ocpt: &OCPT) -> BTreeMap<String, Vec<ActivityVariant>> {
+    let mut grouped: BTreeMap<String, Vec<(BTreeSet<String>, BTreeSet<String>)>> = BTreeMap::new();
+    for leaf in ocpt.find_all_leaves() {
+        let OCPTLeafLabel::Activity(label) = &leaf.activity_label else {
+            continue;
+        };
+        if leaf.related_ob_types.is_empty() {
+            continue;
+        }
+        grouped.entry(label.clone()).or_default().push((
+            leaf.related_ob_types.iter().cloned().collect(),
+            leaf.deficient_ob_types.iter().cloned().collect(),
+        ));
+    }
+
+    grouped
+        .into_iter()
+        .map(|(label, leaves)| {
+            let variants = if leaves.len() == 1 && !leaves[0].1.is_empty() {
+                let (related, deficient) = &leaves[0];
+                let mut deficient: Vec<String> = deficient.iter().cloned().collect();
+                deficient.sort();
+                let mandatory: BTreeSet<String> = related
+                    .difference(&deficient.iter().cloned().collect())
+                    .cloned()
+                    .collect();
+                (0..(1usize << deficient.len()))
+                    .map(|mask| {
+                        let mut types = mandatory.clone();
+                        let mut omitted = Vec::new();
+                        for (index, object_type) in deficient.iter().enumerate() {
+                            if mask & (1usize << index) == 0 {
+                                omitted.push(object_type.clone());
+                            } else {
+                                types.insert(object_type.clone());
+                            }
+                        }
+                        ActivityVariant {
+                            tag: if omitted.is_empty() {
+                                String::new()
+                            } else {
+                                format!("omit:{}", omitted.join(","))
+                            },
+                            types,
+                        }
+                    })
+                    .collect()
+            } else {
+                let mut types = BTreeSet::new();
+                for (related, _) in &leaves {
+                    types.extend(related.iter().cloned());
+                }
+                vec![ActivityVariant {
+                    tag: String::new(),
+                    types,
+                }]
+            };
+            (label, variants)
+        })
+        .collect()
+}
+
+fn objectless_activities(ocpt: &OCPT) -> Vec<String> {
+    ocpt.find_all_leaves()
+        .into_iter()
+        .filter_map(|leaf| match &leaf.activity_label {
+            OCPTLeafLabel::Activity(label) if leaf.related_ob_types.is_empty() => {
+                Some(label.clone())
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+fn ensure_visible_transition(
+    ocpn: &mut OCPN,
+    id_allocator: &mut OcpnIdAllocator,
+    visible_transition_ids: &mut BTreeMap<(String, String, String), OCPNId>,
+    label: &str,
+    tag: &str,
+    occurrence: &str,
+) -> OCPNId {
+    let key = (label.to_string(), tag.to_string(), occurrence.to_string());
+    if let Some(existing) = visible_transition_ids.get(&key) {
+        return *existing;
+    }
+    let id = id_allocator.next();
+    visible_transition_ids.insert(key, id);
+    let mut name = label.to_string();
+    if !tag.is_empty() {
+        name.push('#');
+        name.push_str(tag);
+    }
+    if !occurrence.is_empty() {
+        name.push('#');
+        name.push_str(occurrence);
+    }
+    ocpn.transitions.push(OCPNTransition {
+        id,
+        name,
+        label: Some(label.to_string()),
+        silent: false,
+        properties: OCPNProperties::new(),
+    });
+    id
+}
+
+fn add_unconstrained_transitions(
+    ocpn: &mut OCPN,
+    variants: &BTreeMap<String, Vec<ActivityVariant>>,
+    objectless: &[String],
+    id_allocator: &mut OcpnIdAllocator,
+    visible_transition_ids: &mut BTreeMap<(String, String, String), OCPNId>,
+) {
+    for (label, label_variants) in variants {
+        for variant in label_variants {
+            if variant.types.is_empty() {
+                ensure_visible_transition(
+                    ocpn,
+                    id_allocator,
+                    visible_transition_ids,
+                    label,
+                    &variant.tag,
+                    "",
+                );
+            }
+        }
+    }
+    for label in objectless {
+        if !ocpn
+            .transitions
+            .iter()
+            .any(|transition| transition.label.as_deref() == Some(label))
+        {
+            ensure_visible_transition(ocpn, id_allocator, visible_transition_ids, label, "", "");
+        }
+    }
+}
+
 fn merge_bundle_into_ocpn(
     ocpn: &mut OCPN,
     object_type: &str,
     net: &PetriNet,
     bundle: &OCPNPetriNet,
     convergent_activities: &BTreeSet<String>,
+    variants: &BTreeMap<String, Vec<ActivityVariant>>,
     id_allocator: &mut OcpnIdAllocator,
-    visible_transition_ids: &mut BTreeMap<String, OCPNId>,
+    visible_transition_ids: &mut BTreeMap<(String, String, String), OCPNId>,
 ) {
     let initial_marking = bundle.initial_marking.as_ref();
     let final_marking = bundle.final_marking.as_ref();
@@ -914,7 +1403,7 @@ fn merge_bundle_into_ocpn(
         place_ids.insert(*place_uuid, place_id);
     }
 
-    let mut transition_ids = BTreeMap::new();
+    let mut transition_ids: BTreeMap<uuid::Uuid, Vec<OCPNId>> = BTreeMap::new();
     let mut sorted_transitions: Vec<_> = net.transitions.iter().collect();
     sorted_transitions.sort_by_key(|(uuid, transition)| {
         (
@@ -923,78 +1412,94 @@ fn merge_bundle_into_ocpn(
         )
     });
     for (transition_uuid, transition) in sorted_transitions {
-        let transition_id = if let Some(label) = &transition.label {
-            if let Some(existing) = visible_transition_ids.get(label) {
-                *existing
-            } else {
-                let new_id = id_allocator.next();
-                visible_transition_ids.insert(label.clone(), new_id);
-                new_id
+        let targets = if let Some(label) = &transition.label {
+            let mut targets = Vec::new();
+            let (base_label, occurrence) = split_activity_label(label);
+            if let Some(label_variants) = variants.get(base_label) {
+                for variant in label_variants {
+                    if variant.types.contains(object_type) {
+                        targets.push(ensure_visible_transition(
+                            ocpn,
+                            id_allocator,
+                            visible_transition_ids,
+                            base_label,
+                            &variant.tag,
+                            occurrence,
+                        ));
+                    }
+                }
             }
+            if targets.is_empty() {
+                targets.push(ensure_visible_transition(
+                    ocpn,
+                    id_allocator,
+                    visible_transition_ids,
+                    base_label,
+                    "",
+                    occurrence,
+                ));
+            }
+            targets
         } else {
-            id_allocator.next()
-        };
-
-        if !ocpn
-            .transitions
-            .iter()
-            .any(|existing| existing.id == transition_id)
-        {
-            let (name, label, silent) = match &transition.label {
-                Some(label) => (label.clone(), Some(label.clone()), false),
-                None => (format!("tau_{transition_id}"), None, true),
-            };
+            let transition_id = id_allocator.next();
             ocpn.transitions.push(OCPNTransition {
                 id: transition_id,
-                name,
-                label,
-                silent,
+                name: format!("tau_{transition_id}"),
+                label: None,
+                silent: true,
                 properties: OCPNProperties::new(),
             });
-        }
-        transition_ids.insert(*transition_uuid, transition_id);
+            vec![transition_id]
+        };
+        transition_ids.insert(*transition_uuid, targets);
     }
 
     let mut arcs = net.arcs.clone();
     arcs.sort_by_key(arc_signature_key);
     for arc in arcs {
-        let (source, target, variable) = match arc.from_to {
+        let (place_uuid, transition_uuid, place_to_transition, variable) = match arc.from_to {
             ArcType::PlaceTransition(place_uuid, transition_uuid) => {
                 let transition_label = net
                     .transitions
                     .get(&transition_uuid)
                     .and_then(|transition| transition.label.as_ref());
-                let variable =
-                    transition_label.is_some_and(|label| convergent_activities.contains(label));
-                (
-                    OCPNNodeRef::Place(place_ids[&place_uuid]),
-                    OCPNNodeRef::Transition(transition_ids[&transition_uuid]),
-                    variable,
-                )
+                let variable = transition_label.is_some_and(|label| {
+                    convergent_activities.contains(split_activity_label(label).0)
+                });
+                (place_uuid, transition_uuid, true, variable)
             }
             ArcType::TransitionPlace(transition_uuid, place_uuid) => {
                 let transition_label = net
                     .transitions
                     .get(&transition_uuid)
                     .and_then(|transition| transition.label.as_ref());
-                let variable =
-                    transition_label.is_some_and(|label| convergent_activities.contains(label));
-                (
-                    OCPNNodeRef::Transition(transition_ids[&transition_uuid]),
-                    OCPNNodeRef::Place(place_ids[&place_uuid]),
-                    variable,
-                )
+                let variable = transition_label.is_some_and(|label| {
+                    convergent_activities.contains(split_activity_label(label).0)
+                });
+                (place_uuid, transition_uuid, false, variable)
             }
         };
-
-        ocpn.arcs.push(OCPNArc {
-            id: id_allocator.next(),
-            source,
-            target,
-            variable,
-            weight: arc.weight,
-            properties: OCPNProperties::new(),
-        });
+        for transition_id in &transition_ids[&transition_uuid] {
+            let (source, target) = if place_to_transition {
+                (
+                    OCPNNodeRef::Place(place_ids[&place_uuid]),
+                    OCPNNodeRef::Transition(*transition_id),
+                )
+            } else {
+                (
+                    OCPNNodeRef::Transition(*transition_id),
+                    OCPNNodeRef::Place(place_ids[&place_uuid]),
+                )
+            };
+            ocpn.arcs.push(OCPNArc {
+                id: id_allocator.next(),
+                source,
+                target,
+                variable,
+                weight: arc.weight,
+                properties: OCPNProperties::new(),
+            });
+        }
     }
 }
 
@@ -1079,13 +1584,6 @@ fn is_fully_divergent_subtree(
     seen_related && all_divergent
 }
 
-fn has_optional_tau_child(children: &[OCPTNode]) -> bool {
-    children.iter().any(|child| match child {
-        OCPTNode::Leaf(leaf) => matches!(leaf.activity_label, OCPTLeafLabel::Tau),
-        OCPTNode::Operator(_) => false,
-    })
-}
-
 fn tau_tree() -> ProcessTree {
     ProcessTree::new(Node::Leaf(Leaf::new(None)))
 }
@@ -1130,6 +1628,10 @@ impl PetriNetBuilder {
         net.add_transition(Some(label.to_string()), Some(Uuid::new_v4()))
     }
 }
+
+#[cfg(test)]
+#[path = "ocpn_conversion_behavior.rs"]
+mod ocpn_conversion_behavior;
 
 #[cfg(test)]
 mod tests {

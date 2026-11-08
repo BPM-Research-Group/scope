@@ -257,7 +257,9 @@ fn map_convert_error(error: ConvertOcptToOcpnError) -> (StatusCode, String) {
         // Input/model-contract problems should be actionable for the caller.
         ConvertOcptToOcpnError::InvalidOcpt
         | ConvertOcptToOcpnError::UnsupportedIdentityRelations
-        | ConvertOcptToOcpnError::MalformedLoop { .. } => {
+        | ConvertOcptToOcpnError::MalformedLoop { .. }
+        | ConvertOcptToOcpnError::UnsupportedLoopBound { .. }
+        | ConvertOcptToOcpnError::InconsistentLeafAnnotations { .. } => {
             (StatusCode::BAD_REQUEST, error.to_string())
         }
         // These indicate the backend failed to produce a valid intermediate/result.
