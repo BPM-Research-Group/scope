@@ -89,10 +89,10 @@ fn marking_from_key(key: &BTreeMap<uuid::Uuid, u64>) -> Marking {
 fn consumes(net: &PetriNet, transition: TransitionID) -> BTreeMap<uuid::Uuid, u64> {
     let mut need = BTreeMap::new();
     for arc in &net.arcs {
-        if let ArcType::PlaceTransition(place, target) = arc.from_to {
-            if target == transition.0 {
-                *need.entry(place).or_insert(0) += u64::from(arc.weight);
-            }
+        if let ArcType::PlaceTransition(place, target) = arc.from_to
+            && target == transition.0
+        {
+            *need.entry(place).or_insert(0) += u64::from(arc.weight);
         }
     }
     need
@@ -118,10 +118,10 @@ fn fire(net: &PetriNet, marking: &Marking, transition: TransitionID) -> Marking 
         }
     }
     for arc in &net.arcs {
-        if let ArcType::TransitionPlace(source, place) = arc.from_to {
-            if source == transition.0 {
-                *next.entry(PlaceID(place)).or_insert(0) += u64::from(arc.weight);
-            }
+        if let ArcType::TransitionPlace(source, place) = arc.from_to
+            && source == transition.0
+        {
+            *next.entry(PlaceID(place)).or_insert(0) += u64::from(arc.weight);
         }
     }
     next
@@ -140,9 +140,10 @@ fn accepts_petri(net: &PetriNet, trace: &[&str]) -> bool {
             continue;
         }
         steps += 1;
-        if steps > 20_000 {
-            return false;
-        }
+        assert!(
+            steps <= 20_000,
+            "replay of {trace:?} exceeded the search bound"
+        );
         if index == trace.len()
             && finals
                 .iter()
@@ -159,12 +160,7 @@ fn accepts_petri(net: &PetriNet, trace: &[&str]) -> bool {
             let next = marking_key(&fire(net, &marking, transition_id));
             if transition.label.is_none() {
                 queue.push_back((index, next));
-            } else if index < trace.len()
-                && transition
-                    .label
-                    .as_deref()
-                    .is_some_and(|label| label.split('\u{1f}').next() == Some(trace[index]))
-            {
+            } else if index < trace.len() && transition.label.as_deref() == Some(trace[index]) {
                 queue.push_back((index + 1, next));
             }
         }
@@ -459,9 +455,10 @@ fn accepts_objects(ocpn: &OCPN, objects: &[(&str, &str)], trace: &[(&str, &[&str
             continue;
         }
         steps += 1;
-        if steps > 20_000 {
-            return false;
-        }
+        assert!(
+            steps <= 20_000,
+            "replay of {trace:?} exceeded the search bound"
+        );
         if index == trace.len() && is_final_objects(ocpn, objects, &state) {
             return true;
         }
@@ -609,6 +606,183 @@ fn issue_185_optional_sequence_merges_divergent_regions_when_middle_is_skipped()
     assert_type_rejects(&ocpn, Q, &["C", "B", "A"]);
     assert_type_rejects(&ocpn, Q, &["A", "C", "B"]);
     assert_type_rejects(&ocpn, Q, &["A", "B", "A"]);
+}
+
+#[test]
+fn issue_185_optional_sequence_keeps_one_transition_per_activity() {
+    let ocpn = convert_ocpt_to_ocpn(&tree(seq(vec![
+        leaf("A", &[Q, ORDER], &[Q], &[], &[]),
+        xor(vec![quotation("B", false), tau()]),
+        quotation("C", true),
+    ])))
+    .unwrap();
+    for label in ["A", "B", "C"] {
+        assert_eq!(
+            ocpn.transitions
+                .iter()
+                .filter(|transition| transition.label.as_deref() == Some(label))
+                .count(),
+            1,
+            "{label} must stay one transition"
+        );
+    }
+    let objects = [("q1", Q), ("o1", ORDER)];
+    assert_objects_accept(&ocpn, &objects, &[("A", &["q1", "o1"]), ("C", &["q1"])]);
+    assert_objects_accept(
+        &ocpn,
+        &objects,
+        &[("C", &["q1"]), ("A", &["q1", "o1"]), ("C", &["q1"])],
+    );
+    assert_objects_accept(
+        &ocpn,
+        &objects,
+        &[("A", &["q1", "o1"]), ("B", &["q1"]), ("C", &["q1"])],
+    );
+    assert_objects_reject(
+        &ocpn,
+        &objects,
+        &[("C", &["q1"]), ("B", &["q1"]), ("A", &["q1", "o1"])],
+    );
+    // Order is related to A without divergence, so A happens exactly once for it.
+    assert_objects_reject(&ocpn, &objects, &[("C", &["q1"])]);
+    assert_objects_reject(&ocpn, &objects, &[("A", &["q1"]), ("C", &["q1"])]);
+}
+
+#[test]
+fn issue_185_convergent_objects_share_an_event_across_skip_choices() {
+    let ocpn = convert_ocpt_to_ocpn(&tree(seq(vec![
+        leaf("A", &[Q], &[Q], &[Q], &[]),
+        xor(vec![quotation("B", false), tau()]),
+        quotation("C", true),
+    ])))
+    .unwrap();
+    let objects = [("q1", Q), ("q2", Q)];
+    assert_objects_accept(
+        &ocpn,
+        &objects,
+        &[
+            ("A", &["q1", "q2"]),
+            ("B", &["q2"]),
+            ("C", &["q1"]),
+            ("C", &["q2"]),
+        ],
+    );
+    assert_objects_accept(
+        &ocpn,
+        &objects,
+        &[("C", &["q1"]), ("A", &["q1", "q2"]), ("B", &["q2"])],
+    );
+    assert_objects_reject(
+        &ocpn,
+        &objects,
+        &[("C", &["q2"]), ("B", &["q2"]), ("A", &["q1", "q2"])],
+    );
+}
+
+#[test]
+fn issue_185_optional_sequence_merges_regions_across_nesting_levels() {
+    let nested_middle = convert_ocpt_to_ocpn(&tree(seq(vec![
+        quotation("A", true),
+        xor(vec![
+            seq(vec![quotation("D", true), quotation("B", false)]),
+            tau(),
+        ]),
+        quotation("C", true),
+    ])))
+    .unwrap();
+    assert_type_accepts(&nested_middle, Q, &["D", "A", "D", "B", "C"]);
+    assert_type_accepts(&nested_middle, Q, &["C", "A", "C"]);
+    assert_type_rejects(&nested_middle, Q, &["D", "C", "A"]);
+    assert_type_rejects(&nested_middle, Q, &["A", "B", "A"]);
+    assert_type_rejects(&nested_middle, Q, &["C", "D", "B"]);
+
+    let chained = convert_ocpt_to_ocpn(&tree(seq(vec![
+        quotation("A", true),
+        xor(vec![quotation("B", false), tau()]),
+        quotation("C", true),
+        xor(vec![quotation("D", false), tau()]),
+        quotation("E", true),
+    ])))
+    .unwrap();
+    assert_type_accepts(&chained, Q, &["E", "C", "A", "E"]);
+    assert_type_accepts(&chained, Q, &["C", "A", "D", "E"]);
+    assert_type_accepts(&chained, Q, &["A", "B", "E", "C"]);
+    assert_type_accepts(&chained, Q, &["A", "B", "C", "D", "E"]);
+    assert_type_rejects(&chained, Q, &["E", "D"]);
+    assert_type_rejects(&chained, Q, &["C", "B"]);
+    assert_type_rejects(&chained, Q, &["E", "B", "C"]);
+}
+
+#[test]
+fn issue_185_skippable_block_between_regions_is_a_boundary_only_when_taken() {
+    let ocpn = convert_ocpt_to_ocpn(&tree(seq(vec![
+        quotation("A", true),
+        conc(vec![
+            xor(vec![quotation("B", false), tau()]),
+            xor(vec![quotation("D", false), tau()]),
+        ]),
+        quotation("C", true),
+    ])))
+    .unwrap();
+    assert_type_accepts(&ocpn, Q, &["C", "A", "C"]);
+    assert_type_accepts(&ocpn, Q, &["A", "D", "B", "C"]);
+    assert_type_accepts(&ocpn, Q, &["A", "B", "C"]);
+    assert_type_rejects(&ocpn, Q, &["C", "B", "A"]);
+    assert_type_rejects(&ocpn, Q, &["B", "A"]);
+    assert_type_rejects(&ocpn, Q, &["B", "C", "D"]);
+}
+
+#[test]
+fn issue_185_optional_sequence_skip_follows_unrelated_choice() {
+    let ocpn = convert_ocpt_to_ocpn(&tree(seq(vec![
+        quotation("A", true),
+        xor(vec![
+            quotation("B", false),
+            leaf("X", &[ORDER], &[], &[], &[]),
+        ]),
+        quotation("C", true),
+    ])))
+    .unwrap();
+    let objects = [("q1", Q), ("o1", ORDER)];
+    assert_objects_accept(
+        &ocpn,
+        &objects,
+        &[("C", &["q1"]), ("X", &["o1"]), ("A", &["q1"])],
+    );
+    assert_objects_accept(&ocpn, &objects, &[("A", &["q1"]), ("B", &["q1"])]);
+    assert_objects_reject(
+        &ocpn,
+        &objects,
+        &[("C", &["q1"]), ("B", &["q1"]), ("A", &["q1"])],
+    );
+}
+
+#[test]
+fn issue_185_deficient_optional_boundary_with_multiple_order_objects() {
+    let ocpn = convert_ocpt_to_ocpn(&tree(seq(vec![
+        quotation("A", true),
+        leaf("B", &[Q, ORDER], &[], &[ORDER], &[Q]),
+        quotation("C", true),
+    ])))
+    .unwrap();
+    let objects = [("q1", Q), ("o1", ORDER), ("o2", ORDER)];
+    assert_objects_accept(
+        &ocpn,
+        &objects,
+        &[("C", &["q1"]), ("B", &["o1", "o2"]), ("A", &["q1"])],
+    );
+    assert_objects_accept(
+        &ocpn,
+        &objects,
+        &[("A", &["q1"]), ("B", &["q1", "o1", "o2"]), ("C", &["q1"])],
+    );
+    assert_objects_reject(
+        &ocpn,
+        &objects,
+        &[("C", &["q1"]), ("B", &["q1", "o1", "o2"])],
+    );
+    // Order stays mandatory: deficiency only lets the quotation be omitted.
+    assert_objects_reject(&ocpn, &objects, &[("B", &["q1"])]);
 }
 
 #[test]
