@@ -1,9 +1,5 @@
 import { DragEvent, useCallback, useEffect, useState } from 'react';
-import { Background, Controls, NodeProps, ReactFlow, ReactFlowProvider } from '@xyflow/react';
-// import {
-//     handleAutoInsertConnectedComponent,
-// } from '~/lib/explore/autoInsertConnectedComponent';
-
+import { Background, Controls, NodeProps, ReactFlow, ReactFlowProvider, ViewportPortal } from '@xyflow/react';
 import type { Connection } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { v4 as uuidv4 } from 'uuid';
@@ -25,7 +21,6 @@ import AbstractionMinerNode from '~/components/explore/miner/AbstractionMinerNod
 import CaseClusteringMinerNode from '~/components/explore/miner/CaseClusteringMinerNode';
 import CaseNotionMinerNode from '~/components/explore/miner/CaseNotionMinerNode';
 import ConformanceMinerNode from '~/components/explore/miner/ConformanceMinerNode';
-import ConnectedComponentNode from '~/components/explore/miner/ConnectedComponentNode';
 import Df2StreamMinerNode from '~/components/explore/miner/Df2StreamMinerNode';
 import ExtendWithIdentityNode from '~/components/explore/miner/ExtendWithIdentityNode';
 import FlowMinerNode from '~/components/explore/miner/FlowMinerNode';
@@ -38,6 +33,7 @@ import OcptMinerNode from '~/components/explore/miner/OcptMinerNode';
 import OcptStreamMinerNode from '~/components/explore/miner/OcptStreamMinerNode';
 import ResourceMinerNode from '~/components/explore/miner/ResourceMinerNode';
 import SanityCheckMinerNode from '~/components/explore/miner/SanityCheckMinerNode';
+import NodeLoadingOverlay from '~/components/explore/NodeLoadingOverlay';
 import { RefocusProgressPanel } from '~/components/explore/RefocusProgressPanel';
 import { RestoreDraftPanel } from '~/components/explore/RestoreDraftPanel';
 import { useConnections } from '~/hooks/explore/useConnections';
@@ -104,6 +100,21 @@ const Explore: React.FC = () => {
     const { mutate: mineCaseNotion } = useMineCaseNotionMutation();
 
     const { data: exportData } = useGetCaseNotions(currentCnFileId, shouldFetchCaseCollection);
+    const [loadingNodeIds, setLoadingNodeIds] = useState<Set<string>>(new Set());
+
+    const setNodeLoading = useCallback((nodeId: string, loading: boolean) => {
+        setLoadingNodeIds((previous) => {
+            const updated = new Set(previous);
+
+            if (loading) {
+                updated.add(nodeId);
+            } else {
+                updated.delete(nodeId);
+            }
+
+            return updated;
+        });
+    }, []);
 
     const handleAutoInsertConnectedComponent = useCallback(
         (connection: Connection) => {
@@ -114,8 +125,23 @@ const Explore: React.FC = () => {
 
             if (!sourceNode || !targetNode) return;
 
+            const supportedMinerTypes = [
+                'resourceMinerNode',
+                'histogramMinerNode',
+                'abstractionMinerNode',
+                'conformanceMinerNode',
+                'ocpnMinerNode',
+                'ocpfMinerNode',
+                'ocptMinerNode',
+                'flowMinerNode',
+                'caseClusteringMinerNode',
+                'kpiBuilderNode',
+                'sanityCheckMinerNode',
+                'identityExtendMinerNode',
+            ];
+
             const shouldMineAutomatically =
-                sourceNode.data.nodeType === 'ocelFileNode' && targetNode.data.nodeType === 'resourceMinerNode';
+                sourceNode.data.nodeType === 'ocelFileNode' && supportedMinerTypes.includes(targetNode.data.nodeType);
 
             if (!shouldMineAutomatically) {
                 connectNodes(connection);
@@ -130,6 +156,7 @@ const Explore: React.FC = () => {
                 console.error('Cannot mine: OCEL input asset not found.');
                 return;
             }
+            setNodeLoading(targetNode.id, true);
 
             setCurrentCnFileId('');
             setShouldFetchCaseCollection(false);
@@ -157,11 +184,12 @@ const Explore: React.FC = () => {
                     onError: (error) => {
                         console.error('Connected Component mining failed:', error);
                         setPendingAutoConnection(null);
+                        setNodeLoading(targetNode.id, false);
                     },
                 }
             );
         },
-        [connectNodes, mineCaseNotion]
+        [connectNodes, mineCaseNotion, setNodeLoading]
     );
 
     useEffect(() => {
@@ -178,6 +206,7 @@ const Explore: React.FC = () => {
             console.error('Could not find the original pipeline nodes.');
             setPendingAutoConnection(null);
             setShouldFetchCaseCollection(false);
+            setNodeLoading(pendingAutoConnection.targetId, false);
             return;
         }
 
@@ -216,10 +245,12 @@ const Explore: React.FC = () => {
 
         setPendingAutoConnection(null);
         setShouldFetchCaseCollection(false);
-    }, [shouldFetchCaseCollection, exportData, pendingAutoConnection, connectNodes]);
+        setNodeLoading(targetNode.id, false);
+    }, [shouldFetchCaseCollection, exportData, pendingAutoConnection, connectNodes, setNodeLoading]);
 
     logger.debug('nodes Updated', nodes);
 
+    const loadingNodes = nodes.filter((node) => loadingNodeIds.has(node.id));
     return (
         <>
             <SidebarProvider>
@@ -243,6 +274,19 @@ const Explore: React.FC = () => {
                             <Controls position="top-left" />
                             <RefocusProgressPanel />
                             <RestoreDraftPanel />
+
+                            <ViewportPortal>
+                                {loadingNodes.map((node) => (
+                                    <NodeLoadingOverlay
+                                        key={node.id}
+                                        left={node.position.x}
+                                        top={node.position.y}
+                                        width={node.measured?.width ?? node.width ?? 260}
+                                        height={node.measured?.height ?? node.height ?? 150}
+                                        message="Preparing case collection..."
+                                    />
+                                ))}
+                            </ViewportPortal>
                         </ReactFlow>
                     </div>
                 </SidebarInset>

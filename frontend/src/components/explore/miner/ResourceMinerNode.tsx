@@ -8,6 +8,7 @@ import { Button } from '~/components/ui/button';
 import BaseMinerNode from '~/components/explore/miner/BaseMinerNode';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { MinerNode } from '~/types/explore/nodes';
+import { Loader2 } from 'lucide-react';
 
 const ResourceMinerNode = memo<NodeProps<MinerNode>>((node) => {
     const navigate = useNavigate();
