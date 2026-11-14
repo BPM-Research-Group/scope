@@ -8,7 +8,9 @@ export type BaseExploreNodeDropdownActionType =
     | 'exportJson'
     | 'viewObjectEventGraph'
     | 'setCustomColor'
-    | 'exportPm4pyOcpt';
+    | 'exportPm4pyOcpt'
+    | 'exportPm4pyCaseOcel';
+    
 
 export type HandleId =
     | 'target'

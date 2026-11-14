@@ -3,6 +3,9 @@ use crate::models::ocpt::{OCPT, OCPTLeaf, OCPTLeafLabel, OCPTNode, OCPTOperatorT
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet, HashSet};
+use axum::http::StatusCode;
+use zip::{write::SimpleFileOptions, CompressionMethod, ZipWriter};
+use std::io::{Cursor, Write};
 
 pub const PM4PY_SCHEMA_VERSION: &str = "1.0.0";
 
@@ -143,6 +146,47 @@ pub fn ocpn_to_pm4py_document(
         },
         payload: ocpn_to_pm4py_payload(ocpn),
     }
+}
+
+/// Builds an in-memory zip with one pretty-printed JSON file per case.
+pub fn build_case_ocel_zip<T: Serialize>(
+    case_ocels: &[T],
+    case_notion_type: &str,
+    origin_file_id: &str,
+) -> Result<Vec<u8>, (StatusCode, String)> {
+    let internal = |msg: &str, err: &dyn std::fmt::Display| {
+        (StatusCode::INTERNAL_SERVER_ERROR, format!("{msg}: {err}"))
+    };
+    let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
+    let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
+   
+    let width = case_ocels.len().max(1).to_string().len().max(5);
+
+    for (i, case) in case_ocels.iter().enumerate() {
+        let name = format!("case_{:0width$}.json", i + 1, width = width);
+
+        let data = serde_json::to_vec_pretty(case)
+            .map_err(|e| internal(&format!("Failed to serialize {name}"), &e))?;
+
+        zip.start_file(name.as_str(), options)
+            .map_err(|e| internal(&format!("Failed to add {name} to zip"), &e))?;
+        zip.write_all(&data)
+            .map_err(|e| internal(&format!("Failed to write {name} to zip"), &e))?;
+    }
+
+    let manifest = serde_json::json!({
+        "case_notion_type": case_notion_type,
+        "origin_file_id_ocel": origin_file_id,
+        "case_count": case_ocels.len(),
+    });
+    zip.start_file("manifest.json", options)
+        .map_err(|e| internal("Failed to add manifest", &e))?;
+    zip.write_all(&serde_json::to_vec_pretty(&manifest).unwrap())
+        .map_err(|e| internal("Failed to write manifest", &e))?;
+    let cursor = zip
+        .finish()
+        .map_err(|e| internal("Failed to finalize zip", &e))?;
+    Ok(cursor.into_inner())
 }
 
 fn ocpt_node_to_pm4py(node: &OCPTNode) -> Pm4pyProcessTreeNode {
