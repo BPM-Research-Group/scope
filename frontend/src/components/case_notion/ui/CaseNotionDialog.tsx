@@ -22,27 +22,35 @@ import GraphPage from '~/components/graph_visualization/GraphPage';
 interface CaseNotionDialogProps {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
+
     fileId: string | null;
     nodeId: string;
 
-    // Form State
     algorithm: string;
     onAlgorithmChange: (val: string) => void;
+
     objectType: string;
     onObjectTypeChange: (val: string) => void;
+
     genericPayload: any;
     onGenericPayloadChange: (val: any) => void;
 
-    // Data
     objectTypes: { name: string }[] | undefined;
+
     caseNotionData: any;
 
-    // Status
+    weights: number[];
+
+    onWeightChange: (index: number, value: number) => void;
+
+    onCalculateTotal: () => void;
+
+    isCalculatingTotal: boolean;
+
     isMining: boolean;
     isExporting: boolean;
     hasUnminedChanges: boolean;
 
-    // Actions
     onMine: () => void;
     onExport: () => void;
 }
@@ -50,28 +58,53 @@ interface CaseNotionDialogProps {
 const CaseNotionDialog = ({
     isOpen,
     onOpenChange,
+
     fileId,
     nodeId,
+
     algorithm,
     onAlgorithmChange,
+
     objectType,
     onObjectTypeChange,
+
+    genericPayload,
     onGenericPayloadChange,
+
     objectTypes,
+
     caseNotionData,
+
+    weights,
+    onWeightChange,
+
+    onCalculateTotal,
+    isCalculatingTotal,
+
     isMining,
     isExporting,
     hasUnminedChanges,
+
     onMine,
     onExport,
 }: CaseNotionDialogProps) => {
+    const measures = caseNotionData?.measures ?? [];
+
+    const totalMeasureNames = ['Total measurement', 'Total Score'];
+
+    const normalMeasures = measures.filter((measure: { name: string }) => !totalMeasureNames.includes(measure.name));
+
+    const totalMeasure = measures.find((measure: { name: string }) => totalMeasureNames.includes(measure.name));
+
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[800px] md:max-w-[1000px] lg:max-w-[1200px] h-[80vh] w-full flex flex-col">
                 <div className="flex flex-row flex-grow min-h-0">
+                    {/* LEFT SIDE - GRAPH */}
                     <div className="flex flex-col w-2/3 min-h-0">
                         <DialogHeader>
                             <DialogTitle>Case Notions</DialogTitle>
+
                             <DialogDescription>Choose a case notion mining algorithm</DialogDescription>
                         </DialogHeader>
 
@@ -83,7 +116,6 @@ const CaseNotionDialog = ({
                                         caseNotionGraph={caseNotionData?.type_level_graph}
                                         editable={algorithm === 'generic'}
                                         onGenericPayloadChange={onGenericPayloadChange}
-                                        // --- 3. PASS NODE ID DOWN ---
                                         nodeId={nodeId}
                                     />
                                 ) : (
@@ -94,39 +126,47 @@ const CaseNotionDialog = ({
                             </div>
                         </div>
                     </div>
-                    <div className="w-px bg-border h-full mx-4"></div>
-                    <div className="flex flex-col w-1/3">
+
+                    <div className="w-px bg-border h-full mx-4" />
+
+                    <div className="flex flex-col w-1/3 min-h-0">
                         <p className="font-bold">Settings</p>
-                        <div className="flex mt-2 ">
+
+                        <div className="flex mt-2">
                             <Select onValueChange={onAlgorithmChange} value={algorithm}>
                                 <SelectTrigger className={algorithm === 'connected-component' ? 'w-full' : ''}>
                                     <SelectValue placeholder="Select an algorithm" />
                                 </SelectTrigger>
+
                                 <SelectContent>
                                     <SelectGroup>
                                         <SelectLabel>Algorithms</SelectLabel>
+
                                         <SelectItem value="traditional">Traditional</SelectItem>
+
                                         <SelectItem value="generic">Generic</SelectItem>
+
                                         <SelectItem value="advanced">Advanced</SelectItem>
+
                                         <SelectItem value="connected-component">Connected Component</SelectItem>
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
+
                             {algorithm !== 'connected-component' && algorithm !== 'generic' && (
-                                <Select
-                                    value={objectType}
-                                    onValueChange={onObjectTypeChange}
-                                    disabled={algorithm === 'connected-component'}
-                                >
+                                <Select value={objectType} onValueChange={onObjectTypeChange}>
                                     <SelectTrigger className="ml-2">
                                         <SelectValue placeholder="Select an object type" />
                                     </SelectTrigger>
+
                                     <SelectContent>
                                         <SelectGroup>
                                             <SelectLabel>Object Types</SelectLabel>
+
                                             <SelectItem key="default" value="default">
                                                 Default (slow)
                                             </SelectItem>
+
                                             {objectTypes?.map((ot) => (
                                                 <SelectItem key={ot.name} value={ot.name}>
                                                     {ot.name}
@@ -136,6 +176,7 @@ const CaseNotionDialog = ({
                                     </SelectContent>
                                 </Select>
                             )}
+
                             <Button
                                 variant="outline"
                                 onClick={onMine}
@@ -145,37 +186,78 @@ const CaseNotionDialog = ({
                                 {isMining ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pickaxe />}
                             </Button>
                         </div>
-                        {caseNotionData && caseNotionData.measures && caseNotionData.measures.length > 0 && (
+
+                        {measures.length > 0 && (
                             <>
                                 <p className="font-bold mt-6">Measures</p>
 
-                                <div className="mt-2 overflow-auto">
+                                <div className="mt-2 overflow-auto flex-1">
                                     <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                                        <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                                        <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400 sticky top-0">
                                             <tr>
-                                                <th scope="col" className="px-6 py-3">
+                                                <th scope="col" className="px-4 py-3">
                                                     Measure
                                                 </th>
-                                                <th scope="col" className="px-6 py-3">
+
+                                                <th scope="col" className="px-4 py-3">
                                                     Value
+                                                </th>
+
+                                                <th scope="col" className="px-4 py-3">
+                                                    Weight
                                                 </th>
                                             </tr>
                                         </thead>
+
                                         <tbody>
-                                            {caseNotionData.measures.map(
-                                                (measure: { name: string; value: number | null }, index: number) => (
+                                            {normalMeasures.map(
+                                                (
+                                                    measure: {
+                                                        name: string;
+                                                        value: number | null;
+                                                    },
+                                                    index: number
+                                                ) => (
                                                     <tr
-                                                        key={index}
+                                                        key={measure.name ?? index}
                                                         className="bg-white border-b dark:bg-gray-800 dark:border-gray-700"
                                                     >
-                                                        <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                                                        <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap dark:text-white">
                                                             {measure.name}
                                                         </td>
-                                                        <td className="px-6 py-4">
+
+                                                        <td className="px-4 py-3">
                                                             {measure.value != null ? measure.value.toFixed(4) : '-'}
+                                                        </td>
+
+                                                        <td className="px-4 py-3">
+                                                            <input
+                                                                type="number"
+                                                                min="0"
+                                                                step="0.01"
+                                                                value={weights[index] ?? 0}
+                                                                onChange={(event) =>
+                                                                    onWeightChange(index, Number(event.target.value))
+                                                                }
+                                                                className="w-24 h-8 px-2 border rounded-md bg-white dark:bg-gray-800"
+                                                            />
                                                         </td>
                                                     </tr>
                                                 )
+                                            )}
+
+                                            {totalMeasure && (
+                                                <tr className="bg-gray-100 dark:bg-gray-700 font-bold">
+                                                    <td className="px-4 py-3">{totalMeasure.name}</td>
+
+                                                    <td className="px-4 py-3">
+                                                        {totalMeasure.value != null
+                                                            ? totalMeasure.value.toFixed(4)
+                                                            : '-'}
+                                                    </td>
+
+                                                    <td className="px-4 py-3">-</td>
+                                                </tr>
                                             )}
                                         </tbody>
                                     </table>
@@ -184,9 +266,25 @@ const CaseNotionDialog = ({
                         )}
                     </div>
                 </div>
-                {caseNotionData && caseNotionData.measures && caseNotionData.measures.length > 0 && (
-                    <DialogFooter className="flex justify-end">
-                        <Button variant={'outline'} onClick={onExport} disabled={isExporting || hasUnminedChanges}>
+
+                {measures.length > 0 && (
+                    <DialogFooter className="flex flex-row justify-end items-center gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={onCalculateTotal}
+                            disabled={isCalculatingTotal || weights.length === 0}
+                        >
+                            {isCalculatingTotal ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Calculating...
+                                </>
+                            ) : (
+                                'Calculate Total'
+                            )}
+                        </Button>
+
+                        <Button variant="outline" onClick={onExport} disabled={isExporting || hasUnminedChanges}>
                             {isExporting ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -194,7 +292,7 @@ const CaseNotionDialog = ({
                                 </>
                             ) : (
                                 <>
-                                    <FileSymlink />
+                                    <FileSymlink className="mr-2 h-4 w-4" />
                                     Export as Node
                                 </>
                             )}
@@ -205,4 +303,5 @@ const CaseNotionDialog = ({
         </Dialog>
     );
 };
+
 export default CaseNotionDialog;
