@@ -36,8 +36,7 @@ For each detected difference there is a small separating example: an OCPT and an
 | [14](#14-identity-a-pattern-that-never-applies-in-the-log-counts-as-violated-1-in-the-implementations) | Identity: a pattern that never applies in the log counts as violated (1) in the implementations | ⚠️ differs from paper | ⚠️ differs from paper |
 | [15](#15-identity-rust4pm-reads-sync-as-both-directions-python-only-as-left--right) | Identity: rust4pm reads Sync as both directions, Python only as left ⇒ right | ⚠️ differs from paper | ✅ agrees with paper |
 | [16](#16-tree-opt-an-activity-in-a-loops-redo-part-can-occur-zero-times-but-no-pattern-says-so) | Tree `opt`: an activity in a loop's redo part can occur zero times, but no pattern says so | ✅ agrees with paper | ⚠️ differs from paper |
-| [17](#17-evaluation-script-table-1-absolute-difference-uses-one-category-only) | Table 1 computed from the control-flow category only | — (evaluation script) | — |
-| [18](#18-typos-in-the-definitions) | Typos in Def. 3 and Def. 5 | — | — |
+| [17](#18-typos-in-the-definitions) | Typos in Def. 3 and Def. 5 | — | — |
 
 ## 1. Tree DF: a sequence links to the *end* of the next child and takes ends from starts
 
@@ -810,30 +809,7 @@ Object traces: o1: ⟨a⟩; o2: ⟨a, b, a⟩
 > **Question:** Intended rule for a<1 under loops: redo parts only (semantically exact), body and redo (rust4pm), or neither (paper text, Python)?
 
 
-## 17. Evaluation script: Table 1 "Absolute Difference" uses one category only
-
-*No separating example. This is about how the published numbers were produced.*
-
-- `main.py:46-47` (`compare_values`) uses `get_fitness(...)[0]` and `get_precision(...)[0]`. That is the **control-flow category only**, not the category average.
-- The trees are mined with `df2_miner_apply(path)` with `ident=False`, so they contain no identity nodes.
-- Sec. 4.2 explains the precision gaps mainly through multiplicity and identity sensitivity.
-- The committed `comparison.csv` reproduces Table 1 only roughly:
-
-| Log | Table 1 (fit / prec) | `comparison.csv` (fit / prec) |
-|---|---|---|
-| Container | 0.02 / 0.08 | **0.18 / 0.12** |
-| P2P | 0.17 / 0.12 | **0.02 / 0.08** |
-| LRMS O2C | 0.00 / 0.08 | 0.00 / **0.12** |
-| LRMS P2P | 0.04 / 0.02 | 0.04 / 0.01 |
-| LRMS HR | 0.05 / 0.12 | 0.06 / 0.12 |
-| Recruiting | 0.03 / 0.35 | 0.02 / 0.37 |
-| Orders, Hospital | match | match |
-
-The Container and P2P rows look swapped.
-
-**Question:** Were the Table 1 values computed from all three categories, and is `comparison.csv` the current version?
-
-## 18. Typos in the definitions
+## 17. Typos in the definitions
 
 *No run needed.*
 
