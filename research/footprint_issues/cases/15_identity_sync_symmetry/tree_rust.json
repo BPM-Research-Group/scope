@@ -1,0 +1,58 @@
+{
+  "root": {
+    "Operator": {
+      "children": [
+        {
+          "Operator": {
+            "children": [
+              {
+                "Leaf": {
+                  "activity_label": {
+                    "Activity": "a"
+                  },
+                  "convergent_ob_types": [],
+                  "deficient_ob_types": [],
+                  "divergent_ob_types": [],
+                  "related_ob_types": [
+                    "i",
+                    "o"
+                  ],
+                  "uuid": "cb9e4284-bf13-46b5-bef7-926e648787f1"
+                }
+              },
+              {
+                "Leaf": {
+                  "activity_label": {
+                    "Activity": "b"
+                  },
+                  "convergent_ob_types": [],
+                  "deficient_ob_types": [],
+                  "divergent_ob_types": [],
+                  "related_ob_types": [
+                    "i",
+                    "o"
+                  ],
+                  "uuid": "8cb7af95-f631-4683-9d0f-6bd66dbacca9"
+                }
+              }
+            ],
+            "operator_type": "Sequence",
+            "uuid": "6d087e32-cce6-4acd-81d9-5dcd733d817d"
+          }
+        }
+      ],
+      "operator_type": {
+        "IdentityRelation": {
+          "kind": "Sync",
+          "left": [
+            "o"
+          ],
+          "right": [
+            "i"
+          ]
+        }
+      },
+      "uuid": "e9930e03-1f90-4779-8019-1e9e740bee5f"
+    }
+  }
+}

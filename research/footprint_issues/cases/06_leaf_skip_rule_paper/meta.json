@@ -1,0 +1,16 @@
+{
+  "hl_events": [
+    1
+  ],
+  "id": "06_leaf_skip_rule_paper",
+  "issue": "Paper: leaves unrelated to a type (and \u03c4) are not skippable under the literal leaf rule",
+  "literal": true,
+  "probes": [
+    [
+      "df",
+      "o",
+      "a",
+      "c"
+    ]
+  ]
+}

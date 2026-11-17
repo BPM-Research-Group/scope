@@ -1,0 +1,17 @@
+{
+  "hl_events": [
+    0,
+    1
+  ],
+  "id": "11_identity_objectwise_stricter",
+  "issue": "Identity: object-wise check flags a violation that Def. 4 does not",
+  "probes": [
+    [
+      "ident",
+      "o",
+      "i",
+      "a",
+      "b"
+    ]
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "root": {
+    "Operator": {
+      "children": [
+        {
+          "Operator": {
+            "children": [
+              {
+                "Leaf": {
+                  "activity_label": {
+                    "Activity": "a"
+                  },
+                  "convergent_ob_types": [],
+                  "deficient_ob_types": [],
+                  "divergent_ob_types": [],
+                  "related_ob_types": [
+                    "i",
+                    "o"
+                  ],
+                  "uuid": "51ef2878-a75b-43c9-8eb4-92ab81f04ecf"
+                }
+              },
+              {
+                "Leaf": {
+                  "activity_label": {
+                    "Activity": "b"
+                  },
+                  "convergent_ob_types": [],
+                  "deficient_ob_types": [],
+                  "divergent_ob_types": [],
+                  "related_ob_types": [
+                    "i",
+                    "o"
+                  ],
+                  "uuid": "17d610a2-5c84-4f47-b795-ad9149419543"
+                }
+              }
+            ],
+            "operator_type": "ExclusiveChoice",
+            "uuid": "cdb4ca4b-2256-4bbf-8fcd-286e40410d89"
+          }
+        }
+      ],
+      "operator_type": {
+        "IdentityRelation": {
+          "kind": "ImpOrdered",
+          "left": [
+            "o"
+          ],
+          "right": [
+            "i"
+          ]
+        }
+      },
+      "uuid": "e191f70c-7ebc-499c-b5a0-7f9b0765f9ae"
+    }
+  }
+}

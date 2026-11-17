@@ -1,0 +1,48 @@
+{
+  "children": [
+    {
+      "children": [
+        {
+          "act": "a",
+          "con": [],
+          "def": [],
+          "div": [
+            "o"
+          ],
+          "hl": false,
+          "rel": [
+            "i",
+            "o"
+          ]
+        },
+        {
+          "act": null,
+          "con": [
+            "i",
+            "o"
+          ],
+          "def": [
+            "i",
+            "o"
+          ],
+          "div": [
+            "i",
+            "o"
+          ],
+          "hl": false,
+          "rel": [
+            "i",
+            "o"
+          ]
+        }
+      ],
+      "hl": false,
+      "op": "loop"
+    }
+  ],
+  "hl": true,
+  "kind": "ImpOrdered",
+  "left": "o",
+  "op": "id",
+  "right": "i"
+}

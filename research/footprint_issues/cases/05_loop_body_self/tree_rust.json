@@ -1,0 +1,40 @@
+{
+  "root": {
+    "Operator": {
+      "children": [
+        {
+          "Leaf": {
+            "activity_label": {
+              "Activity": "a"
+            },
+            "convergent_ob_types": [],
+            "deficient_ob_types": [],
+            "divergent_ob_types": [],
+            "related_ob_types": [
+              "o"
+            ],
+            "uuid": "a08e1493-95bb-4e41-8128-baac2b76a384"
+          }
+        },
+        {
+          "Leaf": {
+            "activity_label": {
+              "Activity": "b"
+            },
+            "convergent_ob_types": [],
+            "deficient_ob_types": [],
+            "divergent_ob_types": [],
+            "related_ob_types": [
+              "o"
+            ],
+            "uuid": "049c1af4-b40d-4c58-bc00-864d7d61d730"
+          }
+        }
+      ],
+      "operator_type": {
+        "Loop": null
+      },
+      "uuid": "72a0fae3-2ce7-4c38-9e02-d5968ce6afe8"
+    }
+  }
+}

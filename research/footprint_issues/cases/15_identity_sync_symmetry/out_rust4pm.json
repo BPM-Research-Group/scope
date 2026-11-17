@@ -1,0 +1,199 @@
+{
+  "conformance": {
+    "fitness": [
+      0.7142857142857143,
+      0.6666666666666666,
+      0.0
+    ],
+    "overall": [
+      0.4603174603174603,
+      0.9444444444444445
+    ],
+    "precision": [
+      0.8333333333333334,
+      1.0,
+      1.0
+    ]
+  },
+  "log": {
+    "convergent_ev_type_per_ob_type": {
+      "i": [],
+      "o": []
+    },
+    "deficient_ev_type_per_ob_type": {
+      "i": [],
+      "o": []
+    },
+    "directly_follows_ev_types_per_ob_type": {
+      "i": [
+        [
+          "a",
+          "b"
+        ]
+      ],
+      "o": []
+    },
+    "divergent_ev_type_per_ob_type": {
+      "i": [],
+      "o": []
+    },
+    "end_ev_type_per_ob_type": {
+      "i": [
+        "b"
+      ],
+      "o": [
+        "a",
+        "b"
+      ]
+    },
+    "ident": [
+      [
+        "o",
+        "i",
+        "a",
+        "b"
+      ],
+      [
+        "o",
+        "i",
+        "b",
+        "a"
+      ]
+    ],
+    "optional_ev_type_per_ob_type": {
+      "i": [],
+      "o": [
+        "a",
+        "b"
+      ]
+    },
+    "related_ev_type_per_ob_type": {
+      "i": [
+        "a",
+        "b"
+      ],
+      "o": [
+        "b",
+        "a"
+      ]
+    },
+    "start_ev_type_per_ob_type": {
+      "i": [
+        "a"
+      ],
+      "o": [
+        "a",
+        "b"
+      ]
+    }
+  },
+  "tree": {
+    "convergent_ev_type_per_ob_type": {
+      "i": [],
+      "o": []
+    },
+    "deficient_ev_type_per_ob_type": {
+      "i": [],
+      "o": []
+    },
+    "directly_follows_ev_types_per_ob_type": {
+      "i": [
+        [
+          "a",
+          "b"
+        ]
+      ],
+      "o": [
+        [
+          "a",
+          "b"
+        ]
+      ]
+    },
+    "divergent_ev_type_per_ob_type": {
+      "i": [],
+      "o": []
+    },
+    "end_ev_type_per_ob_type": {
+      "i": [
+        "b"
+      ],
+      "o": [
+        "b"
+      ]
+    },
+    "ident": [
+      [
+        "i",
+        "i",
+        "b",
+        "a"
+      ],
+      [
+        "i",
+        "i",
+        "a",
+        "b"
+      ],
+      [
+        "i",
+        "o",
+        "b",
+        "a"
+      ],
+      [
+        "o",
+        "o",
+        "b",
+        "a"
+      ],
+      [
+        "o",
+        "o",
+        "a",
+        "b"
+      ],
+      [
+        "i",
+        "o",
+        "a",
+        "b"
+      ],
+      [
+        "o",
+        "i",
+        "b",
+        "a"
+      ],
+      [
+        "o",
+        "i",
+        "a",
+        "b"
+      ]
+    ],
+    "optional_ev_type_per_ob_type": {
+      "i": [],
+      "o": []
+    },
+    "related_ev_type_per_ob_type": {
+      "i": [
+        "a",
+        "b"
+      ],
+      "o": [
+        "a",
+        "b"
+      ]
+    },
+    "start_ev_type_per_ob_type": {
+      "i": [
+        "a"
+      ],
+      "o": [
+        "a"
+      ]
+    }
+  },
+  "tree_valid": true
+}

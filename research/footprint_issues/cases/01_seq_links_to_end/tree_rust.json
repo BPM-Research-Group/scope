@@ -1,0 +1,60 @@
+{
+  "root": {
+    "Operator": {
+      "children": [
+        {
+          "Leaf": {
+            "activity_label": {
+              "Activity": "a"
+            },
+            "convergent_ob_types": [],
+            "deficient_ob_types": [],
+            "divergent_ob_types": [],
+            "related_ob_types": [
+              "o"
+            ],
+            "uuid": "dd8d331b-d4f5-487e-876c-d9cdfec30aef"
+          }
+        },
+        {
+          "Operator": {
+            "children": [
+              {
+                "Leaf": {
+                  "activity_label": {
+                    "Activity": "b"
+                  },
+                  "convergent_ob_types": [],
+                  "deficient_ob_types": [],
+                  "divergent_ob_types": [],
+                  "related_ob_types": [
+                    "o"
+                  ],
+                  "uuid": "81ffdacd-ff61-432f-8583-5b5f8f95226c"
+                }
+              },
+              {
+                "Leaf": {
+                  "activity_label": {
+                    "Activity": "c"
+                  },
+                  "convergent_ob_types": [],
+                  "deficient_ob_types": [],
+                  "divergent_ob_types": [],
+                  "related_ob_types": [
+                    "o"
+                  ],
+                  "uuid": "399c3ff9-fedb-4a8f-baa4-ff3493a3dc2d"
+                }
+              }
+            ],
+            "operator_type": "Sequence",
+            "uuid": "fa18b90b-ac47-4ddf-bd12-bc7892064ee0"
+          }
+        }
+      ],
+      "operator_type": "Sequence",
+      "uuid": "1b193c79-2457-4369-9cfe-e954b61e33b5"
+    }
+  }
+}

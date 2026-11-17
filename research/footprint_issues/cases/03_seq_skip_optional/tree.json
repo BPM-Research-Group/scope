@@ -1,0 +1,58 @@
+{
+  "children": [
+    {
+      "act": "a",
+      "con": [],
+      "def": [],
+      "div": [],
+      "hl": false,
+      "rel": [
+        "o"
+      ]
+    },
+    {
+      "children": [
+        {
+          "act": "b",
+          "con": [],
+          "def": [],
+          "div": [],
+          "hl": false,
+          "rel": [
+            "o"
+          ]
+        },
+        {
+          "act": null,
+          "con": [
+            "o"
+          ],
+          "def": [
+            "o"
+          ],
+          "div": [
+            "o"
+          ],
+          "hl": false,
+          "rel": [
+            "o"
+          ]
+        }
+      ],
+      "hl": true,
+      "op": "xor"
+    },
+    {
+      "act": "c",
+      "con": [],
+      "def": [],
+      "div": [],
+      "hl": false,
+      "rel": [
+        "o"
+      ]
+    }
+  ],
+  "hl": false,
+  "op": "seq"
+}

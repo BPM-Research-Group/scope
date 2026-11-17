@@ -1,0 +1,22 @@
+{
+  "hl_events": [
+    1
+  ],
+  "id": "10_pattern_double_count",
+  "issue": "Pattern universe: activities in both log and tree are counted twice",
+  "probes": [
+    [
+      "rel",
+      "a",
+      "o"
+    ],
+    [
+      "rel",
+      "x",
+      "o"
+    ]
+  ],
+  "score_check": [
+    1
+  ]
+}

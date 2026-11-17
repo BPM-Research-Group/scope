@@ -1,0 +1,17 @@
+{
+  "hl_events": [],
+  "id": "04_par_skip_any",
+  "issue": "Tree DF: \u2227 is treated as skippable if *any* child is skippable (eq. 5 says all)",
+  "probes": [
+    [
+      "start",
+      "o",
+      "a"
+    ],
+    [
+      "start",
+      "o",
+      "e"
+    ]
+  ]
+}

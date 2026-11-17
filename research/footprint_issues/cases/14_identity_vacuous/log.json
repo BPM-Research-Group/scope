@@ -1,0 +1,78 @@
+{
+  "eventTypes": [
+    {
+      "attributes": [],
+      "name": "a"
+    }
+  ],
+  "events": [
+    {
+      "attributes": [],
+      "id": "e1",
+      "relationships": [
+        {
+          "objectId": "o1",
+          "qualifier": ""
+        },
+        {
+          "objectId": "i1",
+          "qualifier": ""
+        }
+      ],
+      "time": "2024-01-01T00:00:01Z",
+      "type": "a"
+    },
+    {
+      "attributes": [],
+      "id": "e2",
+      "relationships": [
+        {
+          "objectId": "o2",
+          "qualifier": ""
+        },
+        {
+          "objectId": "i2",
+          "qualifier": ""
+        }
+      ],
+      "time": "2024-01-01T00:00:02Z",
+      "type": "a"
+    }
+  ],
+  "objectTypes": [
+    {
+      "attributes": [],
+      "name": "i"
+    },
+    {
+      "attributes": [],
+      "name": "o"
+    }
+  ],
+  "objects": [
+    {
+      "attributes": [],
+      "id": "i1",
+      "relationships": [],
+      "type": "i"
+    },
+    {
+      "attributes": [],
+      "id": "i2",
+      "relationships": [],
+      "type": "i"
+    },
+    {
+      "attributes": [],
+      "id": "o1",
+      "relationships": [],
+      "type": "o"
+    },
+    {
+      "attributes": [],
+      "id": "o2",
+      "relationships": [],
+      "type": "o"
+    }
+  ]
+}

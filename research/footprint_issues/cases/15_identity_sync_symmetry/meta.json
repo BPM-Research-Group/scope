@@ -1,0 +1,24 @@
+{
+  "hl_events": [
+    0,
+    1
+  ],
+  "id": "15_identity_sync_symmetry",
+  "issue": "Identity: rust4pm reads Sync as both directions, Python only as left \u21d2 right",
+  "probes": [
+    [
+      "ident",
+      "o",
+      "i",
+      "a",
+      "b"
+    ],
+    [
+      "ident",
+      "i",
+      "o",
+      "a",
+      "b"
+    ]
+  ]
+}

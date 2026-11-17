@@ -1,0 +1,195 @@
+{
+  "conformance": {
+    "counts": {
+      "control": {
+        "both": 4,
+        "log_ones": 4,
+        "patterns": 16,
+        "tree_ones": 8
+      },
+      "identity": {
+        "both": 0,
+        "log_ones": 0,
+        "patterns": 16,
+        "tree_ones": 4
+      },
+      "multiplicity": {
+        "both": 2,
+        "log_ones": 2,
+        "patterns": 20,
+        "tree_ones": 8
+      }
+    },
+    "fitness": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "ident_ones": {
+      "log": [],
+      "tree": [
+        [
+          "ident",
+          "i",
+          "o",
+          "a",
+          "a"
+        ],
+        [
+          "ident",
+          "i",
+          "o",
+          "a",
+          "b"
+        ],
+        [
+          "ident",
+          "i",
+          "o",
+          "b",
+          "a"
+        ],
+        [
+          "ident",
+          "i",
+          "o",
+          "b",
+          "b"
+        ]
+      ]
+    },
+    "overall": [
+      1.0,
+      0.25
+    ],
+    "precision": [
+      0.5,
+      0.25,
+      0.0
+    ]
+  },
+  "log": {
+    "acts": [
+      "a"
+    ],
+    "con": {},
+    "def": {},
+    "df": {
+      "i": [],
+      "o": []
+    },
+    "div": {},
+    "end": {
+      "i": [
+        "a"
+      ],
+      "o": [
+        "a"
+      ]
+    },
+    "ident_violated": [],
+    "opt": {},
+    "rel": {
+      "a": [
+        "i",
+        "o"
+      ]
+    },
+    "start": {
+      "i": [
+        "a"
+      ],
+      "o": [
+        "a"
+      ]
+    },
+    "types": [
+      "i",
+      "o"
+    ]
+  },
+  "mode": "interpreted",
+  "tree": {
+    "acts": [
+      "a",
+      "b"
+    ],
+    "con": {},
+    "def": {},
+    "df": {
+      "i": [],
+      "o": []
+    },
+    "div": {},
+    "end": {
+      "i": [
+        "a",
+        "b"
+      ],
+      "o": [
+        "a",
+        "b"
+      ]
+    },
+    "ident_enforced_explicit": [
+      [
+        "o",
+        "i",
+        "a",
+        "a"
+      ],
+      [
+        "o",
+        "i",
+        "a",
+        "b"
+      ],
+      [
+        "o",
+        "i",
+        "b",
+        "a"
+      ],
+      [
+        "o",
+        "i",
+        "b",
+        "b"
+      ]
+    ],
+    "opt": {
+      "a": [
+        "i",
+        "o"
+      ],
+      "b": [
+        "i",
+        "o"
+      ]
+    },
+    "rel": {
+      "a": [
+        "i",
+        "o"
+      ],
+      "b": [
+        "i",
+        "o"
+      ]
+    },
+    "start": {
+      "i": [
+        "a",
+        "b"
+      ],
+      "o": [
+        "a",
+        "b"
+      ]
+    },
+    "types": [
+      "i",
+      "o"
+    ]
+  }
+}

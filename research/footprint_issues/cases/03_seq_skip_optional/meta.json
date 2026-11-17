@@ -1,0 +1,28 @@
+{
+  "hl_events": [
+    0,
+    1
+  ],
+  "id": "03_seq_skip_optional",
+  "issue": "Tree DF: a sequence does not link across a skippable child (eq. 13)",
+  "probes": [
+    [
+      "df",
+      "o",
+      "a",
+      "c"
+    ],
+    [
+      "df",
+      "o",
+      "a",
+      "b"
+    ],
+    [
+      "df",
+      "o",
+      "b",
+      "c"
+    ]
+  ]
+}

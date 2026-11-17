@@ -1,0 +1,14 @@
+{
+  "hl_events": [],
+  "id": "14_identity_vacuous",
+  "issue": "Identity: a pattern that never applies in the log counts as violated (1) in the implementations",
+  "probes": [
+    [
+      "ident",
+      "o",
+      "i",
+      "a",
+      "b"
+    ]
+  ]
+}

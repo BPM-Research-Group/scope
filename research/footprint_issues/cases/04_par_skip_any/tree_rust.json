@@ -1,0 +1,64 @@
+{
+  "root": {
+    "Operator": {
+      "children": [
+        {
+          "Operator": {
+            "children": [
+              {
+                "Leaf": {
+                  "activity_label": {
+                    "Activity": "a"
+                  },
+                  "convergent_ob_types": [],
+                  "deficient_ob_types": [],
+                  "divergent_ob_types": [],
+                  "related_ob_types": [
+                    "o"
+                  ],
+                  "uuid": "cbc90b65-ef4f-410e-80b9-fb6f2612efe4"
+                }
+              },
+              {
+                "Leaf": {
+                  "activity_label": "Tau",
+                  "convergent_ob_types": [
+                    "o"
+                  ],
+                  "deficient_ob_types": [
+                    "o"
+                  ],
+                  "divergent_ob_types": [
+                    "o"
+                  ],
+                  "related_ob_types": [
+                    "o"
+                  ],
+                  "uuid": "74e00fa5-10ec-4b76-82b2-dc24d0e97b14"
+                }
+              }
+            ],
+            "operator_type": "Concurrency",
+            "uuid": "132c3f47-1c93-4a3d-b9df-23000f0bb61f"
+          }
+        },
+        {
+          "Leaf": {
+            "activity_label": {
+              "Activity": "e"
+            },
+            "convergent_ob_types": [],
+            "deficient_ob_types": [],
+            "divergent_ob_types": [],
+            "related_ob_types": [
+              "o"
+            ],
+            "uuid": "71ccb9a2-104b-4d97-8add-29cb0c6e75df"
+          }
+        }
+      ],
+      "operator_type": "Sequence",
+      "uuid": "fef43c6e-3926-458a-a368-eabb278aa16d"
+    }
+  }
+}

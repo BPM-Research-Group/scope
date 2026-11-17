@@ -1,0 +1,14 @@
+{
+  "hl_events": [
+    0
+  ],
+  "id": "08_tree_con_stricter",
+  "issue": "Tree `con`: a leaf that allows convergence does not yield the pattern in the implementations",
+  "probes": [
+    [
+      "con",
+      "a",
+      "i"
+    ]
+  ]
+}

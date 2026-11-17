@@ -1,0 +1,17 @@
+{
+  "hl_events": [
+    2,
+    3
+  ],
+  "id": "12_identity_empty_set",
+  "issue": "Identity: events without objects of the implying type are ignored by the implementations",
+  "probes": [
+    [
+      "ident",
+      "o",
+      "i",
+      "a",
+      "b"
+    ]
+  ]
+}

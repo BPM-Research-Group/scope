@@ -1,0 +1,58 @@
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "act": "a",
+              "con": [],
+              "def": [],
+              "div": [],
+              "hl": false,
+              "rel": [
+                "o"
+              ]
+            },
+            {
+              "act": "b",
+              "con": [],
+              "def": [],
+              "div": [],
+              "hl": false,
+              "rel": [
+                "o"
+              ]
+            }
+          ],
+          "hl": false,
+          "op": "seq"
+        },
+        {
+          "act": "c",
+          "con": [],
+          "def": [],
+          "div": [],
+          "hl": false,
+          "rel": [
+            "o"
+          ]
+        }
+      ],
+      "hl": true,
+      "op": "par"
+    },
+    {
+      "act": "d",
+      "con": [],
+      "def": [],
+      "div": [],
+      "hl": false,
+      "rel": [
+        "o"
+      ]
+    }
+  ],
+  "hl": false,
+  "op": "seq"
+}

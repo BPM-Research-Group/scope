@@ -1,0 +1,8 @@
+[package]
+name = "footprint_harness"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+process_mining = { git = "https://github.com/BPM-Research-Group/rust4pm_BPM.git", package = "process_mining", rev = "fcbfdb4257cddcf6cb299fb2b105d52900a4ba7a" }
+serde_json = "1"

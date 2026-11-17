@@ -1,0 +1,168 @@
+{
+  "conformance": {
+    "fitness": [
+      0.625,
+      0.5,
+      0.0
+    ],
+    "overall": [
+      0.375,
+      0.6111111111111112
+    ],
+    "precision": [
+      0.8333333333333334,
+      1.0,
+      0.0
+    ]
+  },
+  "log": {
+    "convergent_ev_type_per_ob_type": {
+      "i": [],
+      "o": [
+        "b"
+      ]
+    },
+    "deficient_ev_type_per_ob_type": {
+      "i": [],
+      "o": []
+    },
+    "directly_follows_ev_types_per_ob_type": {
+      "i": [],
+      "o": [
+        [
+          "a",
+          "b"
+        ]
+      ]
+    },
+    "divergent_ev_type_per_ob_type": {
+      "i": [],
+      "o": []
+    },
+    "end_ev_type_per_ob_type": {
+      "i": [
+        "b",
+        "a"
+      ],
+      "o": [
+        "b"
+      ]
+    },
+    "ident": [
+      [
+        "i",
+        "o",
+        "b",
+        "a"
+      ],
+      [
+        "i",
+        "o",
+        "a",
+        "b"
+      ]
+    ],
+    "optional_ev_type_per_ob_type": {
+      "i": [
+        "a",
+        "b"
+      ],
+      "o": [
+        "a"
+      ]
+    },
+    "related_ev_type_per_ob_type": {
+      "i": [
+        "b",
+        "a"
+      ],
+      "o": [
+        "a",
+        "b"
+      ]
+    },
+    "start_ev_type_per_ob_type": {
+      "i": [
+        "b",
+        "a"
+      ],
+      "o": [
+        "a",
+        "b"
+      ]
+    }
+  },
+  "tree": {
+    "convergent_ev_type_per_ob_type": {
+      "i": [],
+      "o": []
+    },
+    "deficient_ev_type_per_ob_type": {
+      "i": [],
+      "o": []
+    },
+    "directly_follows_ev_types_per_ob_type": {
+      "i": [
+        [
+          "a",
+          "b"
+        ]
+      ],
+      "o": [
+        [
+          "a",
+          "b"
+        ]
+      ]
+    },
+    "divergent_ev_type_per_ob_type": {
+      "i": [],
+      "o": []
+    },
+    "end_ev_type_per_ob_type": {
+      "i": [
+        "b"
+      ],
+      "o": [
+        "b"
+      ]
+    },
+    "ident": [
+      [
+        "o",
+        "i",
+        "b",
+        "a"
+      ],
+      [
+        "o",
+        "i",
+        "a",
+        "b"
+      ]
+    ],
+    "optional_ev_type_per_ob_type": {
+      "i": [],
+      "o": []
+    },
+    "related_ev_type_per_ob_type": {
+      "i": [
+        "b",
+        "a"
+      ],
+      "o": [
+        "b",
+        "a"
+      ]
+    },
+    "start_ev_type_per_ob_type": {
+      "i": [
+        "a"
+      ],
+      "o": [
+        "a"
+      ]
+    }
+  },
+  "tree_valid": true
+}

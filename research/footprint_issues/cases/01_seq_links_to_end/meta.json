@@ -1,0 +1,29 @@
+{
+  "hl_events": [],
+  "id": "01_seq_links_to_end",
+  "issue": "Tree DF: a sequence links to the *end* of the next child and takes ends from starts",
+  "probes": [
+    [
+      "df",
+      "o",
+      "a",
+      "b"
+    ],
+    [
+      "df",
+      "o",
+      "a",
+      "c"
+    ],
+    [
+      "end",
+      "o",
+      "b"
+    ],
+    [
+      "end",
+      "o",
+      "c"
+    ]
+  ]
+}

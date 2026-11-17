@@ -1,0 +1,28 @@
+{
+  "hl_events": [
+    2,
+    3
+  ],
+  "id": "02_par_ends_from_starts",
+  "issue": "Tree DF: \u2227 and \u00d7 report their *start* activities as end activities",
+  "probes": [
+    [
+      "df",
+      "o",
+      "b",
+      "d"
+    ],
+    [
+      "df",
+      "o",
+      "a",
+      "d"
+    ],
+    [
+      "df",
+      "o",
+      "c",
+      "d"
+    ]
+  ]
+}

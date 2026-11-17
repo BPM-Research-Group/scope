@@ -1,0 +1,91 @@
+{
+  "conformance": {
+    "fitness": [
+      0.3333333333333333,
+      0.6666666666666666,
+      1.0
+    ],
+    "overall": [
+      0.6666666666666666,
+      0.8333333333333334
+    ],
+    "precision": [
+      0.5,
+      1.0,
+      1.0
+    ]
+  },
+  "log": {
+    "convergent_ev_type_per_ob_type": {
+      "o": []
+    },
+    "deficient_ev_type_per_ob_type": {
+      "o": []
+    },
+    "directly_follows_ev_types_per_ob_type": {
+      "o": [
+        [
+          "a",
+          "x"
+        ]
+      ]
+    },
+    "divergent_ev_type_per_ob_type": {
+      "o": []
+    },
+    "end_ev_type_per_ob_type": {
+      "o": [
+        "x"
+      ]
+    },
+    "ident": [],
+    "optional_ev_type_per_ob_type": {
+      "o": []
+    },
+    "related_ev_type_per_ob_type": {
+      "o": [
+        "a",
+        "x"
+      ]
+    },
+    "start_ev_type_per_ob_type": {
+      "o": [
+        "a"
+      ]
+    }
+  },
+  "tree": {
+    "convergent_ev_type_per_ob_type": {
+      "o": []
+    },
+    "deficient_ev_type_per_ob_type": {
+      "o": []
+    },
+    "directly_follows_ev_types_per_ob_type": {
+      "o": []
+    },
+    "divergent_ev_type_per_ob_type": {
+      "o": []
+    },
+    "end_ev_type_per_ob_type": {
+      "o": [
+        "a"
+      ]
+    },
+    "ident": [],
+    "optional_ev_type_per_ob_type": {
+      "o": []
+    },
+    "related_ev_type_per_ob_type": {
+      "o": [
+        "a"
+      ]
+    },
+    "start_ev_type_per_ob_type": {
+      "o": [
+        "a"
+      ]
+    }
+  },
+  "tree_valid": true
+}

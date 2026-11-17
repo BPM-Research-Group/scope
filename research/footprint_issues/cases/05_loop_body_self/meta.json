@@ -1,0 +1,25 @@
+{
+  "hl_events": [],
+  "id": "05_loop_body_self",
+  "issue": "Tree DF: a loop always links the body's end to the body's start",
+  "probes": [
+    [
+      "df",
+      "o",
+      "a",
+      "a"
+    ],
+    [
+      "df",
+      "o",
+      "a",
+      "b"
+    ],
+    [
+      "df",
+      "o",
+      "b",
+      "a"
+    ]
+  ]
+}

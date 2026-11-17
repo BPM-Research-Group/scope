@@ -1,0 +1,16 @@
+{
+  "root": {
+    "Leaf": {
+      "activity_label": {
+        "Activity": "a"
+      },
+      "convergent_ob_types": [],
+      "deficient_ob_types": [],
+      "divergent_ob_types": [],
+      "related_ob_types": [
+        "o"
+      ],
+      "uuid": "9baf333b-c61f-4fda-adb4-6951fe76a90a"
+    }
+  }
+}

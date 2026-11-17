@@ -1,0 +1,72 @@
+{
+  "root": {
+    "Operator": {
+      "children": [
+        {
+          "Operator": {
+            "children": [
+              {
+                "Leaf": {
+                  "activity_label": {
+                    "Activity": "a"
+                  },
+                  "convergent_ob_types": [],
+                  "deficient_ob_types": [],
+                  "divergent_ob_types": [],
+                  "related_ob_types": [
+                    "i",
+                    "o"
+                  ],
+                  "uuid": "c7377c8b-e1c4-4bd3-9425-7789c03440b0"
+                }
+              },
+              {
+                "Leaf": {
+                  "activity_label": "Tau",
+                  "convergent_ob_types": [
+                    "i",
+                    "o"
+                  ],
+                  "deficient_ob_types": [
+                    "i",
+                    "o"
+                  ],
+                  "divergent_ob_types": [
+                    "i",
+                    "o"
+                  ],
+                  "related_ob_types": [
+                    "i",
+                    "o"
+                  ],
+                  "uuid": "9035c13b-9119-46ac-838e-f5e3b78401f1"
+                }
+              }
+            ],
+            "operator_type": {
+              "Loop": null
+            },
+            "uuid": "87941ce9-6d42-4a35-a217-05f6b5a6eeee"
+          }
+        },
+        {
+          "Leaf": {
+            "activity_label": {
+              "Activity": "b"
+            },
+            "convergent_ob_types": [],
+            "deficient_ob_types": [],
+            "divergent_ob_types": [],
+            "related_ob_types": [
+              "i",
+              "o"
+            ],
+            "uuid": "088d91f2-97ee-48e4-9e0e-84a70e584f66"
+          }
+        }
+      ],
+      "operator_type": "Sequence",
+      "uuid": "33abc548-2ed2-43dc-b9b6-daeb54e94551"
+    }
+  }
+}

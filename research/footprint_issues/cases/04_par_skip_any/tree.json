@@ -1,0 +1,48 @@
+{
+  "children": [
+    {
+      "children": [
+        {
+          "act": "a",
+          "con": [],
+          "def": [],
+          "div": [],
+          "hl": false,
+          "rel": [
+            "o"
+          ]
+        },
+        {
+          "act": null,
+          "con": [
+            "o"
+          ],
+          "def": [
+            "o"
+          ],
+          "div": [
+            "o"
+          ],
+          "hl": false,
+          "rel": [
+            "o"
+          ]
+        }
+      ],
+      "hl": true,
+      "op": "par"
+    },
+    {
+      "act": "e",
+      "con": [],
+      "def": [],
+      "div": [],
+      "hl": false,
+      "rel": [
+        "o"
+      ]
+    }
+  ],
+  "hl": false,
+  "op": "seq"
+}

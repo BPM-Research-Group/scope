@@ -1,0 +1,139 @@
+{
+  "conformance": {
+    "counts": {
+      "control": {
+        "both": 4,
+        "log_ones": 4,
+        "patterns": 15,
+        "tree_ones": 4
+      },
+      "identity": {
+        "both": 0,
+        "log_ones": 0,
+        "patterns": 9,
+        "tree_ones": 0
+      },
+      "multiplicity": {
+        "both": 3,
+        "log_ones": 3,
+        "patterns": 15,
+        "tree_ones": 3
+      }
+    },
+    "fitness": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "ident_ones": {
+      "log": [],
+      "tree": []
+    },
+    "overall": [
+      1.0,
+      1.0
+    ],
+    "precision": [
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "log": {
+    "acts": [
+      "a",
+      "b",
+      "c"
+    ],
+    "con": {},
+    "def": {},
+    "df": {
+      "o": [
+        [
+          "a",
+          "b"
+        ],
+        [
+          "b",
+          "c"
+        ]
+      ]
+    },
+    "div": {},
+    "end": {
+      "o": [
+        "c"
+      ]
+    },
+    "ident_violated": [],
+    "opt": {},
+    "rel": {
+      "a": [
+        "o"
+      ],
+      "b": [
+        "o"
+      ],
+      "c": [
+        "o"
+      ]
+    },
+    "start": {
+      "o": [
+        "a"
+      ]
+    },
+    "types": [
+      "o"
+    ]
+  },
+  "mode": "literal leaf skip",
+  "tree": {
+    "acts": [
+      "a",
+      "b",
+      "c"
+    ],
+    "con": {},
+    "def": {},
+    "df": {
+      "o": [
+        [
+          "a",
+          "b"
+        ],
+        [
+          "b",
+          "c"
+        ]
+      ]
+    },
+    "div": {},
+    "end": {
+      "o": [
+        "c"
+      ]
+    },
+    "ident_enforced_explicit": [],
+    "opt": {},
+    "rel": {
+      "a": [
+        "o"
+      ],
+      "b": [
+        "o"
+      ],
+      "c": [
+        "o"
+      ]
+    },
+    "start": {
+      "o": [
+        "a"
+      ]
+    },
+    "types": [
+      "o"
+    ]
+  }
+}

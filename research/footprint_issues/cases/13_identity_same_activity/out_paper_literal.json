@@ -1,0 +1,181 @@
+{
+  "conformance": {
+    "counts": {
+      "control": {
+        "both": 5,
+        "log_ones": 5,
+        "patterns": 6,
+        "tree_ones": 6
+      },
+      "identity": {
+        "both": 0,
+        "log_ones": 1,
+        "patterns": 4,
+        "tree_ones": 1
+      },
+      "multiplicity": {
+        "both": 3,
+        "log_ones": 3,
+        "patterns": 10,
+        "tree_ones": 5
+      }
+    },
+    "fitness": [
+      1.0,
+      1.0,
+      0.0
+    ],
+    "ident_ones": {
+      "log": [
+        [
+          "ident",
+          "o",
+          "i",
+          "a",
+          "a"
+        ]
+      ],
+      "tree": [
+        [
+          "ident",
+          "i",
+          "o",
+          "a",
+          "a"
+        ]
+      ]
+    },
+    "overall": [
+      0.6666666666666666,
+      0.4777777777777778
+    ],
+    "precision": [
+      0.8333333333333334,
+      0.6,
+      0.0
+    ]
+  },
+  "log": {
+    "acts": [
+      "a"
+    ],
+    "con": {},
+    "def": {},
+    "df": {
+      "i": [],
+      "o": [
+        [
+          "a",
+          "a"
+        ]
+      ]
+    },
+    "div": {
+      "a": [
+        "o"
+      ]
+    },
+    "end": {
+      "i": [
+        "a"
+      ],
+      "o": [
+        "a"
+      ]
+    },
+    "ident_violated": [
+      [
+        "o",
+        "i",
+        "a",
+        "a"
+      ]
+    ],
+    "opt": {},
+    "rel": {
+      "a": [
+        "i",
+        "o"
+      ]
+    },
+    "start": {
+      "i": [
+        "a"
+      ],
+      "o": [
+        "a"
+      ]
+    },
+    "types": [
+      "i",
+      "o"
+    ]
+  },
+  "mode": "literal leaf skip",
+  "tree": {
+    "acts": [
+      "a"
+    ],
+    "con": {},
+    "def": {},
+    "df": {
+      "i": [
+        [
+          "a",
+          "a"
+        ]
+      ],
+      "o": [
+        [
+          "a",
+          "a"
+        ]
+      ]
+    },
+    "div": {
+      "a": [
+        "i",
+        "o"
+      ]
+    },
+    "end": {
+      "i": [
+        "a"
+      ],
+      "o": [
+        "a"
+      ]
+    },
+    "ident_enforced_explicit": [
+      [
+        "o",
+        "i",
+        "a",
+        "a"
+      ]
+    ],
+    "opt": {
+      "a": [
+        "o"
+      ]
+    },
+    "rel": {
+      "a": [
+        "i",
+        "o"
+      ]
+    },
+    "start": {
+      "i": [
+        "a"
+      ],
+      "o": [
+        "a"
+      ]
+    },
+    "types": [
+      "i",
+      "o"
+    ]
+  }
+}

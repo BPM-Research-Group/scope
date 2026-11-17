@@ -1,0 +1,138 @@
+{
+  "conformance": {
+    "fitness": [
+      1.0,
+      1.0,
+      0.5
+    ],
+    "overall": [
+      0.8333333333333334,
+      0.611111111111111
+    ],
+    "precision": [
+      0.5,
+      0.3333333333333333,
+      1.0
+    ]
+  },
+  "log": {
+    "convergent_ev_type_per_ob_type": {
+      "i": [],
+      "o": []
+    },
+    "deficient_ev_type_per_ob_type": {
+      "i": [],
+      "o": []
+    },
+    "directly_follows_ev_types_per_ob_type": {
+      "i": [],
+      "o": []
+    },
+    "divergent_ev_type_per_ob_type": {
+      "i": [],
+      "o": []
+    },
+    "end_ev_type_per_ob_type": {
+      "i": [
+        "a"
+      ],
+      "o": [
+        "a"
+      ]
+    },
+    "ident": [],
+    "optional_ev_type_per_ob_type": {
+      "i": [],
+      "o": []
+    },
+    "related_ev_type_per_ob_type": {
+      "i": [
+        "a"
+      ],
+      "o": [
+        "a"
+      ]
+    },
+    "start_ev_type_per_ob_type": {
+      "i": [
+        "a"
+      ],
+      "o": [
+        "a"
+      ]
+    }
+  },
+  "tree": {
+    "convergent_ev_type_per_ob_type": {
+      "i": [],
+      "o": []
+    },
+    "deficient_ev_type_per_ob_type": {
+      "i": [],
+      "o": []
+    },
+    "directly_follows_ev_types_per_ob_type": {
+      "i": [],
+      "o": []
+    },
+    "divergent_ev_type_per_ob_type": {
+      "i": [],
+      "o": []
+    },
+    "end_ev_type_per_ob_type": {
+      "i": [
+        "a",
+        "b"
+      ],
+      "o": [
+        "a",
+        "b"
+      ]
+    },
+    "ident": [
+      [
+        "o",
+        "i",
+        "a",
+        "b"
+      ],
+      [
+        "o",
+        "i",
+        "b",
+        "a"
+      ]
+    ],
+    "optional_ev_type_per_ob_type": {
+      "i": [
+        "b",
+        "a"
+      ],
+      "o": [
+        "a",
+        "b"
+      ]
+    },
+    "related_ev_type_per_ob_type": {
+      "i": [
+        "b",
+        "a"
+      ],
+      "o": [
+        "b",
+        "a"
+      ]
+    },
+    "start_ev_type_per_ob_type": {
+      "i": [
+        "b",
+        "a"
+      ],
+      "o": [
+        "b",
+        "a"
+      ]
+    }
+  },
+  "tree_valid": true
+}

@@ -1,0 +1,78 @@
+{
+  "root": {
+    "Operator": {
+      "children": [
+        {
+          "Leaf": {
+            "activity_label": {
+              "Activity": "a"
+            },
+            "convergent_ob_types": [],
+            "deficient_ob_types": [],
+            "divergent_ob_types": [],
+            "related_ob_types": [
+              "o"
+            ],
+            "uuid": "d974f7c2-b42b-4cf0-b803-168703e425af"
+          }
+        },
+        {
+          "Operator": {
+            "children": [
+              {
+                "Leaf": {
+                  "activity_label": {
+                    "Activity": "b"
+                  },
+                  "convergent_ob_types": [],
+                  "deficient_ob_types": [],
+                  "divergent_ob_types": [],
+                  "related_ob_types": [
+                    "o"
+                  ],
+                  "uuid": "1d9461f6-1449-4603-b83a-9a8030be8935"
+                }
+              },
+              {
+                "Leaf": {
+                  "activity_label": "Tau",
+                  "convergent_ob_types": [
+                    "o"
+                  ],
+                  "deficient_ob_types": [
+                    "o"
+                  ],
+                  "divergent_ob_types": [
+                    "o"
+                  ],
+                  "related_ob_types": [
+                    "o"
+                  ],
+                  "uuid": "b8ae77c1-5d3f-489a-9f85-3edfe905cb85"
+                }
+              }
+            ],
+            "operator_type": "ExclusiveChoice",
+            "uuid": "08c138ba-5791-4dd6-b3ac-6af32e518820"
+          }
+        },
+        {
+          "Leaf": {
+            "activity_label": {
+              "Activity": "c"
+            },
+            "convergent_ob_types": [],
+            "deficient_ob_types": [],
+            "divergent_ob_types": [],
+            "related_ob_types": [
+              "o"
+            ],
+            "uuid": "8c34b95e-fd2f-42ad-ae0b-4f1bc2c7d4de"
+          }
+        }
+      ],
+      "operator_type": "Sequence",
+      "uuid": "54322e4f-8a16-42d8-91b6-c57fdcadf7bd"
+    }
+  }
+}

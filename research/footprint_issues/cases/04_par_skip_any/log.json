@@ -1,0 +1,52 @@
+{
+  "eventTypes": [
+    {
+      "attributes": [],
+      "name": "a"
+    },
+    {
+      "attributes": [],
+      "name": "e"
+    }
+  ],
+  "events": [
+    {
+      "attributes": [],
+      "id": "e1",
+      "relationships": [
+        {
+          "objectId": "o1",
+          "qualifier": ""
+        }
+      ],
+      "time": "2024-01-01T00:00:01Z",
+      "type": "a"
+    },
+    {
+      "attributes": [],
+      "id": "e2",
+      "relationships": [
+        {
+          "objectId": "o1",
+          "qualifier": ""
+        }
+      ],
+      "time": "2024-01-01T00:00:02Z",
+      "type": "e"
+    }
+  ],
+  "objectTypes": [
+    {
+      "attributes": [],
+      "name": "o"
+    }
+  ],
+  "objects": [
+    {
+      "attributes": [],
+      "id": "o1",
+      "relationships": [],
+      "type": "o"
+    }
+  ]
+}

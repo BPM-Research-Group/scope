@@ -1,0 +1,24 @@
+{
+  "hl_events": [
+    0
+  ],
+  "id": "16_tree_opt_loop_redo",
+  "issue": "Tree `opt`: an activity in a loop's redo part can occur zero times, but no pattern says so",
+  "probes": [
+    [
+      "opt",
+      "a",
+      "o"
+    ],
+    [
+      "opt",
+      "b",
+      "o"
+    ],
+    [
+      "div",
+      "b",
+      "o"
+    ]
+  ]
+}

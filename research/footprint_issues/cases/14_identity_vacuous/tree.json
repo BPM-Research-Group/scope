@@ -1,0 +1,37 @@
+{
+  "children": [
+    {
+      "children": [
+        {
+          "act": "a",
+          "con": [],
+          "def": [],
+          "div": [],
+          "hl": false,
+          "rel": [
+            "i",
+            "o"
+          ]
+        },
+        {
+          "act": "b",
+          "con": [],
+          "def": [],
+          "div": [],
+          "hl": true,
+          "rel": [
+            "i",
+            "o"
+          ]
+        }
+      ],
+      "hl": false,
+      "op": "xor"
+    }
+  ],
+  "hl": false,
+  "kind": "ImpOrdered",
+  "left": "o",
+  "op": "id",
+  "right": "i"
+}

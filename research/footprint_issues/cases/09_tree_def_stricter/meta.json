@@ -1,0 +1,14 @@
+{
+  "hl_events": [
+    1
+  ],
+  "id": "09_tree_def_stricter",
+  "issue": "Tree `def`: a leaf that allows deficiency does not yield the pattern in the implementations",
+  "probes": [
+    [
+      "def",
+      "a",
+      "i"
+    ]
+  ]
+}

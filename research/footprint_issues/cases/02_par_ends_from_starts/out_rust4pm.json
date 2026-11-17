@@ -1,0 +1,134 @@
+{
+  "conformance": {
+    "fitness": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "overall": [
+      1.0,
+      0.8333333333333334
+    ],
+    "precision": [
+      0.5,
+      1.0,
+      1.0
+    ]
+  },
+  "log": {
+    "convergent_ev_type_per_ob_type": {
+      "o": []
+    },
+    "deficient_ev_type_per_ob_type": {
+      "o": []
+    },
+    "directly_follows_ev_types_per_ob_type": {
+      "o": [
+        [
+          "a",
+          "c"
+        ],
+        [
+          "c",
+          "b"
+        ],
+        [
+          "b",
+          "d"
+        ]
+      ]
+    },
+    "divergent_ev_type_per_ob_type": {
+      "o": []
+    },
+    "end_ev_type_per_ob_type": {
+      "o": [
+        "d"
+      ]
+    },
+    "ident": [],
+    "optional_ev_type_per_ob_type": {
+      "o": []
+    },
+    "related_ev_type_per_ob_type": {
+      "o": [
+        "c",
+        "b",
+        "d",
+        "a"
+      ]
+    },
+    "start_ev_type_per_ob_type": {
+      "o": [
+        "a"
+      ]
+    }
+  },
+  "tree": {
+    "convergent_ev_type_per_ob_type": {
+      "o": []
+    },
+    "deficient_ev_type_per_ob_type": {
+      "o": []
+    },
+    "directly_follows_ev_types_per_ob_type": {
+      "o": [
+        [
+          "a",
+          "b"
+        ],
+        [
+          "c",
+          "d"
+        ],
+        [
+          "b",
+          "d"
+        ],
+        [
+          "c",
+          "b"
+        ],
+        [
+          "a",
+          "c"
+        ],
+        [
+          "b",
+          "c"
+        ],
+        [
+          "c",
+          "a"
+        ]
+      ]
+    },
+    "divergent_ev_type_per_ob_type": {
+      "o": []
+    },
+    "end_ev_type_per_ob_type": {
+      "o": [
+        "d"
+      ]
+    },
+    "ident": [],
+    "optional_ev_type_per_ob_type": {
+      "o": []
+    },
+    "related_ev_type_per_ob_type": {
+      "o": [
+        "d",
+        "c",
+        "b",
+        "a"
+      ]
+    },
+    "start_ev_type_per_ob_type": {
+      "o": [
+        "a",
+        "c"
+      ]
+    }
+  },
+  "tree_valid": true
+}

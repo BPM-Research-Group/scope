@@ -1,0 +1,221 @@
+{
+  "conformance": {
+    "counts": {
+      "control": {
+        "both": 5,
+        "log_ones": 8,
+        "patterns": 16,
+        "tree_ones": 6
+      },
+      "identity": {
+        "both": 0,
+        "log_ones": 0,
+        "patterns": 16,
+        "tree_ones": 4
+      },
+      "multiplicity": {
+        "both": 5,
+        "log_ones": 8,
+        "patterns": 20,
+        "tree_ones": 5
+      }
+    },
+    "fitness": [
+      0.625,
+      0.625,
+      1.0
+    ],
+    "ident_ones": {
+      "log": [],
+      "tree": [
+        [
+          "ident",
+          "i",
+          "o",
+          "a",
+          "a"
+        ],
+        [
+          "ident",
+          "i",
+          "o",
+          "a",
+          "b"
+        ],
+        [
+          "ident",
+          "i",
+          "o",
+          "b",
+          "a"
+        ],
+        [
+          "ident",
+          "i",
+          "o",
+          "b",
+          "b"
+        ]
+      ]
+    },
+    "overall": [
+      0.75,
+      0.6111111111111112
+    ],
+    "precision": [
+      0.8333333333333334,
+      1.0,
+      0.0
+    ]
+  },
+  "log": {
+    "acts": [
+      "a",
+      "b"
+    ],
+    "con": {
+      "b": [
+        "o"
+      ]
+    },
+    "def": {},
+    "df": {
+      "i": [],
+      "o": [
+        [
+          "a",
+          "b"
+        ]
+      ]
+    },
+    "div": {},
+    "end": {
+      "i": [
+        "a",
+        "b"
+      ],
+      "o": [
+        "b"
+      ]
+    },
+    "ident_violated": [],
+    "opt": {
+      "a": [
+        "i",
+        "o"
+      ],
+      "b": [
+        "i"
+      ]
+    },
+    "rel": {
+      "a": [
+        "i",
+        "o"
+      ],
+      "b": [
+        "i",
+        "o"
+      ]
+    },
+    "start": {
+      "i": [
+        "a",
+        "b"
+      ],
+      "o": [
+        "a",
+        "b"
+      ]
+    },
+    "types": [
+      "i",
+      "o"
+    ]
+  },
+  "mode": "literal leaf skip",
+  "tree": {
+    "acts": [
+      "a",
+      "b"
+    ],
+    "con": {
+      "b": [
+        "o"
+      ]
+    },
+    "def": {},
+    "df": {
+      "i": [
+        [
+          "a",
+          "b"
+        ]
+      ],
+      "o": [
+        [
+          "a",
+          "b"
+        ]
+      ]
+    },
+    "div": {},
+    "end": {
+      "i": [
+        "b"
+      ],
+      "o": [
+        "b"
+      ]
+    },
+    "ident_enforced_explicit": [
+      [
+        "o",
+        "i",
+        "a",
+        "a"
+      ],
+      [
+        "o",
+        "i",
+        "a",
+        "b"
+      ],
+      [
+        "o",
+        "i",
+        "b",
+        "a"
+      ],
+      [
+        "o",
+        "i",
+        "b",
+        "b"
+      ]
+    ],
+    "opt": {},
+    "rel": {
+      "a": [
+        "i",
+        "o"
+      ],
+      "b": [
+        "i",
+        "o"
+      ]
+    },
+    "start": {
+      "i": [
+        "a"
+      ],
+      "o": [
+        "a"
+      ]
+    },
+    "types": [
+      "i",
+      "o"
+    ]
+  }
+}

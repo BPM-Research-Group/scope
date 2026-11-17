@@ -1,0 +1,60 @@
+{
+  "root": {
+    "Operator": {
+      "children": [
+        {
+          "Operator": {
+            "children": [
+              {
+                "Leaf": {
+                  "activity_label": {
+                    "Activity": "a"
+                  },
+                  "convergent_ob_types": [],
+                  "deficient_ob_types": [],
+                  "divergent_ob_types": [],
+                  "related_ob_types": [
+                    "i",
+                    "o"
+                  ],
+                  "uuid": "6d3272a9-c29f-4e30-a8d6-2910327dd2e2"
+                }
+              },
+              {
+                "Leaf": {
+                  "activity_label": {
+                    "Activity": "b"
+                  },
+                  "convergent_ob_types": [
+                    "o"
+                  ],
+                  "deficient_ob_types": [],
+                  "divergent_ob_types": [],
+                  "related_ob_types": [
+                    "i",
+                    "o"
+                  ],
+                  "uuid": "b27f9d1c-2614-4f8a-b246-d6432989e6cf"
+                }
+              }
+            ],
+            "operator_type": "Sequence",
+            "uuid": "1b1a1010-a430-4441-aea0-7b253163a64e"
+          }
+        }
+      ],
+      "operator_type": {
+        "IdentityRelation": {
+          "kind": "ImpOrdered",
+          "left": [
+            "o"
+          ],
+          "right": [
+            "i"
+          ]
+        }
+      },
+      "uuid": "910f12bf-2572-4fd6-8446-a9282d436111"
+    }
+  }
+}

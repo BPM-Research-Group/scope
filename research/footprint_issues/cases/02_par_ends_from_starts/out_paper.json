@@ -1,0 +1,172 @@
+{
+  "conformance": {
+    "counts": {
+      "control": {
+        "both": 5,
+        "log_ones": 5,
+        "patterns": 24,
+        "tree_ones": 10
+      },
+      "identity": {
+        "both": 0,
+        "log_ones": 0,
+        "patterns": 16,
+        "tree_ones": 0
+      },
+      "multiplicity": {
+        "both": 4,
+        "log_ones": 4,
+        "patterns": 20,
+        "tree_ones": 4
+      }
+    },
+    "fitness": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "ident_ones": {
+      "log": [],
+      "tree": []
+    },
+    "overall": [
+      1.0,
+      0.8333333333333334
+    ],
+    "precision": [
+      0.5,
+      1.0,
+      1.0
+    ]
+  },
+  "log": {
+    "acts": [
+      "a",
+      "b",
+      "c",
+      "d"
+    ],
+    "con": {},
+    "def": {},
+    "df": {
+      "o": [
+        [
+          "a",
+          "c"
+        ],
+        [
+          "b",
+          "d"
+        ],
+        [
+          "c",
+          "b"
+        ]
+      ]
+    },
+    "div": {},
+    "end": {
+      "o": [
+        "d"
+      ]
+    },
+    "ident_violated": [],
+    "opt": {},
+    "rel": {
+      "a": [
+        "o"
+      ],
+      "b": [
+        "o"
+      ],
+      "c": [
+        "o"
+      ],
+      "d": [
+        "o"
+      ]
+    },
+    "start": {
+      "o": [
+        "a"
+      ]
+    },
+    "types": [
+      "o"
+    ]
+  },
+  "mode": "interpreted",
+  "tree": {
+    "acts": [
+      "a",
+      "b",
+      "c",
+      "d"
+    ],
+    "con": {},
+    "def": {},
+    "df": {
+      "o": [
+        [
+          "a",
+          "b"
+        ],
+        [
+          "a",
+          "c"
+        ],
+        [
+          "b",
+          "c"
+        ],
+        [
+          "b",
+          "d"
+        ],
+        [
+          "c",
+          "a"
+        ],
+        [
+          "c",
+          "b"
+        ],
+        [
+          "c",
+          "d"
+        ]
+      ]
+    },
+    "div": {},
+    "end": {
+      "o": [
+        "d"
+      ]
+    },
+    "ident_enforced_explicit": [],
+    "opt": {},
+    "rel": {
+      "a": [
+        "o"
+      ],
+      "b": [
+        "o"
+      ],
+      "c": [
+        "o"
+      ],
+      "d": [
+        "o"
+      ]
+    },
+    "start": {
+      "o": [
+        "a",
+        "c"
+      ]
+    },
+    "types": [
+      "o"
+    ]
+  }
+}

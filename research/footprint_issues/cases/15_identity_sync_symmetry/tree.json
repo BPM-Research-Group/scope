@@ -1,0 +1,37 @@
+{
+  "children": [
+    {
+      "children": [
+        {
+          "act": "a",
+          "con": [],
+          "def": [],
+          "div": [],
+          "hl": false,
+          "rel": [
+            "i",
+            "o"
+          ]
+        },
+        {
+          "act": "b",
+          "con": [],
+          "def": [],
+          "div": [],
+          "hl": false,
+          "rel": [
+            "i",
+            "o"
+          ]
+        }
+      ],
+      "hl": false,
+      "op": "seq"
+    }
+  ],
+  "hl": true,
+  "kind": "Sync",
+  "left": "o",
+  "op": "id",
+  "right": "i"
+}

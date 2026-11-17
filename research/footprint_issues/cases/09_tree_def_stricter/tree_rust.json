@@ -1,0 +1,41 @@
+{
+  "root": {
+    "Operator": {
+      "children": [
+        {
+          "Leaf": {
+            "activity_label": {
+              "Activity": "a"
+            },
+            "convergent_ob_types": [],
+            "deficient_ob_types": [
+              "i"
+            ],
+            "divergent_ob_types": [],
+            "related_ob_types": [
+              "i",
+              "o"
+            ],
+            "uuid": "96f53b44-097b-413e-ba8d-a646b65c01f6"
+          }
+        },
+        {
+          "Leaf": {
+            "activity_label": {
+              "Activity": "b"
+            },
+            "convergent_ob_types": [],
+            "deficient_ob_types": [],
+            "divergent_ob_types": [],
+            "related_ob_types": [
+              "o"
+            ],
+            "uuid": "c96a2f21-f609-4fc2-83c5-e56da584c472"
+          }
+        }
+      ],
+      "operator_type": "Sequence",
+      "uuid": "c6b53e04-31fb-4b4e-96a5-2c606c40072b"
+    }
+  }
+}

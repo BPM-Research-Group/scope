@@ -1,0 +1,82 @@
+{
+  "root": {
+    "Operator": {
+      "children": [
+        {
+          "Operator": {
+            "children": [
+              {
+                "Operator": {
+                  "children": [
+                    {
+                      "Leaf": {
+                        "activity_label": {
+                          "Activity": "a"
+                        },
+                        "convergent_ob_types": [],
+                        "deficient_ob_types": [],
+                        "divergent_ob_types": [],
+                        "related_ob_types": [
+                          "o"
+                        ],
+                        "uuid": "e40f248e-3ddd-4e28-9192-cf9d49424e78"
+                      }
+                    },
+                    {
+                      "Leaf": {
+                        "activity_label": {
+                          "Activity": "b"
+                        },
+                        "convergent_ob_types": [],
+                        "deficient_ob_types": [],
+                        "divergent_ob_types": [],
+                        "related_ob_types": [
+                          "o"
+                        ],
+                        "uuid": "e3f8e3bd-ef7f-4818-abd9-f7a6fac123d9"
+                      }
+                    }
+                  ],
+                  "operator_type": "Sequence",
+                  "uuid": "3926f0cb-3070-4878-8cff-ac5d002f2e8e"
+                }
+              },
+              {
+                "Leaf": {
+                  "activity_label": {
+                    "Activity": "c"
+                  },
+                  "convergent_ob_types": [],
+                  "deficient_ob_types": [],
+                  "divergent_ob_types": [],
+                  "related_ob_types": [
+                    "o"
+                  ],
+                  "uuid": "4fa36b97-c7de-43fb-8003-b2759e1df273"
+                }
+              }
+            ],
+            "operator_type": "Concurrency",
+            "uuid": "2431899a-3da6-4b74-89b3-09650e355e05"
+          }
+        },
+        {
+          "Leaf": {
+            "activity_label": {
+              "Activity": "d"
+            },
+            "convergent_ob_types": [],
+            "deficient_ob_types": [],
+            "divergent_ob_types": [],
+            "related_ob_types": [
+              "o"
+            ],
+            "uuid": "50cf0c3d-625f-45fb-8c54-cedaecadcbbf"
+          }
+        }
+      ],
+      "operator_type": "Sequence",
+      "uuid": "29097b52-fc3d-4db6-9d7b-cd8fedde6314"
+    }
+  }
+}

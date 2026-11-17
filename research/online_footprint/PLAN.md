@@ -220,6 +220,8 @@ flowchart LR
 
 ## 6. Open decisions (paper vs. implementation)
 
+> Checked against the paper's repo (Nik314/OCPT-Conformance-Checking). Details and confirmed bugs are in [DEFINITIONS_CHECK.md](DEFINITIONS_CHECK.md). Short version: D1–D3 hold for the Python code too. On log `div`, Python uses DF2 divergence, while rust4pm and the paper use `a>1`. The tree directly-follows extraction in the Python code has several bugs.
+
 - **D1 Identity semantics.** Set-wise (Def. 4) or object-wise (`check_implication`)? Object-wise also ORs in `check1`. See §1.3.
 - **D2 Vacuous identity patterns.** rust4pm pushes `!ident.contains(key)`. A pattern with no co-occurrence in the log is therefore **1** (relaxed), and it becomes 0 once it applies and holds. This is **non-monotone**, unlike Def. 9 (violated ⇒ 1). Online, the identity log value then becomes "unseen or violated". Is that intended?
 - **D3 Multiplicity patterns.** The paper has `rel, a>1, a<1, ot>1, ot<1`. The implementation has `rel, div, def, con, opt`. Here `div` means "object in >1 `a`-events", which is **not** DF2 divergence. `total_activities` is a concatenated list, so it double-counts, as a code comment admits.

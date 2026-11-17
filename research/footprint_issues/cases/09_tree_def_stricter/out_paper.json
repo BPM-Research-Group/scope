@@ -1,0 +1,266 @@
+{
+  "conformance": {
+    "counts": {
+      "control": {
+        "both": 5,
+        "log_ones": 5,
+        "patterns": 16,
+        "tree_ones": 5
+      },
+      "identity": {
+        "both": 5,
+        "log_ones": 5,
+        "patterns": 16,
+        "tree_ones": 7
+      },
+      "multiplicity": {
+        "both": 4,
+        "log_ones": 4,
+        "patterns": 20,
+        "tree_ones": 4
+      }
+    },
+    "fitness": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "ident_ones": {
+      "log": [
+        [
+          "ident",
+          "i",
+          "o",
+          "a",
+          "b"
+        ],
+        [
+          "ident",
+          "i",
+          "o",
+          "b",
+          "a"
+        ],
+        [
+          "ident",
+          "i",
+          "o",
+          "b",
+          "b"
+        ],
+        [
+          "ident",
+          "o",
+          "i",
+          "a",
+          "b"
+        ],
+        [
+          "ident",
+          "o",
+          "i",
+          "b",
+          "a"
+        ]
+      ],
+      "tree": [
+        [
+          "ident",
+          "i",
+          "o",
+          "a",
+          "a"
+        ],
+        [
+          "ident",
+          "i",
+          "o",
+          "a",
+          "b"
+        ],
+        [
+          "ident",
+          "i",
+          "o",
+          "b",
+          "a"
+        ],
+        [
+          "ident",
+          "i",
+          "o",
+          "b",
+          "b"
+        ],
+        [
+          "ident",
+          "o",
+          "i",
+          "a",
+          "a"
+        ],
+        [
+          "ident",
+          "o",
+          "i",
+          "a",
+          "b"
+        ],
+        [
+          "ident",
+          "o",
+          "i",
+          "b",
+          "a"
+        ]
+      ]
+    },
+    "overall": [
+      1.0,
+      0.9047619047619048
+    ],
+    "precision": [
+      1.0,
+      1.0,
+      0.7142857142857143
+    ]
+  },
+  "log": {
+    "acts": [
+      "a",
+      "b"
+    ],
+    "con": {},
+    "def": {
+      "a": [
+        "i"
+      ]
+    },
+    "df": {
+      "i": [],
+      "o": [
+        [
+          "a",
+          "b"
+        ]
+      ]
+    },
+    "div": {},
+    "end": {
+      "i": [
+        "a"
+      ],
+      "o": [
+        "b"
+      ]
+    },
+    "ident_violated": [
+      [
+        "i",
+        "o",
+        "a",
+        "b"
+      ],
+      [
+        "i",
+        "o",
+        "b",
+        "a"
+      ],
+      [
+        "i",
+        "o",
+        "b",
+        "b"
+      ],
+      [
+        "o",
+        "i",
+        "a",
+        "b"
+      ],
+      [
+        "o",
+        "i",
+        "b",
+        "a"
+      ]
+    ],
+    "opt": {},
+    "rel": {
+      "a": [
+        "i",
+        "o"
+      ],
+      "b": [
+        "o"
+      ]
+    },
+    "start": {
+      "i": [
+        "a"
+      ],
+      "o": [
+        "a"
+      ]
+    },
+    "types": [
+      "i",
+      "o"
+    ]
+  },
+  "mode": "interpreted",
+  "tree": {
+    "acts": [
+      "a",
+      "b"
+    ],
+    "con": {},
+    "def": {
+      "a": [
+        "i"
+      ]
+    },
+    "df": {
+      "i": [],
+      "o": [
+        [
+          "a",
+          "b"
+        ]
+      ]
+    },
+    "div": {},
+    "end": {
+      "i": [
+        "a"
+      ],
+      "o": [
+        "b"
+      ]
+    },
+    "ident_enforced_explicit": [],
+    "opt": {},
+    "rel": {
+      "a": [
+        "i",
+        "o"
+      ],
+      "b": [
+        "o"
+      ]
+    },
+    "start": {
+      "i": [
+        "a"
+      ],
+      "o": [
+        "a"
+      ]
+    },
+    "types": [
+      "i",
+      "o"
+    ]
+  }
+}
