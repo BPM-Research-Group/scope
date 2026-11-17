@@ -38,8 +38,6 @@ For each detected difference there is a small separating example: an OCPT and an
 | [16](#16-tree-opt-an-activity-in-a-loops-redo-part-can-occur-zero-times-but-no-pattern-says-so) | Tree `opt`: an activity in a loop's redo part can occur zero times, but no pattern says so | ✅ agrees with paper | ⚠️ differs from paper |
 | [17](#17-evaluation-script-table-1-absolute-difference-uses-one-category-only) | Table 1 computed from the control-flow category only | — (evaluation script) | — |
 | [18](#18-typos-in-the-definitions) | Typos in Def. 3 and Def. 5 | — | — |
-| [19](#19-harmless-code-oddity-no-behavioural-effect) | Harmless filter in `interaction_properties.py` | no effect | — |
-| [20](#20-outside-the-footprint-df2-graph-loses-end-activities-python-miner) | DF2 graph loses end activities (miner) | ⚠️ bug | — |
 
 ## 1. Tree DF: a sequence links to the *end* of the next child and takes ends from starts
 
@@ -347,7 +345,7 @@ Object traces: i1: ⟨b⟩; o1: ⟨a, c⟩
 
 > **Question:** Should the leaf rule read "skip<sub>ot</sub>(leaf) = ot ∈ div<sub>a</sub> ∨ ot ∉ rel<sub>a</sub> ∨ a = τ"? (Paper wording issue, plus Python bug #3.)
 
-## 7. Log `div`: Python uses DF2 divergence, rust4pm and the paper use 'object in >1 a-events'
+## 7. Log `div`: Python uses divergence, rust4pm and the paper use 'object in >1 a-events'
 
 **Result:** Python ⚠️ differs from paper · rust4pm ✅ agrees with paper
 
@@ -842,29 +840,9 @@ The Container and P2P rows look swapped.
 - **Def. 3:** the object-side multiplicity set uses "π<sub>act</sub>(o) = a". It should be π<sub>act</sub>(e) = a.
 - **Def. 5:** "0 ∈ m<sub>ot</sub> ⇒ ot ∈ con<sub>a</sub>, 0 ∈ m<sub>ot</sub> ⇒ ot ∈ def<sub>a</sub>". The first should be MANY ∈ m<sub>ot</sub> ⇒ ot ∈ con<sub>a</sub>. The reference implementation uses this fixed reading.
 
-## 19. Harmless code oddity (no behavioural effect)
-
-`OCPT-Conformance-Checking/src/interaction_properties.py:39` filters `identifiers[identifiers[ot] != set()]`. That compares tuples with a set, so it is always true and filters nothing. Line 46 removes the empty tuple afterwards, so the result is unaffected. We found no input on which this changes an output.
-
-## 20. Outside the footprint: DF2 graph loses end activities (Python miner)
-
-*Python only. rust4pm's footprint does not use this code. It affects the trees the repo mines for its evaluation.*
-
-`OCPT-Conformance-Checking/src/divergence_free_graph.py:32` builds `non_ends` from `local_start` instead of `local_end`. Every related activity that is not a *start* activity is then removed from the ends.
-
-Example (`extra/df2_non_ends/`): one object, o1: ⟨a, **b**⟩.
-
-| | start | end |
-|---|---|---|
-| expected (DF2 definition) | {a} | **{b}** |
-| Python `get_divergence_free_graph` | {a} | **{}** ⚠️ |
-
-**Question:** Confirm this is a typo (`local_end`).
-
-
 ## Appendix A: interpretations in the paper reference
 
-Where the paper text is ambiguous or literally unworkable, `reference.py` makes these choices. Each one is easy to switch.
+Where the paper text is ambiguous, `reference.py` makes these choices. Each one is easy to switch.
 
 1. **Leaf skip** (see Issue 6): a leaf that is τ or unrelated to ot is skippable for ot. Use `--literal-leaf-skip` for the literal rule.
 2. **res(S)** (eqs. 8, 14): ot is resource-like in S if every leaf of S *related to ot* has ot ∈ div. The text says "all leaf nodes".
