@@ -248,6 +248,11 @@ export const exportcaseCollectionPm4py = async (fileId: string): Promise<ExportP
     return response.data;
 };
 
+export const exportOcpnPm4py = async (fileId: string): Promise<ExportPm4pyResponse> => {
+    const response = await api.get(`/v1/export/pm4py/ocpn/${fileId}`);
+    return response.data;
+};
+
 export const mineOcpt = async (fileId: string, algorithm: string = 'DF2'): Promise<GetOcptResponse> => {
     if (algorithm === 'DF2') {
         const response = await api.get(`v1/ocpt/df2/${fileId}`);
