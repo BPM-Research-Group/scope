@@ -1,5 +1,5 @@
 
-import { memo, useEffect, useMemo } from 'react';
+import { memo, useEffect, useMemo, useCallback } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import { Position } from '@xyflow/react';
 import { ChartNetwork } from 'lucide-react';
@@ -11,6 +11,10 @@ import { generateColorMap } from '~/lib/colors';
 import { propagateMapDownstream, syncMatchingColorsGlobally } from '~/lib/explore/flowActions';
 import { FileNode } from '~/types/explore/nodes';
 import type { OcpnArcEndpoint, RustOcpnData } from '~/types/ocpn.types';
+import { useMutation } from '@tanstack/react-query';
+import { exportOcpnPm4py } from '~/services/api';
+import { toast } from 'sonner';
+
 
 const normalizeEndpointId = (endpoint: OcpnArcEndpoint): OcpnArcEndpoint => ({
     ...endpoint,
@@ -77,6 +81,23 @@ const OcpnFileNode = memo<NodeProps<FileNode>>((props) => {
         }
     }, [data, id, updateNodeData, nodeData.colorMap]);
 
+    const exportMutation = useMutation({
+            mutationFn: () => exportOcpnPm4py(ocpnAsset!.id),
+            onSuccess: (result) => {
+                toast.success(`Exported to Downloads`, { description: result.filename });
+            },
+            onError: () => {
+                toast.error('Export failed', { description: 'Could not export OCPN as PM4PY.' });
+            },
+        });
+
+    const handleDropdownAction = useCallback(
+            (action: string) => {
+                if (action === 'exportPm4pyOcpn') exportMutation.mutate();
+            },
+            [exportMutation]
+        );
+
     return (
         <BaseFileNode
             {...props}
@@ -89,7 +110,12 @@ const OcpnFileNode = memo<NodeProps<FileNode>>((props) => {
             dropdownOptions={[
                 { label: 'Open File', action: 'openFileDialog' as const, icon: 'file' },
                 { label: 'Set Custom Color', action: 'setCustomColor' as const, icon: 'palette' },
+                ...(hasFile
+                    ? [{ label: 'Export as PM4PY', action: 'exportPm4pyOcpn' as const, icon: 'download' }]
+                    : []),
             ]}
+            onDropdownAction={handleDropdownAction}
+            
         >
             {hasFile && (
                 <div className="mt-2 border-t pt-2">
