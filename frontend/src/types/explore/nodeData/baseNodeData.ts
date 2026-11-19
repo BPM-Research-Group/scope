@@ -9,7 +9,9 @@ export type BaseExploreNodeDropdownActionType =
     | 'viewObjectEventGraph'
     | 'setCustomColor'
     | 'exportPm4pyOcpt'
-    | 'exportPm4pyCaseOcel';
+    | 'exportPm4pyCaseOcel'
+    | 'exportPm4pyOcpn'
+    ;
     
 
 export type HandleId =
