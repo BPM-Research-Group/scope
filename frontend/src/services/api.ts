@@ -301,21 +301,6 @@ export const caseStats = async (fileId: string, params: any, caseType: string) =
     throw new Error(`Unsupported case type: ${caseType}`);
 };
 
-export const changeMeasurementWeights = async (
-    caseNotionFileId: string,
-    measurements: any[],
-    weights: number[]
-) => {
-    const response = await api.post(
-        `/v1/case_notion/measurement_weights_change/${caseNotionFileId}`,
-        {
-            measurements,
-            weights,
-        }
-    );
-
-    return response.data;
-};
 
 export const changeCaseNotionMeasurementWeights = async (
     caseNotionFileId: string,

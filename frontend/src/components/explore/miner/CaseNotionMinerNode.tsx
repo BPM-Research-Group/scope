@@ -62,8 +62,6 @@ const CaseNotionMinerNode = memo<NodeProps<MinerNode>>((node) => {
             return;
         }
 
-        console.log('New case notion data received from mining:', caseNotionData);
-
         setDisplayedCaseNotionData(caseNotionData);
     }, [caseNotionData]);
 
@@ -109,14 +107,6 @@ const CaseNotionMinerNode = memo<NodeProps<MinerNode>>((node) => {
             return;
         }
 
-        console.log('Calculate Total clicked');
-
-        console.log('Case Notion File ID:', currentCnFileId);
-
-        console.log('Measurements:', displayedCaseNotionData.measures);
-
-        console.log('Weights:', weights);
-
         changeMeasurementWeights(
             {
                 caseNotionFileId: currentCnFileId,
@@ -127,8 +117,6 @@ const CaseNotionMinerNode = memo<NodeProps<MinerNode>>((node) => {
             },
             {
                 onSuccess: (response) => {
-                    console.log('Calculate Total backend response:', response);
-
                     if (response?.measures && Array.isArray(response.measures)) {
                         setDisplayedCaseNotionData((previousData: any) => ({
                             ...previousData,
@@ -231,7 +219,6 @@ const CaseNotionMinerNode = memo<NodeProps<MinerNode>>((node) => {
             },
             {
                 onSuccess: (data) => {
-                    console.log('Case notion mining successful:', data);
 
                     setHasUnminedChanges(false);
 

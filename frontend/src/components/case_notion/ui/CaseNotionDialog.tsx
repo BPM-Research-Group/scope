@@ -98,7 +98,7 @@ const CaseNotionDialog = ({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[800px] md:max-w-[1000px] lg:max-w-[1200px] h-[80vh] w-full flex flex-col">
+            <DialogContent className="w-[95vw] max-w-[1400px] h-[85vh] flex flex-col">
                 <div className="flex flex-row flex-grow min-h-0">
                     {/* LEFT SIDE - GRAPH */}
                     <div className="flex flex-col w-2/3 min-h-0">
