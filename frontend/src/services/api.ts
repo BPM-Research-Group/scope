@@ -89,12 +89,12 @@ export const postSpecialActivities = async (fileId: string, activities: string[]
 };
 
 export const getHistogramEventPersp = async (fileId: string) => {
-    const response = await api.get(`/v1/event_object_frequencies/event_perspective_histogram/${fileId}`);
+    const response = await api.get(`/v1/event_object_frequencies/event_perspective_histogram/collection/${fileId}`);
     return response.data;
 };
 
 export const getHistogramObjectPersp = async (fileId: string) => {
-    const response = await api.get(`/v1/event_object_frequencies/object_perspective_histogram/${fileId}`);
+    const response = await api.get(`/v1/event_object_frequencies/object_perspective_histogram/collection/${fileId}`);
     return response.data;
 };
 
