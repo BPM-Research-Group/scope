@@ -45,7 +45,6 @@ const ResourceViewer: React.FC = () => {
 
         if (nodeData?.assets?.length > 0) {
             const firstAsset = nodeData.assets[0];
-            console.log('Extracted file ID from assets:', firstAsset.id);
             setFileId(firstAsset.id);
 
             const nodeType = assetTypeToNodeType(firstAsset.type);

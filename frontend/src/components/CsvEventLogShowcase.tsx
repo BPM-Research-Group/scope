@@ -73,7 +73,6 @@ const CsvEventLogShowcase: React.FC<CsvEventLogShowcaseProps> = ({ file }) => {
                 }
             });
         });
-        console.log(objectMap);
         setObjectFlowMap(objectMap);
     }, [ocelFile]);
 

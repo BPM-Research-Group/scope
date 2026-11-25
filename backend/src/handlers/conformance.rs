@@ -242,7 +242,7 @@ pub async fn get_conformance_ocpt_ocel(
     let (fitness, precision) = select_top_level_scores(&log_abs, &model_abs, footprint.as_ref());
 
     println!(
-        "[conformance ocpt_ocel] ocpt_id={} ocel_id={} case_ocels_file_id={} fitness={} precision={}{}",
+        "[conformance ocpt_ocel (or ocpt_caseOcel)] ocpt_id={} ocel_id={} case_ocels_file_id={} fitness={} precision={}{}",
         ocpt_id,
         ocel_id,
         case_ocels_file_id,

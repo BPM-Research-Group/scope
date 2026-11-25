@@ -32,6 +32,9 @@ function assetKind(type: AssetType): AssetKind | null {
     if (type === 'identityOcptAsset') return 'extended_ocpt';
     if (type === 'ocelFile' || type === 'ocelAsset') return 'ocel';
     if (type === 'abstractionAsset') return 'abstraction';
+    
+    //In the backend an ocel file is transformed into a case ocel file. If it already is a case ocel file it gets returned immediately. Therefore we can use the same code
+    if (type === 'ocelCollectionFile') return 'ocel';  
     return null;
 }
 
@@ -140,6 +143,7 @@ const ConformanceMinerNode = memo<NodeProps<MinerNode>>((node) => {
                         'ocelFile',
                         'ocelAsset',
                         'abstractionAsset',
+                        'ocelCollectionFile',
                     ],
                 },
             ]}
