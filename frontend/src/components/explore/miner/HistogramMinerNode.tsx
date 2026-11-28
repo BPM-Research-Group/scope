@@ -17,7 +17,7 @@ const HistogramMinerNode = memo<NodeProps<MinerNode>>((node) => {
     const { assets } = nodeData;
     const { clearHistogramState } = useExploreFlowStore();
 
-    const inputAsset = useInputAsset(assets, 'ocelFile');
+    const inputAsset = useInputAsset(assets, 'ocelFile', 'ocelCollectionFile');
     const inputFileId = inputAsset?.id ?? null;
 
     const hasMinedAsset = useMemo(() => {

@@ -1,13 +1,14 @@
 use crate::core::struct_converters::pm4py::{
-    Pm4pyExportDocument, ocpn_to_pm4py_document, ocpt_to_pm4py_document,
-};
+    Pm4pyExportDocument, ocpn_to_pm4py_document, ocpt_to_pm4py_document, build_case_ocel_zip};
 use crate::models::ocpn::OCPN;
 use crate::models::ocpt::OCPT;
+use crate::models::ocel_collection::OCELCollection;
 use crate::traits::import_export::ImportableFromPath;
 use axum::{Json, extract::Path, http::StatusCode, response::IntoResponse};
 use serde::Serialize;
 use std::path::PathBuf;
 use tokio::fs;
+use serde_json::Value;
 
 #[derive(Debug, Serialize)]
 struct Pm4pyExportResponse {
@@ -152,4 +153,65 @@ fn sanitize_filename_part(value: &str) -> String {
     } else {
         sanitized
     }
+}
+
+pub async fn export_case_ocel_zip(
+    Path(file_id): Path<String>,
+) -> Result<impl IntoResponse, (StatusCode, String)> { 
+    let export = OCELCollection::import_from_path(&file_id).await?;
+    let case_notion_type = export
+        .attributes
+        .get("case_notion_type")
+        .and_then(Value::as_str)
+        .unwrap_or("unknown")
+        .to_string();
+
+    let origin = export
+        .attributes
+        .get("origin_file_id_ocel")
+        .and_then(Value::as_str)
+        .unwrap_or(&file_id)
+        .to_string();
+
+    let case_ocels = export.ocels;
+
+    let bytes = tokio::task::spawn_blocking(move || {
+        build_case_ocel_zip(&case_ocels, &case_notion_type, &origin)
+    })
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Zip task failed: {e}")))??;
+    let export_dir = pm4py_export_dir();
+    fs::create_dir_all(&export_dir).await.map_err(|err| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Failed to prepare PM4Py export directory: {err}"),
+        )
+    })?;
+
+    let filename = format!(
+        "scope_caseOcel_{}_pm4py.zip",
+        sanitize_filename_part(&file_id)
+    );
+    let path = export_dir.join(&filename);
+
+    fs::write(&path, &bytes).await.map_err(|err| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Failed to write zip export: {err}"),
+        )
+    })?;
+
+    Ok((
+        StatusCode::OK,
+        Json(Pm4pyExportResponse {
+            status: "ok",
+            kind: "caseOcel",
+            source_file_id: file_id,
+            schema: "ocel2-case-zip".to_string(),
+            schema_version: "1".to_string(),
+            filename,
+            path: path.to_string_lossy().to_string(),
+        }),
+    ))
+
 }

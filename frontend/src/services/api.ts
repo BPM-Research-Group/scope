@@ -89,17 +89,17 @@ export const postSpecialActivities = async (fileId: string, activities: string[]
 };
 
 export const getHistogramEventPersp = async (fileId: string) => {
-    const response = await api.get(`/v1/event_object_frequencies/event_perspective_histogram/${fileId}`);
+    const response = await api.get(`/v1/event_object_frequencies/event_perspective_histogram/collection/${fileId}`);
     return response.data;
 };
 
 export const getHistogramObjectPersp = async (fileId: string) => {
-    const response = await api.get(`/v1/event_object_frequencies/object_perspective_histogram/${fileId}`);
+    const response = await api.get(`/v1/event_object_frequencies/object_perspective_histogram/collection/${fileId}`);
     return response.data;
 };
 
 export const setFilteredHistogram = async (fileId: string, payload: any) => {
-    const response = await api.post(`/v1/event_object_frequencies/histogram_filter/${fileId}`, payload);
+    const response = await api.post(`/v1/event_object_frequencies/histogram_filter/collection/${fileId}`, payload);
     return response.data;
 };
 
@@ -240,6 +240,16 @@ export type ExportPm4pyResponse = {
 
 export const exportOcptPm4py = async (fileId: string): Promise<ExportPm4pyResponse> => {
     const response = await api.get(`/v1/export/pm4py/ocpt/${fileId}`);
+    return response.data;
+};
+
+export const exportcaseCollectionPm4py = async (fileId: string): Promise<ExportPm4pyResponse> => {
+    const response = await api.get(`/v1/export/pm4py/caseOcel/${fileId}`);
+    return response.data;
+};
+
+export const exportOcpnPm4py = async (fileId: string): Promise<ExportPm4pyResponse> => {
+    const response = await api.get(`/v1/export/pm4py/ocpn/${fileId}`);
     return response.data;
 };
 
