@@ -8,6 +8,7 @@ import { Button } from '~/components/ui/button';
 import BaseMinerNode from '~/components/explore/miner/BaseMinerNode';
 import { useExploreFlowStore } from '~/stores/exploreStore';
 import { MinerNode } from '~/types/explore/nodes';
+import { Loader2 } from 'lucide-react';
 
 const ResourceMinerNode = memo<NodeProps<MinerNode>>((node) => {
     const navigate = useNavigate();
@@ -18,10 +19,25 @@ const ResourceMinerNode = memo<NodeProps<MinerNode>>((node) => {
 
     const fileId = assets?.[0]?.id;
 
-    useEffect(() => {
-        const inputAsset = assets.find((a) => a.io === 'input' && a.type === 'ocelFile' || 'ocelCollectionNode');
-        setInputFileId(inputAsset?.id ?? null);
-    }, [assets]);
+    // useEffect(() => {
+    //     const inputAsset = assets.find((a) => a.io === 'input' && a.type === 'ocelFile' || 'ocelCollectionNode');
+    //     setInputFileId(inputAsset?.id ?? null);
+    // }, [assets]);
+
+
+useEffect(() => {
+    const inputAsset = assets.find(
+        (asset) =>
+            asset.io === 'input' &&
+            (
+                asset.type === 'ocelFile' ||
+                asset.type === 'ocelCollectionFile'
+            )
+    );
+
+    setInputFileId(inputAsset?.id ?? null);
+}, [assets]);
+
 
     const hasMinedAsset = useMemo(() => {
         return assets.some((asset) => asset.io === 'output' && asset.origin === 'mined');

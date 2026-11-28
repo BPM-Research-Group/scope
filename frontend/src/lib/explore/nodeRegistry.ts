@@ -92,7 +92,7 @@ export const nodeRegistry = {
     },
     histogramMinerNode: {
         category: 'miner',
-        allowedAssetTypes: ['ocelFile'],
+        allowedAssetTypes: ['ocelFile', 'ocelCollectionFile'],
         sidebar: { label: 'Histogram Filter', icon: 'chartBar', group: 'miners' },
     },
     caseNotionMinerNode: {
@@ -145,6 +145,7 @@ export const nodeRegistry = {
         allowedAssetTypes: ['ocelFile', 'ocelCollectionFile'],
         sidebar: { label: 'Resource Miner', icon: 'waves', group: 'miners' },
     },
+
     kpiBuilderNode: {
         category: 'miner',
         allowedAssetTypes: ['ocelFile', 'ocelAsset', 'ocelCollectionFile'],

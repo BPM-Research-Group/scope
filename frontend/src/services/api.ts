@@ -89,17 +89,17 @@ export const postSpecialActivities = async (fileId: string, activities: string[]
 };
 
 export const getHistogramEventPersp = async (fileId: string) => {
-    const response = await api.get(`/v1/event_object_frequencies/event_perspective_histogram/${fileId}`);
+    const response = await api.get(`/v1/event_object_frequencies/event_perspective_histogram/collection/${fileId}`);
     return response.data;
 };
 
 export const getHistogramObjectPersp = async (fileId: string) => {
-    const response = await api.get(`/v1/event_object_frequencies/object_perspective_histogram/${fileId}`);
+    const response = await api.get(`/v1/event_object_frequencies/object_perspective_histogram/collection/${fileId}`);
     return response.data;
 };
 
 export const setFilteredHistogram = async (fileId: string, payload: any) => {
-    const response = await api.post(`/v1/event_object_frequencies/histogram_filter/${fileId}`, payload);
+    const response = await api.post(`/v1/event_object_frequencies/histogram_filter/collection/${fileId}`, payload);
     return response.data;
 };
 
@@ -243,16 +243,6 @@ export const exportOcptPm4py = async (fileId: string): Promise<ExportPm4pyRespon
     return response.data;
 };
 
-export const exportcaseCollectionPm4py = async (fileId: string): Promise<ExportPm4pyResponse> => {
-    const response = await api.get(`/v1/export/pm4py/caseOcel/${fileId}`);
-    return response.data;
-};
-
-export const exportOcpnPm4py = async (fileId: string): Promise<ExportPm4pyResponse> => {
-    const response = await api.get(`/v1/export/pm4py/ocpn/${fileId}`);
-    return response.data;
-};
-
 export const mineOcpt = async (fileId: string, algorithm: string = 'DF2'): Promise<GetOcptResponse> => {
     if (algorithm === 'DF2') {
         const response = await api.get(`v1/ocpt/df2/${fileId}`);
@@ -309,6 +299,23 @@ export const caseStats = async (fileId: string, params: any, caseType: string) =
         return response.data;
     }
     throw new Error(`Unsupported case type: ${caseType}`);
+};
+
+
+export const changeCaseNotionMeasurementWeights = async (
+    caseNotionFileId: string,
+    measurements: unknown[],
+    weights: number[]
+) => {
+    const response = await api.post(
+        `/v1/case_notion/measurement_weights_change/${caseNotionFileId}`,
+        {
+            measurements,
+            weights,
+        }
+    );
+
+    return response.data;
 };
 
 export type GetOcpnResponse = {
