@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { mineCaseNotion, setFilteredHistogram, uploadFile } from '~/services/api';
+import { mineCaseNotion, setFilteredHistogram, uploadFile, changeCaseNotionMeasurementWeights} from '~/services/api';
 import type { ExtendedFile } from '~/types/fileObject.types';
 
 export const useUploadFileMutation = () => {
@@ -58,5 +58,25 @@ export const useMineCaseNotionMutation = () => {
                 params.payload
             );
         },
+    });
+};
+
+
+export const useChangeCaseNotionMeasurementWeightsMutation = () => {
+    return useMutation({
+        mutationFn: ({
+            caseNotionFileId,
+            measurements,
+            weights,
+        }: {
+            caseNotionFileId: string;
+            measurements: unknown[];
+            weights: number[];
+        }) =>
+            changeCaseNotionMeasurementWeights(
+                caseNotionFileId,
+                measurements,
+                weights
+            ),
     });
 };
