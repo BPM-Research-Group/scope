@@ -99,7 +99,7 @@ export const getHistogramObjectPersp = async (fileId: string) => {
 };
 
 export const setFilteredHistogram = async (fileId: string, payload: any) => {
-    const response = await api.post(`/v1/event_object_frequencies/histogram_filter/${fileId}`, payload);
+    const response = await api.post(`/v1/event_object_frequencies/histogram_filter/collection/${fileId}`, payload);
     return response.data;
 };
 
